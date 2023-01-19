@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2022–2023 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ import org.microbean.lang.element.Encloseable;
 
 import org.microbean.lang.type.DefineableType;
 
-public final class Reflection {
+final class Reflection {
 
   private static final Equality EQUALITY_NO_ANNOTATIONS = new Equality(false);
 
@@ -98,7 +98,7 @@ public final class Reflection {
     this.typeMirrors.put(void.class, org.microbean.lang.type.NoType.VOID);
   }
 
-  final void clear() {
+  public final void clear() {
     this.annotationMirrors.clear();
     this.typeMirrors.clear();
     this.elements.clear();
@@ -116,7 +116,7 @@ public final class Reflection {
       final org.microbean.lang.element.AnnotationMirror am = new org.microbean.lang.element.AnnotationMirror();
       r = this.annotationMirrors.putIfAbsent(a, am);
       if (r == null) {
-        this.build(cl, a, am);
+        this.build(a, am, cl);
         r = am;
       }
     }
@@ -162,17 +162,17 @@ public final class Reflection {
     case String s -> new org.microbean.lang.element.AnnotationValue(s);
     case Boolean b -> new org.microbean.lang.element.AnnotationValue(b);
     case Integer i -> new org.microbean.lang.element.AnnotationValue(i);
-    case Enum<?> e -> annotationValue(element(e, cl), cl);
-    case Class<?> c -> annotationValue(type(c, cl), cl);
+    case Enum<?> e -> annotationValue(element(e, cl), cl); // RECURSIVE
+    case Class<?> c -> annotationValue(type(c, cl), cl); // RECURSIVE
     case Object[] array -> new org.microbean.lang.element.AnnotationValue(annotationValues(array, cl));
-    case Annotation a -> annotationValue(annotation(a, cl), cl);
+    case Annotation a -> annotationValue(annotation(a, cl), cl); // RECURSIVE
     case Byte b -> new org.microbean.lang.element.AnnotationValue(b);
     case Character c -> new org.microbean.lang.element.AnnotationValue(c);
     case Double d -> new org.microbean.lang.element.AnnotationValue(d);
     case Float f -> new org.microbean.lang.element.AnnotationValue(f);
     case Long l -> new org.microbean.lang.element.AnnotationValue(l);
     case Short s -> new org.microbean.lang.element.AnnotationValue(s);
-    case Method m -> annotationValue(m.getDefaultValue(), cl);
+    case Method m -> annotationValue(m.getDefaultValue(), cl); // RECURSIVE
     case TypeMirror t -> new org.microbean.lang.element.AnnotationValue(t);
     case VariableElement v when v.getKind() == ElementKind.ENUM_CONSTANT -> new org.microbean.lang.element.AnnotationValue(v);
     case AnnotationMirror a -> new org.microbean.lang.element.AnnotationValue(a);
@@ -218,20 +218,29 @@ public final class Reflection {
       return switch (k) {
       case AnnotatedType a -> element(a.getType(), cl); // RECURSIVE
       case Annotation a -> element(a.annotationType(), cl); // RECURSIVE
-      case Class<?> c -> element(cl, c, () -> new org.microbean.lang.element.TypeElement(kind(c), nestingKind(c)), this::build);
-      case Constructor<?> c -> element(cl, c, () -> new org.microbean.lang.element.ExecutableElement(ElementKind.CONSTRUCTOR), this::build);
-      case Enum<?> e -> element(cl, e, () -> new org.microbean.lang.element.VariableElement(ElementKind.ENUM_CONSTANT), this::build);
-      case Field f -> element(cl, f, () -> new org.microbean.lang.element.VariableElement(ElementKind.FIELD), this::build);
-      case Method m -> element(cl, m, () -> new org.microbean.lang.element.ExecutableElement(kind(m)), this::build);
-      case Module m -> element(cl, m, () -> new org.microbean.lang.element.ModuleElement(m.getDescriptor().isOpen()), this::build); // TODO: inherently sparse
-      case Package p -> element(cl, p, org.microbean.lang.element.PackageElement::new, this::build); // TODO: inherently sparse
-      case Parameter p -> element(cl, p, () -> new org.microbean.lang.element.VariableElement(ElementKind.PARAMETER), this::build);
+      case Class<?> c -> element(c, () -> new org.microbean.lang.element.TypeElement(kind(c), nestingKind(c)), this::build, cl);
+      case Constructor<?> c -> element(c, () -> new org.microbean.lang.element.ExecutableElement(ElementKind.CONSTRUCTOR), this::build, cl);
+      case Enum<?> e -> element(e, () -> new org.microbean.lang.element.VariableElement(ElementKind.ENUM_CONSTANT), this::build, cl);
+      case Field f when f.isEnumConstant() -> element(enumOf(f), cl); // RECURSIVE
+      case Field f -> element(f, () -> new org.microbean.lang.element.VariableElement(ElementKind.FIELD), this::build, cl);
+      case Method m -> element(m, () -> new org.microbean.lang.element.ExecutableElement(kind(m)), this::build, cl);
+      case Module m -> element(m, () -> new org.microbean.lang.element.ModuleElement(m.getDescriptor().isOpen()), this::build, cl); // TODO: inherently sparse
+      case Package p -> element(p, org.microbean.lang.element.PackageElement::new, this::build, cl); // TODO: inherently sparse
+      case Parameter p -> element(p, () -> new org.microbean.lang.element.VariableElement(ElementKind.PARAMETER), this::build, cl);
       case ParameterizedType p -> element(p.getRawType(), cl); // RECURSIVE
-      case java.lang.reflect.TypeVariable<?> tp -> element(cl, tp, org.microbean.lang.element.TypeParameterElement::new, this::build);
+      case java.lang.reflect.TypeVariable<?> tp -> element(tp, org.microbean.lang.element.TypeParameterElement::new, this::build, cl);
       default -> throw new IllegalArgumentException("k: " + k + "; k.getClass(): " + k.getClass());
       };
     }
     return r;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static final <T extends Enum<T>> T enumOf(final Field f) throws ReflectiveOperationException {
+    if (f.isEnumConstant()) {
+      return Enum.valueOf((Class<T>)f.getDeclaringClass(), f.getName());
+    }
+    throw new IllegalArgumentException("f: " + f);
   }
 
   private final Element element(final Module m, final Package p, final ClassLoader cl) throws ReflectiveOperationException {
@@ -240,7 +249,7 @@ public final class Reflection {
       final org.microbean.lang.element.PackageElement e = new org.microbean.lang.element.PackageElement();
       r = this.elements.putIfAbsent(p, e);
       if (r == null) {
-        this.build(cl, m, p, e);
+        this.build(m, p, e, cl);
         r = e;
       }
     }
@@ -264,39 +273,46 @@ public final class Reflection {
       return switch (k) {
 
       case Class<?> c when c.isPrimitive() -> this.typeMirrors.get(c); // already in there
-      case Class<?> c when c.isArray() -> type(cl, c, org.microbean.lang.type.ArrayType::new, this::build);
-      case Class<?> c -> type(cl, c, org.microbean.lang.type.DeclaredType::new, this::build);
+      case Class<?> c when c.isArray() -> type(c, org.microbean.lang.type.ArrayType::new, this::build, cl);
+      case Class<?> c -> type(c, org.microbean.lang.type.DeclaredType::new, this::build, cl);
 
-      case ParameterizedType p -> type(cl, p, org.microbean.lang.type.DeclaredType::new, this::build);
+      case ParameterizedType p -> type(p, org.microbean.lang.type.DeclaredType::new, this::build, cl);
 
-      case GenericArrayType g -> type(cl, g, org.microbean.lang.type.ArrayType::new, this::build);
+      case GenericArrayType g -> type(g, org.microbean.lang.type.ArrayType::new, this::build, cl);
 
-      case java.lang.reflect.TypeVariable<?> t -> type(cl, t, org.microbean.lang.type.TypeVariable::new, this::build);
+      case java.lang.reflect.TypeVariable<?> t -> type(t, org.microbean.lang.type.TypeVariable::new, this::build, cl);
 
-      case java.lang.reflect.WildcardType w -> type(cl, w, org.microbean.lang.type.WildcardType::new, this::build);
+      case java.lang.reflect.WildcardType w -> type(w, org.microbean.lang.type.WildcardType::new, this::build, cl);
 
-      case AnnotatedArrayType a -> type(cl, a, org.microbean.lang.type.ArrayType::new, this::build);
+      case AnnotatedArrayType a -> type(a, org.microbean.lang.type.ArrayType::new, this::build, cl);
 
-      case AnnotatedParameterizedType a -> type(cl, a, org.microbean.lang.type.DeclaredType::new, this::build);
+      case AnnotatedParameterizedType a -> type(a, org.microbean.lang.type.DeclaredType::new, this::build, cl);
 
-      case AnnotatedTypeVariable a -> type(cl, a, org.microbean.lang.type.TypeVariable::new, this::build);
+      case AnnotatedTypeVariable a -> type(a, org.microbean.lang.type.TypeVariable::new, this::build, cl);
 
-      case AnnotatedWildcardType a -> type(cl, a, org.microbean.lang.type.WildcardType::new, this::build);
+      case AnnotatedWildcardType a -> type(a, org.microbean.lang.type.WildcardType::new, this::build, cl);
 
-      // Not sure this is even possible?
-      case AnnotatedType a when a.getType() instanceof Class<?> c && c.isPrimitive() ->
-        type(cl, a, () -> new org.microbean.lang.type.PrimitiveType(typeKindForPrimitive(c)), this::build);
+      case AnnotatedType a when
+        a.getType() instanceof Class<?> c &&
+        c.isPrimitive() &&
+        a.getDeclaredAnnotations().length <= 0 -> org.microbean.lang.type.PrimitiveType.of(typeKindForPrimitive(c));
+
+      case AnnotatedType a when
+        a.getType() instanceof Class<?> c &&
+        c.isPrimitive() -> type(a, () -> new org.microbean.lang.type.PrimitiveType(typeKindForPrimitive(c)), this::build, cl);
+
       // Not sure this is even possible?
       case AnnotatedType a when a.getType() instanceof Class<?> c && c.isArray() ->
-        type(cl, a, org.microbean.lang.type.ArrayType::new, this::build);
-      case AnnotatedType a when a.getType() instanceof Class<?> c ->
-        type(cl, a, org.microbean.lang.type.DeclaredType::new, this::build);
+        type(a, org.microbean.lang.type.ArrayType::new, this::build, cl);
 
-      case Constructor<?> c -> type(cl, c, org.microbean.lang.type.ExecutableType::new, this::build);
+      case AnnotatedType a when a.getType() instanceof Class<?> c ->
+        type(a, org.microbean.lang.type.DeclaredType::new, this::build, cl);
+
+      case Constructor<?> c -> type(c, org.microbean.lang.type.ExecutableType::new, this::build, cl);
       case Enum e -> type(e.getDeclaringClass(), cl); // RECURSIVE and kind of cheesy
       case Field f when f.isEnumConstant() -> throw new UnsupportedOperationException("TODO: treat this as Enum<?>?");
       case Field f -> type(f.getAnnotatedType(), cl); // RECURSIVE and also kind of cheesy
-      case Method m -> type(cl, m, org.microbean.lang.type.ExecutableType::new, this::build);
+      case Method m -> type(m, org.microbean.lang.type.ExecutableType::new, this::build, cl);
       case Module m -> org.microbean.lang.type.NoType.MODULE;
       case Package p -> org.microbean.lang.type.NoType.PACKAGE;
       case Parameter p -> type(p.getAnnotatedType(), cl); // RECURSIVE and kind of cheesy
@@ -314,35 +330,35 @@ public final class Reflection {
    */
 
 
-  private final void build(final ClassLoader cl,
-                           final Module m,
-                           final org.microbean.lang.element.ModuleElement e)
+  private final void build(final Module m,
+                           final org.microbean.lang.element.ModuleElement e,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     final ModuleDescriptor md = m.getDescriptor();
     e.setSimpleName(md.name());
     e.setType(type(m, cl));
   }
 
-  private final void build(final ClassLoader cl,
-                           final Package p,
-                           final org.microbean.lang.element.PackageElement e)
+  private final void build(final Package p,
+                           final org.microbean.lang.element.PackageElement e,
+                           final ClassLoader cl)
   throws ReflectiveOperationException {
-    this.build(cl, null, p, e);
+    this.build(null, p, e, cl);
   }
 
-  private final void build(final ClassLoader cl,
-                           final Module m,
+  private final void build(final Module m,
                            final Package p,
-                           final org.microbean.lang.element.PackageElement pe)
+                           final org.microbean.lang.element.PackageElement pe,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     pe.setSimpleName(p.getName());
     pe.setType(type(p, cl));
     pe.setEnclosingElement(element(m, cl));
   }
 
-  private final void build(final ClassLoader cl,
-                           final Class<?> c,
-                           final org.microbean.lang.element.TypeElement e)
+  private final void build(final Class<?> c,
+                           final org.microbean.lang.element.TypeElement e,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     e.setSimpleName(c.getSimpleName());
     @SuppressWarnings("unchecked")
@@ -380,14 +396,14 @@ public final class Reflection {
       Object enclosingObject = c.getEnclosingMethod();
       if (enclosingObject == null) {
         enclosingObject = c.getEnclosingConstructor();
+        if (enclosingObject == null) {
+          enclosingObject = c.getEnclosingClass();
+        }
       }
-      // TODO: Note: we don't want to call c.getEnclosingClass(), because that will jump the hierarchy. An anonymous
-      // class is lexically enclosed only by an non-static executable.  (I think. :-) (What about private Gorp gorp =
-      // new Gorp() {};?))
       enclosingElement = element(enclosingObject, cl);
       break;
     case MEMBER:
-      enclosingElement = element(c.getDeclaringClass(), cl);
+      enclosingElement = element(declaringClass(c), cl); // note the static declaringClass(Class) method; works around JDK bug
       break;
     case TOP_LEVEL:
       enclosingElement = element(c.getModule(), c.getPackage(), cl);
@@ -403,15 +419,37 @@ public final class Reflection {
       e.addInterface(((TypeElement)element(ai, cl)).asType()); // experimental
       // e.addInterface(type(ai, cl));
     }
-    buildTypeParameters(cl,
-                        c,
-                        e::addTypeParameter);
+    buildTypeParameters(c,
+                        e::addTypeParameter,
+                        cl);
+
+    // TODO: enclosed elements
+    for (final Class<?> dc : c.getDeclaredClasses()) {
+      e.addEnclosedElement((javax.lang.model.element.Element & Encloseable)element(dc, cl));
+    }
+
+    if (c.isEnum()) {
+      for (final Field df : c.getDeclaredFields()) {
+        if (!df.isEnumConstant()) {
+          e.addEnclosedElement((javax.lang.model.element.VariableElement & Encloseable)element(df, cl));
+        }
+      }
+    } else {
+      for (final Field df : c.getDeclaredFields()) {      
+        e.addEnclosedElement((javax.lang.model.element.VariableElement & Encloseable)element(df, cl));
+      }
+    }
+
+    for (final Constructor<?> dc : c.getDeclaredConstructors()) {
+      e.addEnclosedElement((javax.lang.model.element.ExecutableElement & Encloseable)element(dc, cl));
+    }
+
     e.addAnnotationMirrors(annotations(c, cl));
   }
 
-  private final void build(final ClassLoader cl,
-                           final java.lang.reflect.TypeVariable<?> tv,
-                           final org.microbean.lang.element.TypeParameterElement tp)
+  private final void build(final java.lang.reflect.TypeVariable<?> tv,
+                           final org.microbean.lang.element.TypeParameterElement tp,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     tp.setSimpleName(tv.getName());
     @SuppressWarnings("unchecked")
@@ -420,18 +458,18 @@ public final class Reflection {
     t.setDefiningElement(tp);
   }
 
-  private final void build(final ClassLoader cl,
-                           final Enum<?> e,
-                           final org.microbean.lang.element.VariableElement v)
+  private final void build(final Enum<?> e,
+                           final org.microbean.lang.element.VariableElement v,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     v.setSimpleName(e.name());
     v.setType(type(e.getDeclaringClass(), cl));
     // TODO: that's it, right?
   }
 
-  private final void build(final ClassLoader cl,
-                           final Constructor<?> c,
-                           final org.microbean.lang.element.ExecutableElement e)
+  private final void build(final Constructor<?> c,
+                           final org.microbean.lang.element.ExecutableElement e,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     // (No setSimpleName() on purpose; already performed by ExecutableElement's constructor.)
     e.setType(type(c, cl));
@@ -445,7 +483,7 @@ public final class Reflection {
       e.addModifier(Modifier.PUBLIC);
     }
 
-    buildTypeParameters(cl, c, e::addTypeParameter);
+    buildTypeParameters(c, e::addTypeParameter, cl);
 
     for (final Parameter p : c.getParameters()) {
       e.addParameter((VariableElement)element(p, cl));
@@ -454,9 +492,9 @@ public final class Reflection {
     e.addAnnotationMirrors(annotations(c, cl));
   }
 
-  private final void build(final ClassLoader cl,
-                           final Field f,
-                           final org.microbean.lang.element.VariableElement e)
+  private final void build(final Field f,
+                           final org.microbean.lang.element.VariableElement e,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     e.setSimpleName(f.getName());
     final AnnotatedType at = f.getAnnotatedType();
@@ -498,12 +536,14 @@ public final class Reflection {
     e.addAnnotationMirrors(annotations(f, cl));
   }
 
-  private final void build(final ClassLoader cl,
-                           final Method m,
-                           final org.microbean.lang.element.ExecutableElement e)
+  private final void build(final Method m,
+                           final org.microbean.lang.element.ExecutableElement e,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     e.setSimpleName(m.getName());
-    e.setType(type(m, cl));
+    final ExecutableType et = (ExecutableType)type(m, cl);
+    e.setType(et);
+    assert e.asType() == et;
 
     final int modifiers = m.getModifiers();
     if (m.isDefault()) {
@@ -532,27 +572,27 @@ public final class Reflection {
     } else if (java.lang.reflect.Modifier.isPublic(modifiers)) {
       e.addModifier(Modifier.PUBLIC);
     }
-    buildTypeParameters(cl, m, e::addTypeParameter);
+    buildTypeParameters(m, e::addTypeParameter, cl);
 
     for (final Parameter p : m.getParameters()) {
       e.addParameter((VariableElement)element(p, cl));
     }
-    
+
     e.addAnnotationMirrors(annotations(m, cl));
   }
 
-  private final void build(final ClassLoader cl,
-                           final Parameter p,
-                           final org.microbean.lang.element.VariableElement e)
+  private final void build(final Parameter p,
+                           final org.microbean.lang.element.VariableElement e,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     e.setType(type(p, cl));
     e.addAnnotationMirrors(annotations(p, cl));
   }
 
   @SuppressWarnings("unchecked")
-  private final <TP extends javax.lang.model.element.TypeParameterElement & Encloseable> void buildTypeParameters(final ClassLoader cl,
-                                                                                                                  final GenericDeclaration gd,
-                                                                                                                  final Consumer<? super TP> c)
+  private final <TP extends javax.lang.model.element.TypeParameterElement & Encloseable> void buildTypeParameters(final GenericDeclaration gd,
+                                                                                                                  final Consumer<? super TP> c,
+                                                                                                                  final ClassLoader cl)
     throws ReflectiveOperationException {
     for (final java.lang.reflect.TypeVariable<?> tp : gd.getTypeParameters()) {
       c.accept((TP)element(tp, cl));
@@ -565,23 +605,23 @@ public final class Reflection {
    */
 
 
-  private final void build(final ClassLoader cl,
-                           final Class<?> c,
-                           final org.microbean.lang.type.ArrayType t)
+  private final void build(final Class<?> c,
+                           final org.microbean.lang.type.ArrayType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     assert c.isArray() : "c: " + c;
     t.setComponentType(this.type(c.getComponentType(), cl));
     // (No annotations.)
   }
 
-  private final void build(final ClassLoader cl,
-                           final Class<?> c,
-                           final org.microbean.lang.type.DeclaredType t)
+  private final void build(final Class<?> c,
+                           final org.microbean.lang.type.DeclaredType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     assert c != void.class && !c.isPrimitive() && !c.isArray() : "c: " + c;
-    final org.microbean.lang.element.TypeElement e = (org.microbean.lang.element.TypeElement)element(c, cl);
-    e.setType(t); // TODO: maybe assert that element() does this already instead?
-    t.setDefiningElement(e); // TODO: ditto?
+    // final org.microbean.lang.element.TypeElement e = (org.microbean.lang.element.TypeElement)element(c, cl);
+    // e.setType(t); // TODO: maybe assert that element() does this already instead?
+    // t.setDefiningElement(e); // TODO: ditto?
     t.setEnclosingType(this.type(c.getEnclosingClass(), cl));
     for (final java.lang.reflect.TypeVariable<?> tp : c.getTypeParameters()) {
       t.addTypeArgument(type(tp, cl));
@@ -589,9 +629,9 @@ public final class Reflection {
     // (No annotations.)
   }
 
-  private final void build(final ClassLoader cl,
-                           final ParameterizedType p,
-                           final org.microbean.lang.type.DeclaredType t)
+  private final void build(final ParameterizedType p,
+                           final org.microbean.lang.type.DeclaredType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     t.setEnclosingType(this.type(p.getOwnerType(), cl));
     for (final java.lang.reflect.Type ta : p.getActualTypeArguments()) {
@@ -600,17 +640,17 @@ public final class Reflection {
     // (No annotations.)
   }
 
-  private final void build(final ClassLoader cl,
-                           final GenericArrayType g,
-                           final org.microbean.lang.type.ArrayType t)
+  private final void build(final GenericArrayType g,
+                           final org.microbean.lang.type.ArrayType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     t.setComponentType(this.type(g.getGenericComponentType(), cl));
     // (No annotations.)
   }
 
-  private final void build(final ClassLoader cl,
-                           final java.lang.reflect.TypeVariable<?> tv,
-                           final org.microbean.lang.type.TypeVariable t)
+  private final void build(final java.lang.reflect.TypeVariable<?> tv,
+                           final org.microbean.lang.type.TypeVariable t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     final AnnotatedType[] bounds = tv.getAnnotatedBounds();
     switch (bounds.length) {
@@ -633,9 +673,9 @@ public final class Reflection {
     // represents both a type and an element they are element annotations, not type use annotations.)
   }
 
-  private final void build(final ClassLoader cl,
-                           final java.lang.reflect.WildcardType w,
-                           final org.microbean.lang.type.WildcardType t)
+  private final void build(final java.lang.reflect.WildcardType w,
+                           final org.microbean.lang.type.WildcardType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     final Type[] superBounds = w.getLowerBounds();
     switch (superBounds.length) {
@@ -660,9 +700,9 @@ public final class Reflection {
     // (No annotations.)
   }
 
-  private final void build(final ClassLoader cl,
-                           final java.lang.reflect.Constructor<?> c,
-                           final org.microbean.lang.type.ExecutableType e)
+  private final void build(final java.lang.reflect.Constructor<?> c,
+                           final org.microbean.lang.type.ExecutableType e,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     for (final AnnotatedType at : c.getAnnotatedParameterTypes()) {
       e.addParameterType(type(at, cl));
@@ -675,12 +715,12 @@ public final class Reflection {
     for (final java.lang.reflect.TypeVariable<?> tv : c.getTypeParameters()) {
       e.addTypeVariable((TypeVariable)type(tv, cl));
     }
-    e.addAnnotationMirrors(annotations(c, cl));
+    // e.addAnnotationMirrors(annotations(c, cl));
   }
 
-  private final void build(final ClassLoader cl,
-                           final java.lang.reflect.Method m,
-                           final org.microbean.lang.type.ExecutableType e)
+  private final void build(final java.lang.reflect.Method m,
+                           final org.microbean.lang.type.ExecutableType e,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     for (final AnnotatedType at : m.getAnnotatedParameterTypes()) {
       e.addParameterType(type(at, cl));
@@ -702,9 +742,9 @@ public final class Reflection {
    */
 
 
-  private final void build(final ClassLoader cl,
-                           final AnnotatedArrayType a,
-                           final org.microbean.lang.type.ArrayType t)
+  private final void build(final AnnotatedArrayType a,
+                           final org.microbean.lang.type.ArrayType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     t.setComponentType(type(a.getAnnotatedGenericComponentType(), cl));
     t.addAnnotationMirrors(annotations(a, cl));
@@ -712,9 +752,9 @@ public final class Reflection {
 
   // (Not sure this is even possible.)
   @Deprecated
-  private final void build(final ClassLoader cl,
-                           final AnnotatedType a,
-                           final org.microbean.lang.type.ArrayType t)
+  private final void build(final AnnotatedType a,
+                           final org.microbean.lang.type.ArrayType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     assert a != null;
     assert !(a instanceof AnnotatedArrayType) : "a: " + a;
@@ -727,9 +767,9 @@ public final class Reflection {
     throw new UnsupportedOperationException();
   }
 
-  private final void build(final ClassLoader cl,
-                           final AnnotatedType a,
-                           final org.microbean.lang.type.DeclaredType t)
+  private final void build(final AnnotatedType a,
+                           final org.microbean.lang.type.DeclaredType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     assert a != null;
     assert !(a instanceof AnnotatedArrayType) : "a: " + a;
@@ -740,16 +780,16 @@ public final class Reflection {
     if (c.isPrimitive() || c.isArray()) {
       throw new IllegalArgumentException("a: " + a);
     }
-    t.setDefiningElement((TypeElement)((DeclaredType)type(c, cl)).asElement());
+    t.setDefiningElement((TypeElement)element(c, cl));
     t.setEnclosingType(type(a.getAnnotatedOwnerType(), cl));
     t.addAnnotationMirrors(annotations(a, cl));
   }
 
   // (Not sure this is even possible.)
   @Deprecated
-  private final void build(final ClassLoader cl,
-                           final AnnotatedType a,
-                           final org.microbean.lang.type.PrimitiveType t)
+  private final void build(final AnnotatedType a,
+                           final org.microbean.lang.type.PrimitiveType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     assert a != null;
     assert !(a instanceof AnnotatedArrayType) : "a: " + a;
@@ -758,13 +798,12 @@ public final class Reflection {
     assert !(a instanceof AnnotatedWildcardType) : "a: " + a;
     final Class<?> c = (Class<?>)a.getType();
     assert c.isPrimitive() : "c: " + c;
-    // Is this really a thing?
-    throw new UnsupportedOperationException();
+    t.addAnnotationMirrors(annotations(a, cl));
   }
 
-  private final void build(final ClassLoader cl,
-                           final AnnotatedParameterizedType a,
-                           final org.microbean.lang.type.DeclaredType t)
+  private final void build(final AnnotatedParameterizedType a,
+                           final org.microbean.lang.type.DeclaredType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     t.setEnclosingType(type(a.getAnnotatedOwnerType(), cl));
     for (final AnnotatedType ata : a.getAnnotatedActualTypeArguments()) {
@@ -773,9 +812,9 @@ public final class Reflection {
     t.addAnnotationMirrors(annotations(a, cl));
   }
 
-  private final void build(final ClassLoader cl,
-                           final AnnotatedTypeVariable a,
-                           final org.microbean.lang.type.TypeVariable t)
+  private final void build(final AnnotatedTypeVariable a,
+                           final org.microbean.lang.type.TypeVariable t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     final AnnotatedType[] bounds = a.getAnnotatedBounds();
     switch (bounds.length) {
@@ -795,9 +834,9 @@ public final class Reflection {
     t.addAnnotationMirrors(annotations(a, cl));
   }
 
-  private final void build(final ClassLoader cl,
-                           final AnnotatedWildcardType a,
-                           final org.microbean.lang.type.WildcardType t)
+  private final void build(final AnnotatedWildcardType a,
+                           final org.microbean.lang.type.WildcardType t,
+                           final ClassLoader cl)
     throws ReflectiveOperationException {
     final AnnotatedType[] superBounds = a.getAnnotatedLowerBounds();
     switch (superBounds.length) {
@@ -828,18 +867,29 @@ public final class Reflection {
    */
 
 
-  private final void build(final ClassLoader cl,
-                           final Annotation a,
-                           final org.microbean.lang.element.AnnotationMirror am) throws ReflectiveOperationException {
+  private final void build(final Annotation a,
+                           final org.microbean.lang.element.AnnotationMirror am,
+                           final ClassLoader cl)
+    throws ReflectiveOperationException {
     final Class<?> at = a.annotationType();
-    am.setAnnotationType((DeclaredType)type(at, cl));
+    final Element e = element(at, cl);
+    final DeclaredType dt = (DeclaredType)e.asType();
+    assert dt.asElement() == e;
+    am.setAnnotationType(dt);
+    // assert dt.asElement() != null;
+    // assert dt.asElement().asType() == dt;
+
     final Map<ExecutableElement, AnnotationValue> values = new HashMap<>();
     for (final Method ae : at.getDeclaredMethods()) {
         assert ae.getParameterCount() == 0;
         assert ae.getReturnType() != void.class;
         assert !"toString".equals(ae.getName());
         assert !"hashCode()".equals(ae.getName());
-        values.put(DelegatingElement.of(element(ae, cl), EQUALITY_NO_ANNOTATIONS),
+
+        final ExecutableElement ee = (ExecutableElement)element(ae, cl);
+
+        assert ee.asType() != null : "ee: " + ee + "; ae: " + ae + "; declaring class: " + ae.getDeclaringClass();
+        values.put(DelegatingElement.of(ee, EQUALITY_NO_ANNOTATIONS),
                    annotationValue(ae.invoke(a), cl));
       }
   }
@@ -850,31 +900,31 @@ public final class Reflection {
    */
 
 
-  private final <K, E extends Element> Element element(final ClassLoader cl,
-                                                       final K k,
+  private final <K, E extends Element> Element element(final K k,
                                                        final Supplier<? extends E> s,
-                                                       final Builder<? super K, ? super E> c)
+                                                       final Builder<? super K, ? super E> c,
+                                                       final ClassLoader cl)
     throws ReflectiveOperationException {
     final E e = s.get();
     Element r = this.elements.putIfAbsent(k, e);
     if (r == null) {
       // e was put in the map
-      c.build(cl, k, e);
+      c.build(k, e, cl);
       r = e;
     }
     return r;
   }
 
-  private final <K, T extends TypeMirror> TypeMirror type(final ClassLoader cl,
-                                                          final K k,
+  private final <K, T extends TypeMirror> TypeMirror type(final K k,
                                                           final Supplier<? extends T> s,
-                                                          final Builder<? super K, ? super T> c)
+                                                          final Builder<? super K, ? super T> c,
+                                                          final ClassLoader cl)
     throws ReflectiveOperationException {
     final T t = s.get();
     TypeMirror r = this.typeMirrors.putIfAbsent(k, t);
     if (r == null) {
       // t was put in the map
-      c.build(cl, k, t);
+      c.build(k, t, cl);
       r = t;
     }
     return r;
@@ -915,7 +965,20 @@ public final class Reflection {
       return NestingKind.LOCAL;
     } else if (c.isMemberClass()) {
       return NestingKind.MEMBER;
+    } else if (c == void.class || c.isArray() || c.isPrimitive()) {
+      return NestingKind.TOP_LEVEL;
     } else {
+      // TODO: HACK: see
+      // https://stackoverflow.com/questions/75122911/why-is-directmethodhandleholder-not-a-member-class-of-directmethodhandle
+      final String name = c.getName();
+      int dollarIndex = name.lastIndexOf('$');
+      if (dollarIndex >= 0) {
+        try {
+          Class.forName(name.substring(0, dollarIndex), false, c.getClassLoader());
+          return NestingKind.MEMBER;
+        } catch (final ClassNotFoundException e) {
+        }
+      }
       return NestingKind.TOP_LEVEL;
     }
   }
@@ -942,6 +1005,22 @@ public final class Reflection {
     }
   }
 
+  private static final Class<?> declaringClass(final Class<?> c) {
+    final Class<?> dc = c.getDeclaringClass();
+    if (dc == null && !c.isArray() && !c.isPrimitive() && !c.isAnonymousClass() && !c.isLocalClass() && !c.isMemberClass()) {
+      // TODO: HACK: see
+      // https://stackoverflow.com/questions/75122911/why-is-directmethodhandleholder-not-a-member-class-of-directmethodhandle
+      final String name = c.getName();
+      final int dollarIndex = name.lastIndexOf('$');
+      if (dollarIndex >= 0) {
+        try {
+          return Class.forName(name.substring(0, dollarIndex), false, c.getClassLoader());
+        } catch (final ClassNotFoundException e) {
+        }
+      }
+    }
+    return dc;
+  }
 
 
   /*
@@ -952,7 +1031,7 @@ public final class Reflection {
   @FunctionalInterface
   private static interface Builder<K, T> {
 
-    public void build(final ClassLoader cl, final K k, final T t) throws ReflectiveOperationException;
+    public void build(final K k, final T t, final ClassLoader cl) throws ReflectiveOperationException;
 
   }
 

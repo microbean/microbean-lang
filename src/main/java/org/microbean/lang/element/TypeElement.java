@@ -170,6 +170,18 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
     }
   }
 
+  @Override
+  public final String toString() {
+    final CharSequence n = this.getQualifiedName();
+    if (n == null) {
+      return "<unknown>";
+    } else if (this.isUnnamed() || n.length() <= 0) {
+      return "<anonymous>";
+    } else {
+      return n.toString();
+    }
+  }
+  
   private static final <T extends TypeMirror> T validateSuperclass(final T superclass) {
     return superclass;
   }

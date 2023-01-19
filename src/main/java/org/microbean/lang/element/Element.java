@@ -27,6 +27,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ElementVisitor;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
+import javax.lang.model.element.QualifiedNameable;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -187,7 +188,7 @@ public abstract sealed class Element
 
   public final <E extends javax.lang.model.element.Element & Encloseable> void addEnclosedElement(final E e) {
     if (!canEnclose(this.getKind(), e.getKind())) {
-      throw new IllegalArgumentException("e: " + e);
+      throw new IllegalArgumentException(this.getKind() + " cannot enclose " + e.getKind());
     }
     e.setEnclosingElement(this);
     this.enclosedElements.add(e);
@@ -273,8 +274,16 @@ public abstract sealed class Element
   }
 
   protected Name validateSimpleName(final Name n) {
-    if (n.charAt(0) == '.' || n.charAt(n.length() - 1) == '.') {
-      throw new IllegalArgumentException("n: " + n);
+    final int length = n.length();
+    switch (length) {
+    case 0:
+      // Anonymous class. Should we even be defining an element here?
+      break;
+    default:      
+      if (n.charAt(0) == '.' || n.charAt(n.length() - 1) == '.') {
+        throw new IllegalArgumentException("n: " + n);
+      }
+      break;
     }
     return n;
   }
@@ -295,18 +304,28 @@ public abstract sealed class Element
     final Object old = this.getEnclosingElement();
     if (old == null) {
       if (enclosingElement != null) {
-        if (enclosingElement != this && canEnclose(enclosingElement.getKind(), this.getKind())) {
-          this.enclosingElement = enclosingElement;
+        if (enclosingElement != this) {
+          if (canEnclose(enclosingElement.getKind(), this.getKind())) {
+            this.enclosingElement = enclosingElement;
+          } else {
+            throw new IllegalArgumentException(enclosingElement.getKind() + " cannot enclose " + this.getKind());
+          }
         } else {
           throw new IllegalArgumentException("enclosingElement: " + enclosingElement);
         }
       }
     } else if (old != enclosingElement) {
-      throw new IllegalStateException();
+      throw new IllegalStateException("old != enclosingElement: " + old + " != " + enclosingElement);
     }
   }
 
+  @Override
+  public String toString() {
+    final CharSequence n = this instanceof QualifiedNameable q ? q.getQualifiedName() : this.getSimpleName();
+    return this.isUnnamed() ? "<unnamed>" : n == null ? "<unknown>" : n.length() <= 0 ? "<unnamed>" : n.toString();
+  }
 
+  
   /*
    * Static methods.
    */
