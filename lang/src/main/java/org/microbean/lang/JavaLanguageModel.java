@@ -31,6 +31,7 @@ import javax.annotation.processing.RoundEnvironment;
 
 import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
+import javax.tools.JavaFileManager;
 
 import javax.tools.ToolProvider;
 
@@ -51,10 +52,10 @@ public final class JavaLanguageModel implements AutoCloseable {
   private final CountDownLatch runningLatch;
 
   public JavaLanguageModel() {
-    this(false);
+    this(null, false);
   }
   
-  public JavaLanguageModel(final boolean verbose) {
+  public JavaLanguageModel(final JavaFileManager fileManager, final boolean verbose) {
     super();
     final JavaCompiler jc = ToolProvider.getSystemJavaCompiler();
     if (jc == null) {
@@ -67,7 +68,7 @@ public final class JavaLanguageModel implements AutoCloseable {
         // machinery.)
         final CompilationTask task =
           jc.getTask(null, // System.err
-                     null, // fileManager
+                     fileManager,
                      null, // diagnosticListener
                      verbose ? List.of("-proc:only", "-sourcepath", "", "-verbose") : List.of("-proc:only", "-sourcepath", ""),
                      List.of("java.lang.annotation.RetentionPolicy"), // loads the least amount of stuff up front

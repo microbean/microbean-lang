@@ -18,10 +18,13 @@ package org.microbean.lang.element;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+
+import java.util.function.Supplier;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ElementVisitor;
@@ -37,6 +40,7 @@ import org.microbean.lang.type.NoType;
 
 import org.microbean.lang.type.Types;
 
+// NOT thread safe
 public abstract sealed class Element
   extends AnnotatedConstruct
   implements javax.lang.model.element.Element, Encloseable
@@ -48,12 +52,16 @@ public abstract sealed class Element
           VariableElement
 {
 
-  private final List<javax.lang.model.element.Element> enclosedElements;
+  // Treat as effectively final, please.
+  private List<javax.lang.model.element.Element> enclosedElements;
 
-  private final List<javax.lang.model.element.Element> unmodifiableEnclosedElements;
+  // Treat as effectively final, please.
+  private List<javax.lang.model.element.Element> unmodifiableEnclosedElements;
 
   private javax.lang.model.element.Element enclosingElement;
 
+  private Supplier<? extends List<? extends javax.lang.model.element.Element>> enclosedElementsSupplier;
+  
   private final ElementKind kind;
 
   private final Set<Modifier> modifiers;
@@ -64,28 +72,13 @@ public abstract sealed class Element
 
   private TypeMirror type;
 
-  protected Element(final Element enclosingElement, final ElementKind kind, final Name simpleName, final TypeMirror type) {
-    this(kind, simpleName, type);
-    this.setEnclosingElement(enclosingElement);
-  }
-
-  protected Element(final ElementKind kind, final Name simpleName, final TypeMirror type) {
-    this(kind, simpleName);
-    this.setType(type);
-  }
-
-  protected Element(final ElementKind kind, final Name simpleName) {
-    this(kind);
-    this.setSimpleName(simpleName);
-  }
-
   protected Element(final ElementKind kind) {
     super();
     this.kind = this.validateKind(kind);
     this.modifiers = new LinkedHashSet<>();
     this.unmodifiableModifiers = Collections.unmodifiableSet(this.modifiers);
-    this.enclosedElements = new ArrayList<>();
-    this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
+    // this.enclosedElements = new ArrayList<>();
+    // this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
   }
 
   @Override // Element
@@ -183,14 +176,59 @@ public abstract sealed class Element
 
   @Override // Element
   public final List<? extends javax.lang.model.element.Element> getEnclosedElements() {
+    if (this.unmodifiableEnclosedElements == null) {
+      if (this.enclosedElements == null) {
+        // No one has added any enclosed element by hand yet.
+        if (this.enclosedElementsSupplier == null) {
+          // There's no generator.
+          this.enclosedElements = new ArrayList<>();
+          this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
+        } else {
+          final List<javax.lang.model.element.Element> es = List.copyOf(this.enclosedElementsSupplier.get());
+          for (final Object e : es) {
+            this.validateEnclosedElement((javax.lang.model.element.Element & Encloseable)e);
+          }
+          this.unmodifiableEnclosedElements = es;
+        }
+      } else if (this.enclosedElementsSupplier == null) {
+        this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
+      } else {
+        final List<? extends javax.lang.model.element.Element> generatedElements = this.enclosedElementsSupplier.get();
+        if (generatedElements == null || generatedElements.isEmpty()) {
+          this.unmodifiableEnclosedElements = this.enclosedElements.isEmpty() ? List.of() : Collections.unmodifiableList(this.enclosedElements);
+        } else {
+          final List<javax.lang.model.element.Element> es = new ArrayList<>(this.enclosedElements.size() + generatedElements.size());
+          final Iterator<? extends javax.lang.model.element.Element> i = this.enclosedElements.iterator();
+          while (i.hasNext()) {
+            es.add(i.next());
+            i.remove();
+          }
+          es.addAll(generatedElements);
+          this.unmodifiableEnclosedElements = Collections.unmodifiableList(es);
+        }
+      }
+    }
     return this.unmodifiableEnclosedElements;
+  }
+
+  public final <E extends javax.lang.model.element.Element & Encloseable> void setEnclosedElementsSupplier(final Supplier<? extends List<? extends E>> s) {
+    if (this.enclosedElementsSupplier == null) {
+      this.enclosedElementsSupplier = Objects.requireNonNull(s, "s");
+    } else if (this.enclosedElementsSupplier != s) {
+      throw new IllegalStateException();
+    }
   }
 
   public final <E extends javax.lang.model.element.Element & Encloseable> void addEnclosedElement(final E e) {
     if (!canEnclose(this.getKind(), e.getKind())) {
       throw new IllegalArgumentException(this.getKind() + " cannot enclose " + e.getKind());
+    } else if (this.enclosedElementsSupplier != null) {
+      throw new IllegalStateException();
     }
     e.setEnclosingElement(this);
+    if (this.enclosedElements == null) {      
+      this.enclosedElements = new ArrayList<>();
+    }
     this.enclosedElements.add(e);
   }
 
@@ -203,6 +241,13 @@ public abstract sealed class Element
   @Override // Element
   public final ElementKind getKind() {
     return this.kind;
+  }
+
+  protected <E extends javax.lang.model.element.Element & Encloseable> void validateEnclosedElement(final E e) {
+    if (!canEnclose(this.getKind(), e.getKind())) {
+      throw new IllegalArgumentException("es: " + e);
+    }
+    e.setEnclosingElement(this);
   }
 
   protected ElementKind validateKind(final ElementKind kind) {

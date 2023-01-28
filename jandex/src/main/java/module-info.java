@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2022–2023 microBean™.
+ * Copyright © 2023 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,17 @@
  */
 
 /**
- * Provides packages related to the Java language model.
+ * Provides packages related to the Java language model and Jandex.
  *
  * @author <a href="https://about.me/lairdnelson"
  * target="_parent">Laird Nelson</a>
  */
-module org.microbean.lang {
+module org.microbean.lang.jandex {
 
-  requires static jdk.compiler;
-  requires transitive java.compiler;
-  requires transitive org.microbean.development.annotation;
+  requires java.compiler;
+  requires org.jboss.jandex; // yes, even though it's at SmallRye
+  requires org.microbean.lang;
 
-  exports org.microbean.lang.element;
-  exports org.microbean.lang.type;
-  exports org.microbean.lang.visitor;
-  exports org.microbean.lang;
+  exports org.microbean.lang.jandex;
 
 }

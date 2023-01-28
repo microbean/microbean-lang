@@ -42,7 +42,7 @@ public final class EraseVisitor extends StructuralTypeMapping<Boolean> {
 
   // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2442-L2459
   @Override // StructuralTypeMapping
-  public final TypeMirror visitDeclared(final DeclaredType t, final Boolean recurse) {
+  public final DeclaredType visitDeclared(final DeclaredType t, final Boolean recurse) {
     assert t.getKind() == TypeKind.DECLARED;
     // In the compiler, there's a LOT going on here.
     //

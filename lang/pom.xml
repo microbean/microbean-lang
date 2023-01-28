@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>microbean-lang</artifactId>
+
+  <parent>
+    <groupId>org.microbean</groupId>
+    <artifactId>microbean-lang-parent</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+  </parent>
+
+  <name>microBean™ Lang</name>
+  <description>microBean™ Lang: An implementation of the Java language model.</description>
+
+  <dependencies>
+
+    <!-- Test-scoped dependencies. -->
+
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest</artifactId>
+      <type>jar</type>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <type>jar</type>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <type>jar</type>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <compilerArgs combine.children="append">
+              <arg>--add-exports</arg>
+              <arg>jdk.compiler/com.sun.tools.javac.code=org.microbean.lang</arg>
+              <arg>--add-exports</arg>
+              <arg>jdk.compiler/com.sun.tools.javac.model=org.microbean.lang</arg>
+            </compilerArgs>
+          </configuration>
+        </plugin>
+        <plugin>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <configuration>
+            <additionalOptions>
+              <!--
+              <additionalOption>-add-exports</additionalOption>
+              <additionalOption>jdk.compiler/com.sun.tools.javac.code=org.microbean.lang</additionalOption>
+              -->
+            </additionalOptions>
+          </configuration>
+        </plugin>
+        <plugin>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <configuration>
+            <argLine>
+              <!--
+              -add-exports java.base/jdk.internal.vm.annotation=org.microbean.lang
+              -add-exports java.base/jdk.internal.util.random=org.microbean.lang
+              -->
+              --add-exports jdk.compiler/com.sun.tools.javac.code=org.microbean.lang
+              --add-opens jdk.compiler/com.sun.tools.javac.model=org.microbean.lang
+              --add-opens org.microbean.lang/org.microbean.lang=ALL-UNNAMED
+              --enable-preview
+            </argLine>
+            <!-- See https://junit.org/junit5/docs/snapshot/user-guide/#running-tests-build-maven-config-params -->
+            <!-- See https://github.com/apache/maven-surefire/blob/eb48f1b59ca5ccf6954ef33ecab03dbaf93214cd/surefire-providers/surefire-junit-platform/src/main/java/org/apache/maven/surefire/junitplatform/JUnitPlatformProvider.java#L242-L262 -->
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
+</project>
