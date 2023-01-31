@@ -14,29 +14,5 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package org.microbean.lang.bytebuddy;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-
-final class TestTypeDescriptionToTypeElement {
-
-  private ByteBuddy bb;
-  
-  private TestTypeDescriptionToTypeElement() {
-    super();
-  }
-
-  @BeforeEach
-  final void setup() {
-    this.bb = new ByteBuddy();
-  }
-
-  @Disabled
-  @Test
-  final void testTypeDescriptionToTypeElement() {
-    bb.element("java.lang.String");
-  }
-  
-}
+@Flabrous
+package org.microbean.lang.jandex.testjandex;

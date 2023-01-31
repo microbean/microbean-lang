@@ -881,17 +881,17 @@ final class Reflection {
 
     final Map<ExecutableElement, AnnotationValue> values = new HashMap<>();
     for (final Method ae : at.getDeclaredMethods()) {
-        assert ae.getParameterCount() == 0;
-        assert ae.getReturnType() != void.class;
-        assert !"toString".equals(ae.getName());
-        assert !"hashCode()".equals(ae.getName());
+      assert ae.getParameterCount() == 0;
+      assert ae.getReturnType() != void.class;
+      assert !"toString".equals(ae.getName());
+      assert !"hashCode()".equals(ae.getName());
 
-        final ExecutableElement ee = (ExecutableElement)element(ae, cl);
+      final ExecutableElement ee = (ExecutableElement)element(ae, cl);
 
-        assert ee.asType() != null : "ee: " + ee + "; ae: " + ae + "; declaring class: " + ae.getDeclaringClass();
-        values.put(DelegatingElement.of(ee, EQUALITY_NO_ANNOTATIONS),
-                   annotationValue(ae.invoke(a), cl));
-      }
+      assert ee.asType() != null : "ee: " + ee + "; ae: " + ae + "; declaring class: " + ae.getDeclaringClass();
+      values.put(DelegatingElement.of(ee, EQUALITY_NO_ANNOTATIONS),
+                 annotationValue(ae.invoke(a), cl));
+    }
   }
 
 

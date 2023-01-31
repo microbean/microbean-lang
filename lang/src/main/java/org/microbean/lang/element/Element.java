@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ElementVisitor;
@@ -60,7 +60,7 @@ public abstract sealed class Element
 
   private javax.lang.model.element.Element enclosingElement;
 
-  private Supplier<? extends List<? extends javax.lang.model.element.Element>> enclosedElementsSupplier;
+  private EnclosedElementsGenerator enclosedElementsFunction;
   
   private final ElementKind kind;
 
@@ -137,7 +137,7 @@ public abstract sealed class Element
         this.type = this.validateType(type);
       }
     } else if (old != type) {
-      throw new IllegalStateException();
+      throw new IllegalStateException("old: " + old + "; type: " + type);
     }
   }
 
@@ -179,23 +179,24 @@ public abstract sealed class Element
     if (this.unmodifiableEnclosedElements == null) {
       if (this.enclosedElements == null) {
         // No one has added any enclosed element by hand yet.
-        if (this.enclosedElementsSupplier == null) {
+        if (this.enclosedElementsFunction == null) {
           // There's no generator.
           this.enclosedElements = new ArrayList<>();
           this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
         } else {
-          final List<javax.lang.model.element.Element> es = List.copyOf(this.enclosedElementsSupplier.get());
+          final List<javax.lang.model.element.Element> es = List.copyOf(this.enclosedElementsFunction.apply(List.of()));
           for (final Object e : es) {
             this.validateEnclosedElement((javax.lang.model.element.Element & Encloseable)e);
           }
           this.unmodifiableEnclosedElements = es;
         }
-      } else if (this.enclosedElementsSupplier == null) {
+      } else if (this.enclosedElementsFunction == null) {
         this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
       } else {
-        final List<? extends javax.lang.model.element.Element> generatedElements = this.enclosedElementsSupplier.get();
+        final List<javax.lang.model.element.Element> unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
+        final List<? extends javax.lang.model.element.Element> generatedElements = this.enclosedElementsFunction.apply(unmodifiableEnclosedElements);
         if (generatedElements == null || generatedElements.isEmpty()) {
-          this.unmodifiableEnclosedElements = this.enclosedElements.isEmpty() ? List.of() : Collections.unmodifiableList(this.enclosedElements);
+          this.unmodifiableEnclosedElements = unmodifiableEnclosedElements;
         } else {
           final List<javax.lang.model.element.Element> es = new ArrayList<>(this.enclosedElements.size() + generatedElements.size());
           final Iterator<? extends javax.lang.model.element.Element> i = this.enclosedElements.iterator();
@@ -211,18 +212,18 @@ public abstract sealed class Element
     return this.unmodifiableEnclosedElements;
   }
 
-  public final <E extends javax.lang.model.element.Element & Encloseable> void setEnclosedElementsSupplier(final Supplier<? extends List<? extends E>> s) {
-    if (this.enclosedElementsSupplier == null) {
-      this.enclosedElementsSupplier = Objects.requireNonNull(s, "s");
-    } else if (this.enclosedElementsSupplier != s) {
+  public final void setEnclosedElementsFunction(final EnclosedElementsGenerator f) {
+    if (this.enclosedElementsFunction == null) {
+      this.enclosedElementsFunction = Objects.requireNonNull(f, "f");
+    } else if (this.enclosedElementsFunction != f) {
       throw new IllegalStateException();
     }
   }
-
+  
   public final <E extends javax.lang.model.element.Element & Encloseable> void addEnclosedElement(final E e) {
     if (!canEnclose(this.getKind(), e.getKind())) {
       throw new IllegalArgumentException(this.getKind() + " cannot enclose " + e.getKind());
-    } else if (this.enclosedElementsSupplier != null) {
+    } else if (this.enclosedElementsFunction != null) {
       throw new IllegalStateException();
     }
     e.setEnclosingElement(this);
@@ -431,6 +432,13 @@ public abstract sealed class Element
       break;
     }
     return false;
+  }
+
+  @FunctionalInterface
+  public static interface EnclosedElementsGenerator {
+
+    public <E extends javax.lang.model.element.Element & Encloseable> List<? extends E> apply(final List<? extends javax.lang.model.element.Element> es);
+    
   }
 
 }
