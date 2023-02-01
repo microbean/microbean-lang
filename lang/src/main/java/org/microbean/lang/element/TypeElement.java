@@ -27,6 +27,7 @@ import javax.lang.model.element.ElementVisitor;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.lang.model.element.QualifiedNameable;
+import javax.lang.model.element.RecordComponentElement;
 
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
@@ -47,6 +48,10 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
 
   private final List<TypeMirror> unmodifiablePermittedSubclasses;
 
+  private final List<RecordComponentElement> recordComponents;
+  
+  private final List<RecordComponentElement> unmodifiableRecordComponents;
+
   public TypeElement(final ElementKind kind) {
     this(kind, NestingKind.TOP_LEVEL);
   }
@@ -59,6 +64,13 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
     this.unmodifiableInterfaces = Collections.unmodifiableList(this.interfaces);
     this.permittedSubclasses = new ArrayList<>(5);
     this.unmodifiablePermittedSubclasses = Collections.unmodifiableList(this.permittedSubclasses);
+    if (kind == ElementKind.RECORD) {
+      this.recordComponents = new ArrayList<>(7);
+      this.unmodifiableRecordComponents = Collections.unmodifiableList(this.recordComponents);
+    } else {
+      this.recordComponents = List.of();
+      this.unmodifiableRecordComponents = List.of();
+    }
   }
 
   @Override // TypeElement
@@ -143,6 +155,31 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
 
   protected TypeMirror validatePermittedSubclass(final TypeMirror t) {
     return Objects.requireNonNull(t, "t");
+  }
+
+  @Override // TypeElement
+  public final List<? extends RecordComponentElement> getRecordComponents() {
+    return this.unmodifiableRecordComponents;
+  }
+
+  public final <RC extends RecordComponentElement & Encloseable> void addRecordComponent(final RC e) {
+    this.addEnclosedElement(e);
+  }
+
+  @Override
+  protected final <E extends javax.lang.model.element.Element> E validateEnclosedElement(E e) {
+    e = super.validateEnclosedElement(e);
+    switch (e.getKind()) {
+    case RECORD_COMPONENT:
+      switch (e.asType().getKind()) {
+      case DECLARED:
+        return e;
+      default:
+        throw new IllegalArgumentException("e: " + e);
+      }
+    default:
+      throw new IllegalArgumentException("e: " + e);
+    }
   }
   
   @Override // Element

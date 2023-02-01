@@ -16,11 +16,22 @@
  */
 package org.microbean.lang;
 
+import java.util.EnumSet;
+
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.RecordComponentElement;
 import javax.lang.model.element.TypeElement;
+
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 final class TestJavaLanguageModel {
 
@@ -35,7 +46,31 @@ final class TestJavaLanguageModel {
     assertNotNull(s);
     final TypeElement x = jlm.elements().getTypeElement("java.util.logging.Level");
     assertNotNull(x);
+    final TypeElement r = jlm.elements().getTypeElement("org.microbean.lang.TestJavaLanguageModel.Gloop");
+    assertNotNull(r);
+    assertSame(ElementKind.RECORD, r.getKind());
+    assertSame(TypeKind.DECLARED, r.asType().getKind());
+    assertEquals(1, r.getRecordComponents().size());
+    final RecordComponentElement name = r.getRecordComponents().get(0);
+    final DeclaredType t = (DeclaredType)name.asType();
+    assertSame(TypeKind.DECLARED, t.getKind());
+    final TypeElement e = (TypeElement)t.asElement();
+    assertEquals("String", e.getSimpleName().toString());
+    final ExecutableElement accessor = name.getAccessor();
+    assertSame(ElementKind.METHOD, accessor.getKind());
+    assertSame(TypeKind.EXECUTABLE, accessor.asType().getKind());
+    assertEquals(EnumSet.of(Modifier.PUBLIC), name.getModifiers());
+    assertEquals(EnumSet.of(Modifier.PUBLIC, Modifier.FINAL), accessor.getModifiers());
     jlm.close();
+  }
+
+  private static record Gloop(String name) {
+
+    // Note final here; accessor is otherwise stock
+    public final String name() {
+      return this.name;
+    }
+    
   }
   
 }

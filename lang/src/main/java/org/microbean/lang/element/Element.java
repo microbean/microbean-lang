@@ -185,8 +185,8 @@ public abstract sealed class Element
           this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
         } else {
           final List<javax.lang.model.element.Element> es = List.copyOf(this.enclosedElementsFunction.apply(List.of()));
-          for (final Object e : es) {
-            this.validateEnclosedElement((javax.lang.model.element.Element & Encloseable)e);
+          for (final javax.lang.model.element.Element e : es) {
+            ((Encloseable)this.validateEnclosedElement(e)).setEnclosingElement(this);
           }
           this.unmodifiableEnclosedElements = es;
         }
@@ -221,12 +221,10 @@ public abstract sealed class Element
   }
   
   public final <E extends javax.lang.model.element.Element & Encloseable> void addEnclosedElement(final E e) {
-    if (!canEnclose(this.getKind(), e.getKind())) {
-      throw new IllegalArgumentException(this.getKind() + " cannot enclose " + e.getKind());
-    } else if (this.enclosedElementsFunction != null) {
+    if (this.enclosedElementsFunction != null) {
       throw new IllegalStateException();
     }
-    e.setEnclosingElement(this);
+    this.validateEnclosedElement(e).setEnclosingElement(this);
     if (this.enclosedElements == null) {      
       this.enclosedElements = new ArrayList<>();
     }
@@ -239,16 +237,16 @@ public abstract sealed class Element
     }
   }
 
+  protected <E extends javax.lang.model.element.Element> E validateEnclosedElement(final E e) {
+    if (!canEnclose(this.getKind(), e.getKind())) {
+      throw new IllegalArgumentException(this.getKind() + " cannot enclose " + e.getKind());
+    }
+    return e;
+  }
+  
   @Override // Element
   public final ElementKind getKind() {
     return this.kind;
-  }
-
-  protected <E extends javax.lang.model.element.Element & Encloseable> void validateEnclosedElement(final E e) {
-    if (!canEnclose(this.getKind(), e.getKind())) {
-      throw new IllegalArgumentException("es: " + e);
-    }
-    e.setEnclosingElement(this);
   }
 
   protected ElementKind validateKind(final ElementKind kind) {
@@ -380,7 +378,12 @@ public abstract sealed class Element
   public static final boolean canEnclose(ElementKind k1, ElementKind k2) {
     switch (k1) {
     case MODULE:
-      return k2 == ElementKind.PACKAGE;
+      switch (k2) {
+      case PACKAGE:
+        return true;
+      default:
+        break;
+      }
     case PACKAGE:
       switch (k2) {
       case ANNOTATION_TYPE:
@@ -394,13 +397,29 @@ public abstract sealed class Element
       }
     case ANNOTATION_TYPE:
     case CLASS:
-    case ENUM:
     case INTERFACE:
       switch (k2) {
       case ANNOTATION_TYPE:
       case CLASS:
       case CONSTRUCTOR:
       case ENUM:
+      case FIELD:
+      case INSTANCE_INIT:
+      case INTERFACE:
+      case METHOD:
+      case RECORD:
+      case STATIC_INIT:
+        return true;
+      default:
+        break;
+      }
+    case ENUM:
+      switch (k2) {
+      case ANNOTATION_TYPE:
+      case CLASS:
+      case CONSTRUCTOR:
+      case ENUM:
+      case ENUM_CONSTANT:
       case FIELD:
       case INSTANCE_INIT:
       case INTERFACE:
