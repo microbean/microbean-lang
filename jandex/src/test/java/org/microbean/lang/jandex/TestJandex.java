@@ -21,6 +21,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -37,6 +42,7 @@ import java.util.stream.Stream;
 import javax.lang.model.element.Element;
 
 import org.jboss.jandex.AnnotationInstance;
+import org.jboss.jandex.AnnotationTarget;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.Index;
@@ -44,6 +50,10 @@ import org.jboss.jandex.IndexReader;
 import org.jboss.jandex.IndexView;
 import org.jboss.jandex.IndexWriter;
 import org.jboss.jandex.Indexer;
+import org.jboss.jandex.MethodInfo;
+import org.jboss.jandex.PrimitiveType;
+import org.jboss.jandex.TypeParameterTypeTarget;
+import org.jboss.jandex.TypeVariable;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,13 +61,17 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.fail;
 
 final class TestJandex {
 
   private static IndexView jdk;
 
   private Jandex jandex;
-  
+
   private TestJandex() {
     super();
   }
@@ -69,15 +83,30 @@ final class TestJandex {
       index(Path.of(URI.create("jrt:/")),
             p -> (p.getNameCount() < 3 || p.getName(2).toString().startsWith("java")) && p.getFileName().toString().endsWith(".class"));
   }
-  
+
   @BeforeEach
   final void setup() {
     this.jandex = new Jandex(jdk);
   }
 
   @Test
-  final void testString() {
-    assertNotNull(jdk.getClassByName("java.lang.String"));
+  final void testClassInfoIdentity() {
+    final ClassInfo ci = jdk.getClassByName("java.lang.String");
+    assertNotNull(ci);
+    assertSame(ci, jdk.getClassByName("java.lang.String"));
+    DotName javaLangString = DotName.createComponentized(null, "java");
+    javaLangString = DotName.createComponentized(javaLangString, "lang");
+    javaLangString = DotName.createComponentized(javaLangString, "String");
+    assertEquals("java.lang.String", javaLangString.toString());
+    assertSame(ci, jdk.getClassByName(javaLangString));
+  }
+
+  @Test
+  final void testMethodInfoNonIdentity() {
+    final MethodInfo mi = jdk.getClassByName("java.lang.String").method("charAt", PrimitiveType.INT);
+    assertNotNull(mi);
+    assertEquals(mi, jdk.getClassByName("java.lang.String").method("charAt", PrimitiveType.INT));
+    assertNotSame(mi, jdk.getClassByName("java.lang.String").method("charAt", PrimitiveType.INT));
   }
 
   @Test
@@ -100,7 +129,45 @@ final class TestJandex {
   final void testDocumented() {
     final Element e = jandex.element(jdk.getClassByName("java.lang.annotation.Documented"));
   }
-  
+
+  @Test
+  final void testTypeParameterAnnotations() throws IOException {
+    final Indexer indexer = new Indexer();
+    indexer.indexClass(Flob.class);
+    final IndexView i = indexer.complete();
+    final ClassInfo ci = i.getClassByName(Flob.class.getName());
+
+    // The class element itself has no declared annotations.
+    assertEquals(0, ci.declaredAnnotations().size());
+
+    // The only way to get to the annotations declared on its sole type parameter element is using this horrible
+    // mechanism.  annotations() is documented to return "the annotation instances declared on this annotation target
+    // and nested annotation targets".  This doesn't include nested classes, just fields, constructors and methods, I
+    // guess.    
+    assertEquals(2, ci.annotations().size(), "ci.annotations(): " + ci.annotations());
+    
+    // As you can see, Jandex gets confused about what a type parameter is versus what a type variable is.
+    for (final AnnotationInstance ai : ci.annotations()) {
+      final AnnotationTarget target = ai.target();
+      switch (target.kind()) {
+      case TYPE:
+        switch (target.asType().usage()) {
+        case TYPE_PARAMETER:
+          // expected
+          break;
+        default:
+          fail();
+        }
+        break;
+      case METHOD:
+        break;
+      default:
+        fail();
+      }
+    }
+
+  }
+
   private static final IndexView index(final Path indexRoot,
                                        final Predicate<? super Path> filterPredicate) {
     final Indexer indexer = new Indexer();
@@ -119,5 +186,42 @@ final class TestJandex {
     }
     return indexer.complete();
   }
+
+  private static interface Grop {
+
+    void flop(Grop this);
+
+  }
+
+  private static class Flob<@Borf T> {
+
+    @Borf
+    private static final String yeet() {
+      @Borf
+      class Bozo {
+
+      };
+      return "Yeet";
+    }
+
+    @Borf
+    private class Blotz {
+
+    }
+    
+    @Borf
+    private static class Greep {
+
+    }
+    
+  }
+
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target({ ElementType.TYPE, ElementType.TYPE_PARAMETER, ElementType.METHOD })
+  private @interface Borf {
+
+  }
+
   
+
 }

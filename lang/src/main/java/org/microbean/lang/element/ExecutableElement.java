@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 
 import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ElementVisitor;
 import javax.lang.model.element.Modifier;
@@ -184,7 +185,8 @@ public final class ExecutableElement extends Parameterizable implements javax.la
     }
     final Name name = this.getSimpleName();
     if (name.contentEquals("<init>")) {
-      sb.append(this.getEnclosingElement().getSimpleName());
+      final Element enclosingElement = this.getEnclosingElement();
+      sb.append(enclosingElement == null ? "<init>" : enclosingElement.getSimpleName());
     } else {
       sb.append(name);
     }

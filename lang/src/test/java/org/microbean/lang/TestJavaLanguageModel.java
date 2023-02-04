@@ -16,17 +16,26 @@
  */
 package org.microbean.lang;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
 import java.util.EnumSet;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.RecordComponentElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -35,13 +44,24 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 final class TestJavaLanguageModel {
 
+  private JavaLanguageModel jlm;
+  
   private TestJavaLanguageModel() {
     super();
   }
 
+  @BeforeEach
+  final void setup() {
+    this.jlm = new JavaLanguageModel();
+  }
+
+  @AfterEach
+  final void tearDown() {
+    this.jlm.close();
+  }
+
   @Test
-  public void testJavaLanguageModel() {
-    final JavaLanguageModel jlm = new JavaLanguageModel();
+  final void testJavaLanguageModel() {
     final TypeElement s = jlm.elements().getTypeElement("java.lang.String");
     assertNotNull(s);
     final TypeElement x = jlm.elements().getTypeElement("java.util.logging.Level");
@@ -61,7 +81,14 @@ final class TestJavaLanguageModel {
     assertSame(TypeKind.EXECUTABLE, accessor.asType().getKind());
     assertEquals(EnumSet.of(Modifier.PUBLIC), name.getModifiers());
     assertEquals(EnumSet.of(Modifier.PUBLIC, Modifier.FINAL), accessor.getModifiers());
-    jlm.close();
+  }
+
+  @Test
+  final void testTypeParameters() {
+    final TypeElement flob = jlm.elements().getTypeElement("org.microbean.lang.TestJavaLanguageModel.Flob");
+    assertNotNull(flob);
+    final TypeParameterElement tp = (TypeParameterElement)flob.getTypeParameters().get(0);
+    assertEquals("T", tp.getSimpleName().toString());
   }
 
   private static record Gloop(String name) {
@@ -71,6 +98,16 @@ final class TestJavaLanguageModel {
       return this.name;
     }
     
+  }
+
+  private static class Flob<@Borf T> {
+
+  }
+
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE_PARAMETER)
+  private @interface Borf {
+
   }
   
 }

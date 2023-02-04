@@ -92,7 +92,7 @@ public final class TypeParameterElement extends Element implements javax.lang.mo
         this.genericElement = validateGenericElement(genericElement);
       }
     } else if (old != genericElement) {
-      throw new IllegalStateException();
+      throw new IllegalStateException("old: " + old + "; genericElement: " + genericElement);
     }
   }
 
