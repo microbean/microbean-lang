@@ -30,40 +30,46 @@ import javax.lang.model.type.TypeMirror;
 // NOT thread safe
 public class Modeler {
 
-  protected final Map<Object, Element> elements;
+  private final Map<Object, Element> elements;
 
-  protected final Map<Object, TypeMirror> types;
+  private final Map<Object, TypeMirror> types;
   
   public Modeler() {
     super();
     this.elements = new HashMap<>();
     this.types = new HashMap<>();
   }
+
+  @SuppressWarnings("unchecked")
+  protected final <K, E extends Element> E element(final K k,
+                                                   final Supplier<? extends E> s,
+                                                   final BiConsumer<? super K, ? super E> c) {
+    E r = (E)this.elements.get(k);
+    if (r == null) {
+      final E e = s.get();
+      r = (E)this.elements.putIfAbsent(k, e);
+      if (r == null) {
+        c.accept(k, e);
+        return e;
+      }
+    }
+    return r;
+  }
+
+  @SuppressWarnings("unchecked")
+  protected final <K, T extends TypeMirror> T type(final K k,
+                                                   final Supplier<? extends T> s,
+                                                   final BiConsumer<? super K, ? super T> c) {
+    T r = (T)this.types.get(k);
+    if (r == null) {
+      final T t = s.get();
+      r = (T)this.types.putIfAbsent(k, t);
+      if (r == null) {
+        c.accept(k, t);
+        return t;
+      }
+    }
+    return r;
+  }
   
-  public static final <K, E extends Element> Element element(final K k,
-                                                             final Supplier<? extends E> s,
-                                                             final BiFunction<? super K, ? super E, ? extends Element> f,
-                                                             final BiConsumer<? super K, ? super E> c) {
-    final E e = s.get();
-    Element r = f.apply(k, e);
-    if (r == null) {
-      c.accept(k, e);
-      r = e;
-    }
-    return r;
-  }
-
-  public static final <K, T extends TypeMirror> TypeMirror type(final K k,
-                                                                final Supplier<? extends T> s,
-                                                                final BiFunction<? super K, ? super T, ? extends TypeMirror> f,
-                                                                final BiConsumer<? super K, ? super T> c) {
-    final T t = s.get();
-    TypeMirror r = f.apply(k, t);
-    if (r == null) {
-      c.accept(k, t);
-      r = t;
-    }
-    return r;
-  }
-
 }

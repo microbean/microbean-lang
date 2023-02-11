@@ -126,6 +126,16 @@ final class TestJandex {
   }
 
   @Test
+  final void testObject() {
+    jandex.element(jdk.getClassByName("java.lang.Object"));
+  }
+
+  @Test
+  final void testClass() {
+    jandex.element(jdk.getClassByName("java.lang.Class"));
+  }
+  
+  @Test
   final void testDocumented() {
     final Element e = jandex.element(jdk.getClassByName("java.lang.annotation.Documented"));
   }

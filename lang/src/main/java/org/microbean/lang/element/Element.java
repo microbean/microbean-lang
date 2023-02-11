@@ -137,7 +137,7 @@ public abstract sealed class Element
         this.type = this.validateType(type);
       }
     } else if (old != type) {
-      throw new IllegalStateException("old: " + old + "; type: " + type);
+      throw new IllegalStateException("Type already set; element: " + this + "; old type: " + old + "; new type: " + type + "; old.equals(new)? " + old.equals(type));
     }
   }
 
