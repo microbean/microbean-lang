@@ -359,18 +359,18 @@ public final class Jandex extends Modeler {
     return Collections.unmodifiableList(list);
   }
 
-  private final TypeElement typeElement(final DotName n) {
+  public final TypeElement element(final DotName n) {
     final ClassInfo ci = this.classInfoFor(n);
     return ci == null ? null : (TypeElement)this.element(ci);
   }
 
-  public final TypeElement typeElement(final String n) {
+  public final TypeElement element(final String n) {
     final ClassInfo ci = this.classInfoFor(n);
     return ci == null ? null : (TypeElement)this.element(ci);
   }
 
   // Dispatcher
-  private final Element element(final AnnotationInstance ai) {
+  public final TypeElement element(final AnnotationInstance ai) {
     return ai == null ? null : this.element(this.classInfoFor(ai.name()));
   }
 
@@ -385,49 +385,49 @@ public final class Jandex extends Modeler {
   }
 
   // Dispatcher
-  private final TypeElement element(final ClassType ct) {
+  public final TypeElement element(final ClassType ct) {
     return ct == null ? null : this.element(this.classInfoFor(ct));
   }
 
-  private final <E extends Element> E element(final E e) {
+  public final <E extends Element> E element(final E e) {
     return e;
   }
 
   // Dispatcher
-  private final ExecutableElement element(final EnclosingMethodInfo emi) {
+  public final ExecutableElement element(final EnclosingMethodInfo emi) {
     return emi == null ? null : this.element(this.classInfoFor(emi.enclosingClass()).method(emi.name(), emi.parameters().toArray(new Type[0])));
   }
 
-  private final VariableElement element(final FieldInfo fi) {
+  public final VariableElement element(final FieldInfo fi) {
     return fi == null ? null : this.element(fi, () -> new org.microbean.lang.element.VariableElement(kind(fi)), this::build);
   }
 
-  private final ExecutableElement element(final MethodInfo mi) {
+  public final ExecutableElement element(final MethodInfo mi) {
     return mi == null ? null : this.element(mi, () -> new org.microbean.lang.element.ExecutableElement(kind(mi)), this::build);
   }
 
-  private final VariableElement element(final MethodParameterInfo mpi) {
+  public final VariableElement element(final MethodParameterInfo mpi) {
     return mpi == null ? null : this.element(mpi, () -> new org.microbean.lang.element.VariableElement(ElementKind.PARAMETER), this::build);
   }
 
-  private final RecordComponentElement element(final RecordComponentInfo rci) {
+  public final RecordComponentElement element(final RecordComponentInfo rci) {
     return rci == null ? null : this.element(rci, org.microbean.lang.element.RecordComponentElement::new, this::build);
   }
 
-  private final TypeParameterElement element(final TypeParameterInfo tpi) {
+  public final TypeParameterElement element(final TypeParameterInfo tpi) {
     return tpi == null ? null : this.element(tpi, org.microbean.lang.element.TypeParameterElement::new, this::build);
   }
 
-  private final TypeParameterElement element(final TypeParameterTypeTarget tt) {
+  public final TypeParameterElement element(final TypeParameterTypeTarget tt) {
     return tt == null ? null : this.element(new TypeParameterInfo(tt.enclosingTarget(), tt.target().asTypeVariable()));
   }
 
   // Dispatcher
-  private final DeclaredType type(final AnnotationInstance ai) {
+  public final DeclaredType type(final AnnotationInstance ai) {
     return ai == null ? null : this.type(this.classInfoFor(ai));
   }
 
-  private final DeclaredType type(final ClassInfo ci) {
+  public final DeclaredType type(final ClassInfo ci) {
     if (ci == null) {
       return null;
     } else if (ci.isModule()) {
@@ -437,34 +437,34 @@ public final class Jandex extends Modeler {
     }
   }
 
-  private final DeclaredType type(final ClassType ct) {
+  public final DeclaredType type(final ClassType ct) {
     return ct == null ? null : this.type(this.classInfoFor(ct));
   }
 
   // Dispatcher
-  private final TypeMirror type(final FieldInfo fi) {
+  public final TypeMirror type(final FieldInfo fi) {
     return fi == null ? null : this.type(new TypeContext<>(fi, fi.type()));
   }
 
-  private final ExecutableType type(final MethodInfo mi) {
+  public final ExecutableType type(final MethodInfo mi) {
     return mi == null ? null : this.type(mi, org.microbean.lang.type.ExecutableType::new, this::build);
   }
 
-  private final javax.lang.model.type.PrimitiveType type(final org.jboss.jandex.PrimitiveType t) {
+  public final javax.lang.model.type.PrimitiveType type(final org.jboss.jandex.PrimitiveType t) {
     return t == null ? null : this.type(t, () -> new org.microbean.lang.type.PrimitiveType(kind(t)), this::build);
   }
 
   // Dispatcher
-  private final DeclaredType type(final RecordComponentInfo rci) {
+  public final DeclaredType type(final RecordComponentInfo rci) {
     return rci == null ? null : (DeclaredType)this.type(new TypeContext<>(rci, rci.type()));
   }
 
-  private final NoType type(final VoidType vt) {
+  public final NoType type(final VoidType vt) {
     return vt == null ? null : org.microbean.lang.type.NoType.VOID;
   }
 
   @SuppressWarnings("unchecked")
-  private final <T extends Type> TypeMirror type(final TypeContext<T> k) {
+  public final <T extends Type> TypeMirror type(final TypeContext<T> k) {
     if (k == null) {
       return null;
     }
@@ -497,11 +497,11 @@ public final class Jandex extends Modeler {
     }
   }
 
-  private final <T extends TypeMirror> T type(final T t) {
+  public final <T extends TypeMirror> T type(final T t) {
     return t;
   }
 
-  private final javax.lang.model.type.TypeVariable type(final TypeParameterInfo tpi) {
+  public final javax.lang.model.type.TypeVariable type(final TypeParameterInfo tpi) {
     return tpi == null ? null : (org.microbean.lang.type.TypeVariable)this.type(tpi, org.microbean.lang.type.TypeVariable::new, this::build);
   }
 

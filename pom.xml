@@ -369,7 +369,7 @@
     <bottom><![CDATA[Copyright &copy; ${project.inceptionYear}&ndash;{currentYear}, <a href="${project.organization.url}" target="_top">${project.organization.name}</a>. All rights reserved.]]></bottom>
     <detectJavaApiLink>false</detectJavaApiLink>
     <detectLinks>false</detectLinks>
-    <links>https://docs.oracle.com/en/java/javase/19/docs/api/,https://microbean.github.io/microbean-development-annotations/apidocs/</links>
+    <links>https://docs.oracle.com/en/java/javase/19/docs/api/,https://microbean.github.io/microbean-development-annotations/apidocs/,https://javadoc.io/doc/net.bytebuddy/byte-buddy/latest,https://javadoc.io/doc/io.smallrye/jandex/latest</links>
 
     <!-- maven-release-plugin properties; see http://maven.apache.org/maven-release/maven-release-plugin/ -->
     <goals>deploy,post-site,scm-publish:publish-scm</goals>

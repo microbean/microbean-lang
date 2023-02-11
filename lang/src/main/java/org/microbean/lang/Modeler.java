@@ -28,13 +28,13 @@ import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeMirror;
 
 // NOT thread safe
-public class Modeler {
+public abstract class Modeler {
 
   private final Map<Object, Element> elements;
 
   private final Map<Object, TypeMirror> types;
   
-  public Modeler() {
+  protected Modeler() {
     super();
     this.elements = new HashMap<>();
     this.types = new HashMap<>();
