@@ -45,6 +45,7 @@ import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationTarget;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
+import org.jboss.jandex.EmptyTypeTarget;
 import org.jboss.jandex.Index;
 import org.jboss.jandex.IndexReader;
 import org.jboss.jandex.IndexView;
@@ -53,6 +54,7 @@ import org.jboss.jandex.Indexer;
 import org.jboss.jandex.MethodInfo;
 import org.jboss.jandex.PrimitiveType;
 import org.jboss.jandex.TypeParameterTypeTarget;
+import org.jboss.jandex.TypeTarget;
 import org.jboss.jandex.TypeVariable;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -60,6 +62,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -81,7 +84,11 @@ final class TestJandex {
     // See https://stackoverflow.com/a/46451977/208288
     jdk =
       index(Path.of(URI.create("jrt:/")),
-            p -> (p.getNameCount() < 3 || p.getName(2).toString().startsWith("java")) && p.getFileName().toString().endsWith(".class"));
+            p -> {
+              // System.out.println("*** p: " + p);
+              return p.getFileName().toString().endsWith(".class");
+            });
+    // p -> (p.getNameCount() < 3 || p.getName(2).toString().startsWith("java")) && p.getFileName().toString().endsWith(".class"));
   }
 
   @BeforeEach
@@ -134,7 +141,7 @@ final class TestJandex {
   final void testClass() {
     jandex.element(jdk.getClassByName("java.lang.Class"));
   }
-  
+
   @Test
   final void testDocumented() {
     final Element e = jandex.element(jdk.getClassByName("java.lang.annotation.Documented"));
@@ -153,15 +160,28 @@ final class TestJandex {
     // The only way to get to the annotations declared on its sole type parameter element is using this horrible
     // mechanism.  annotations() is documented to return "the annotation instances declared on this annotation target
     // and nested annotation targets".  This doesn't include nested classes, just fields, constructors and methods, I
-    // guess.    
-    assertEquals(2, ci.annotations().size(), "ci.annotations(): " + ci.annotations());
-    
+    // guess.
+
+    // 3 is:
+    // * 1 @Borf annotation on T, the type parameter declared by Flob
+    // * 1 @Borf annotation on yeet()
+    // * 1 @Borf type-use annotation on yeet()'s return value, a String
+    // * 0 @Borf annotations on Bozo because it isn't seen
+    assertEquals(3, ci.annotations().size(), "ci.annotations(): " + ci.annotations());
+
     // As you can see, Jandex gets confused about what a type parameter is versus what a type variable is.
     for (final AnnotationInstance ai : ci.annotations()) {
       final AnnotationTarget target = ai.target();
       switch (target.kind()) {
       case TYPE:
-        switch (target.asType().usage()) {
+        final TypeTarget tt = target.asType();
+        switch (tt.usage()) {
+        case EMPTY:
+          final EmptyTypeTarget ett = tt.asEmpty();
+          assertFalse(ett.isReceiver());
+          assertEquals("java.lang.String", ett.target().name().toString());
+          assertEquals("yeet", ett.enclosingTarget().asMethod().name());
+          break;
         case TYPE_PARAMETER:
           // expected
           break;
@@ -176,6 +196,57 @@ final class TestJandex {
       }
     }
 
+  }
+
+  @Test
+  final void testEnclosingElementOfLocalClassInsideMethod() throws ClassNotFoundException, IOException {
+    final Indexer indexer = new Indexer();
+    indexer.indexClass(Flob.class);
+    final IndexView i = indexer.complete();
+    final ClassInfo ci = i.getClassByName(Flob.class.getName());
+
+    // Flob declares a method, yeet(), that declares a local class. You can't "get to" the local class at all from
+    // Jandex. See https://github.com/smallrye/jandex/issues/180#issue-1179577350.
+    //
+    // This turns out to be OK, because the javax.lang.model.* hierarchy also doesn't let you "get to" local or
+    // anonymous classes in any way.
+
+    assertEquals(2, ci.memberClasses().size());
+
+    // You can't get it from the index…
+    assertNull(i.getClassByName(Flob.class.getName() + "$1Bozo"));
+
+    // …but it does exist under that name:
+    assertNotNull(Class.forName(Flob.class.getName() + "$1Bozo"));
+
+    for (final AnnotationInstance a : ci.annotations()) {
+      final AnnotationTarget target = a.target();
+      switch (target.kind()) {
+      case METHOD:
+        assertEquals("yeet", target.asMethod().name());
+        break;
+      case TYPE:
+        // This is where things get stupid.
+        final TypeTarget tt = target.asType();
+        switch (tt.usage()) {
+        case EMPTY:
+          final EmptyTypeTarget ett = tt.asEmpty();
+          assertFalse(ett.isReceiver());
+          assertEquals("java.lang.String", ett.target().name().toString());
+          assertEquals("yeet", ett.enclosingTarget().asMethod().name());
+          break;
+        case TYPE_PARAMETER:
+          // Stupid. Actually an *element* annotation.
+          assertEquals(0, tt.asTypeParameter().position()); // T in Flob<@Borf T>
+          break;
+        default:
+          fail();
+        }
+        break;
+      default:
+        fail();
+      }
+    }
   }
 
   private static final IndexView index(final Path indexRoot,
@@ -203,35 +274,26 @@ final class TestJandex {
 
   }
 
-  private static class Flob<@Borf T> {
+  private static final class Flob<@Borf T> {
 
     @Borf
     private static final String yeet() {
+      // (Jandex will see nothing in here.)
       @Borf
-      class Bozo {
-
-      };
+      class Bozo {};
       return "Yeet";
     }
 
     @Borf
-    private class Blotz {
+    private final class Blotz {}
 
-    }
-    
     @Borf
-    private static class Greep {
+    private static final class Greep {}
 
-    }
-    
   }
 
   @Retention(RetentionPolicy.RUNTIME)
-  @Target({ ElementType.TYPE, ElementType.TYPE_PARAMETER, ElementType.METHOD })
-  private @interface Borf {
-
-  }
-
-  
+  @Target({ ElementType.TYPE, ElementType.TYPE_USE, ElementType.TYPE_PARAMETER, ElementType.METHOD })
+  private @interface Borf {}
 
 }

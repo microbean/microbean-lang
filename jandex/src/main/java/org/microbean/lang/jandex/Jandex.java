@@ -51,6 +51,7 @@ import org.jboss.jandex.ClassInfo.EnclosingMethodInfo;
 import org.jboss.jandex.ClassInfo.NestingType;
 import org.jboss.jandex.ClassType;
 import org.jboss.jandex.DotName;
+import org.jboss.jandex.EmptyTypeTarget;
 import org.jboss.jandex.FieldInfo;
 import org.jboss.jandex.IndexView;
 import org.jboss.jandex.MethodInfo;
@@ -68,34 +69,24 @@ import org.microbean.lang.Modeler;
 
 public final class Jandex extends Modeler {
 
-  private final Map<Object, AnnotationMirror> annotations;
+  private static final Type[] EMPTY_TYPE_ARRAY = new Type[0];
 
   private final IndexView i;
 
   private final BiFunction<? super String, ? super IndexView, ? extends ClassInfo> unindexedClassnameFunction;
 
   public Jandex(final IndexView i) {
-    this(i, (n, j) -> null);
+    this(i, (n, j) -> { throw new IllegalArgumentException("class " + n + " not found in IndexView " + j); });
   }
 
   public Jandex(final IndexView i, final BiFunction<? super String, ? super IndexView, ? extends ClassInfo> unindexedClassnameFunction) {
     super();
     this.i = Objects.requireNonNull(i, "i");
     this.unindexedClassnameFunction = Objects.requireNonNull(unindexedClassnameFunction, "unindexedClassnameFunction");
-    this.annotations = new HashMap<>();
   }
 
   public final AnnotationMirror annotation(final AnnotationInstance k) {
-    AnnotationMirror r = this.annotations.get(k);
-    if (r == null) {
-      final org.microbean.lang.element.AnnotationMirror am = new org.microbean.lang.element.AnnotationMirror();
-      r = this.annotations.putIfAbsent(k, am);
-      if (r == null) {
-        this.build(k, am);
-        r = am;
-      }
-    }
-    return r;
+    return this.annotation(k, org.microbean.lang.element.AnnotationMirror::new, this::build);
   }
 
   public final javax.lang.model.element.AnnotationValue annotationValue(final Object v) {
@@ -361,15 +352,14 @@ public final class Jandex extends Modeler {
 
   public final TypeElement element(final DotName n) {
     final ClassInfo ci = this.classInfoFor(n);
-    return ci == null ? null : (TypeElement)this.element(ci);
+    return ci == null ? null : this.element(ci);
   }
 
   public final TypeElement element(final String n) {
     final ClassInfo ci = this.classInfoFor(n);
-    return ci == null ? null : (TypeElement)this.element(ci);
+    return ci == null ? null : this.element(ci);
   }
 
-  // Dispatcher
   public final TypeElement element(final AnnotationInstance ai) {
     return ai == null ? null : this.element(this.classInfoFor(ai.name()));
   }
@@ -384,7 +374,6 @@ public final class Jandex extends Modeler {
     }
   }
 
-  // Dispatcher
   public final TypeElement element(final ClassType ct) {
     return ct == null ? null : this.element(this.classInfoFor(ct));
   }
@@ -393,9 +382,8 @@ public final class Jandex extends Modeler {
     return e;
   }
 
-  // Dispatcher
   public final ExecutableElement element(final EnclosingMethodInfo emi) {
-    return emi == null ? null : this.element(this.classInfoFor(emi.enclosingClass()).method(emi.name(), emi.parameters().toArray(new Type[0])));
+    return emi == null ? null : this.element(this.classInfoFor(emi.enclosingClass()).method(emi.name(), emi.parameters().toArray(EMPTY_TYPE_ARRAY)));
   }
 
   public final VariableElement element(final FieldInfo fi) {
@@ -422,7 +410,6 @@ public final class Jandex extends Modeler {
     return tt == null ? null : this.element(new TypeParameterInfo(tt.enclosingTarget(), tt.target().asTypeVariable()));
   }
 
-  // Dispatcher
   public final DeclaredType type(final AnnotationInstance ai) {
     return ai == null ? null : this.type(this.classInfoFor(ai));
   }
@@ -441,7 +428,6 @@ public final class Jandex extends Modeler {
     return ct == null ? null : this.type(this.classInfoFor(ct));
   }
 
-  // Dispatcher
   public final TypeMirror type(final FieldInfo fi) {
     return fi == null ? null : this.type(new TypeContext<>(fi, fi.type()));
   }
@@ -454,7 +440,6 @@ public final class Jandex extends Modeler {
     return t == null ? null : this.type(t, () -> new org.microbean.lang.type.PrimitiveType(kind(t)), this::build);
   }
 
-  // Dispatcher
   public final DeclaredType type(final RecordComponentInfo rci) {
     return rci == null ? null : (DeclaredType)this.type(new TypeContext<>(rci, rci.type()));
   }
@@ -476,16 +461,15 @@ public final class Jandex extends Modeler {
     case ARRAY:
       return this.type((TypeContext<ArrayType>)k, org.microbean.lang.type.ArrayType::new, this::build);
     case CLASS:
-      // We drop the context on the floor
-      return this.type(type.asClassType()); // RECURSIVE, sort of
+      return this.type(type.asClassType());
     case PARAMETERIZED_TYPE:
       return this.type((TypeContext<ParameterizedType>)k, org.microbean.lang.type.DeclaredType::new, this::build);
     case PRIMITIVE:
       return this.type(k.type().asPrimitiveType(), () -> new org.microbean.lang.type.PrimitiveType(kind(k.type().asPrimitiveType())), this::build);
     case TYPE_VARIABLE:
-      return this.type(this.typeParameterInfoFor((TypeContext<org.jboss.jandex.TypeVariable>)k)); // RECURSIVE, sort of
+      return this.type(this.typeParameterInfoFor((TypeContext<org.jboss.jandex.TypeVariable>)k));
     case TYPE_VARIABLE_REFERENCE:
-      return this.type(new TypeContext<>(k.context(), type.asTypeVariableReference().follow())); // RECURSIVE
+      return this.type(new TypeContext<>(k.context(), type.asTypeVariableReference().follow()));
     case UNRESOLVED_TYPE_VARIABLE:
       throw new AssertionError();
     case VOID:
@@ -512,18 +496,16 @@ public final class Jandex extends Modeler {
 
 
   private final void build(final AnnotationInstance ai, final org.microbean.lang.element.AnnotationMirror am) {
-    final ClassInfo ci = classInfoFor(ai.name());
-    if (ci == null) {
-      return;
-    }
+    final ClassInfo ci = this.classInfoFor(ai.name());
+
     final org.microbean.lang.type.DeclaredType t = (org.microbean.lang.type.DeclaredType)this.type(ci);
     assert t.asElement() != null;
     am.setAnnotationType(t);
 
     for (final org.jboss.jandex.AnnotationValue v : ai.values()) {
-      final javax.lang.model.element.ExecutableElement ee = (javax.lang.model.element.ExecutableElement)this.element(annotationElementFor(ci, v.name()));
-      final javax.lang.model.element.AnnotationValue av = this.annotationValue(v);
-      am.putElementValue(ee, av);
+      final javax.lang.model.element.ExecutableElement ee = this.element(this.annotationElementFor(ci, v.name()));
+      assert ee.getEnclosingElement() != null : "ee: " + ee + "; ai: " + ai + "; ci: " + ci + "; v: " + v;
+      am.putElementValue(ee, this.annotationValue(v));
     }
   }
 
@@ -534,10 +516,41 @@ public final class Jandex extends Modeler {
 
 
   private final void build(final ClassInfo ci, final org.microbean.lang.element.TypeElement e) {
+    // Simple name.
     e.setSimpleName(ci.name().local());
+
+    // Enclosing element.
+    final Element enclosingElement;
+    switch (e.getNestingKind()) {
+    case ANONYMOUS:
+    case LOCAL:
+      // Anonymous and local classes are effectively ignored in the javax.lang.model.* hierarchy. The documentation for
+      // javax.lang.model.element.Element#getEnclosedElements() says, in part: "A class or interface is considered to
+      // enclose the fields, methods, constructors, record components, and member classes and interfaces that it
+      // directly declares. A package encloses the top-level classes and interfaces within it, but is not considered to
+      // enclose subpackages. A module encloses packages within it. Enclosed elements may include implicitly declared
+      // mandated elements. Other kinds of elements are not currently considered to enclose any elements; however, that
+      // may change as this API or the programming language evolves."
+      //
+      // Additionally, Jandex provides no access to local or anonymous classes at all.
+      enclosingElement = null;
+      break;
+    case MEMBER:
+      enclosingElement = this.element(this.classInfoFor(ci.enclosingClass()));
+      break;
+    case TOP_LEVEL:
+      enclosingElement = null; // TODO: need to do package, but Jandex doesn't do it
+      break;
+    default:
+      throw new AssertionError();
+    }
+    e.setEnclosingElement(enclosingElement);
+
+    // Type.
     final org.microbean.lang.type.DeclaredType t = (org.microbean.lang.type.DeclaredType)this.type(ci);
-    // Note: we must set type first, then defining element.
     e.setType(t);
+
+    // Defining element.
     t.setDefiningElement(e);
 
     for (final RecordComponentInfo rc : ci.unsortedRecordComponents()) {
@@ -563,29 +576,6 @@ public final class Jandex extends Modeler {
       e.addModifier(javax.lang.model.element.Modifier.STATIC);
     }
 
-    // Enclosing element.
-    final Element enclosingElement;
-    switch (e.getNestingKind()) {
-    case ANONYMOUS:
-    case LOCAL:
-      Object enclosingObject = ci.enclosingMethod();
-      if (enclosingObject == null) {
-        enclosingObject = this.classInfoFor(ci.enclosingClass());
-      }
-      assert enclosingObject != null;
-      enclosingElement = enclosingObject instanceof EnclosingMethodInfo emi ? this.element(emi) : this.element((ClassInfo)enclosingObject);
-      break;
-    case MEMBER:
-      enclosingElement = this.element(this.classInfoFor(ci.enclosingClass()));
-      break;
-    case TOP_LEVEL:
-      enclosingElement = null; // TODO: need to do package, but Jandex doesn't do it
-      break;
-    default:
-      throw new AssertionError();
-    }
-    e.setEnclosingElement(enclosingElement);
-
     // Supertypes.
     final Type superclassType = ci.superClassType();
     if (superclassType != null) {
@@ -605,36 +595,39 @@ public final class Jandex extends Modeler {
 
     // TODO: annotations.
     for (final AnnotationInstance a : ci.annotations()) {
-      final AnnotationTarget target = a.target();
-      switch (target.kind()) {
+      final AnnotationTarget annotationTarget = a.target();
+      switch (annotationTarget.kind()) {
       case CLASS:
+        assert annotationTarget.asClass().nestingType() == NestingType.TOP_LEVEL;
         e.addAnnotationMirror(this.annotation(a));
         break;
       case FIELD:
-        // An annotation on one of my fields.
-        ((org.microbean.lang.element.VariableElement)this.element(target.asField())).addAnnotationMirror(this.annotation(a));
+        ((org.microbean.lang.element.VariableElement)this.element(annotationTarget.asField())).addAnnotationMirror(this.annotation(a));
         break;
       case METHOD:
-        // An annotation on one of my methods.
-        ((org.microbean.lang.element.ExecutableElement)this.element(target.asMethod())).addAnnotationMirror(this.annotation(a));
+        ((org.microbean.lang.element.ExecutableElement)this.element(annotationTarget.asMethod())).addAnnotationMirror(this.annotation(a));
         break;
       case METHOD_PARAMETER:
-        // An annotation on one of my methods' parameters.
-        ((org.microbean.lang.element.VariableElement)this.element(target.asMethodParameter())).addAnnotationMirror(this.annotation(a));
+        ((org.microbean.lang.element.VariableElement)this.element(annotationTarget.asMethodParameter())).addAnnotationMirror(this.annotation(a));
         break;
       case RECORD_COMPONENT:
-        // An annotation on one of my record components.
-        ((org.microbean.lang.element.RecordComponentElement)this.element(target.asRecordComponent())).addAnnotationMirror(this.annotation(a));
+        ((org.microbean.lang.element.RecordComponentElement)this.element(annotationTarget.asRecordComponent())).addAnnotationMirror(this.annotation(a));
         break;
       case TYPE:
         // This is where things get stupid.
-        final TypeTarget tt = target.asType();
+        final TypeTarget tt = annotationTarget.asType();
+        assert tt.enclosingTarget() == annotationTarget;
         switch (tt.usage()) {
         case CLASS_EXTENDS:
           // Genuine type usage. Maybe go ahead and apply it here.
+          System.out.println("*** tt: " + tt);
+          ((org.microbean.lang.type.DeclaredType)this.type(tt.asClass())).addAnnotationMirror(this.annotation(a));
           break;
         case EMPTY:
-          // Genuine type usage. Maybe go ahead and apply it here.
+          // Genuine type usage on a field type, a method return type, or a method receiver type. (What about a thrown
+          // type?) Maybe go ahead and apply it here.
+          final EmptyTypeTarget ett = tt.asEmpty();
+          
           break;
         case METHOD_PARAMETER:
           // Genuine type usage WITHIN the type of a method parameter, e.g. blatz(Foo<@Bar String> baz). Maybe go ahead
@@ -662,14 +655,27 @@ public final class Jandex extends Modeler {
 
   private final void build(final FieldInfo fi, final org.microbean.lang.element.VariableElement e) {
     e.setSimpleName(fi.name());
-    e.setType(this.type(fi));
     e.setEnclosingElement(this.element(fi.declaringClass()));
+    e.setType(this.type(fi));
+
+    // We don't do annotations here because they are handled "up" at the class level (Jandex is first and foremost an
+    // annotation index, so annotation information about all members is available "up there".  See #build(ClassInfo,
+    // TypeElement).
   }
 
   private final void build(final MethodInfo mi, final org.microbean.lang.element.ExecutableElement e) {
+    // Simple name.
     if (!mi.isConstructor()) {
       e.setSimpleName(mi.name());
     }
+
+    // Enclosing element.
+    final TypeElement ee = this.element(mi.declaringClass());
+    assert ee != null;
+    e.setEnclosingElement(ee);
+    assert e.getEnclosingElement() == ee : "e: " + e + "; ee: " + ee;
+
+    // Type.
     e.setType(this.type(mi));
 
     // Modifiers.
@@ -701,94 +707,62 @@ public final class Jandex extends Modeler {
       e.addModifier(javax.lang.model.element.Modifier.PUBLIC);
     }
 
+    // Type parameters.
     for (final org.jboss.jandex.TypeVariable tp : mi.typeParameters()) {
-      // e.addTypeParameter((org.microbean.lang.element.TypeParameterElement)this.element(tp));
       e.addTypeParameter((org.microbean.lang.element.TypeParameterElement)this.element(new TypeParameterInfo(mi, tp)));
     }
 
+    // Parameters.
     for (final MethodParameterInfo p : mi.parameters()) {
       e.addParameter((org.microbean.lang.element.VariableElement)this.element(p));
     }
 
-    // TODO: annotations.
-    for (final AnnotationInstance a : mi.annotations()) {
-      final AnnotationTarget target = a.target();
-      switch (target.kind()) {
-      case CLASS:
-        // An annotation on...a local class declared inside me? I guess?
-        ((org.microbean.lang.element.TypeElement)this.element(target.asClass())).addAnnotationMirror(this.annotation(a));
-        break;
-      case METHOD:
-        // An annotation on me.
-        e.addAnnotationMirror(this.annotation(a));
-        break;
-      case METHOD_PARAMETER:
-        // An annotation on one of my parameters.
-        ((org.microbean.lang.element.VariableElement)this.element(target.asMethodParameter())).addAnnotationMirror(this.annotation(a));
-        break;
-      case TYPE:
-        // This is where things get stupid.
-        final TypeTarget tt = target.asType();
-        switch (tt.usage()) {
-        case CLASS_EXTENDS:
-          // Genuine type usage. Maybe go ahead and apply it here. The only way this could conceivably happen (TODO:) is
-          // if local classes are inspected.
-          break;
-        case EMPTY:
-          // Genuine type usage. Maybe go ahead and apply it here.
-          break;
-        case METHOD_PARAMETER:
-          // Genuine type usage WITHIN the type of one of my parameters, e.g. blatz(Foo<@Bar String> baz). Maybe go ahead
-          // and apply it here.
-          break;
-        case THROWS:
-          // Genuine type usage. Maybe go ahead and apply it here.
-          break;
-        case TYPE_PARAMETER:
-          // Stupid. Actually an *element* annotation. Definitely apply it here.
-          ((org.microbean.lang.element.TypeParameterElement)this.element(tt.asTypeParameter())).addAnnotationMirror(this.annotation(a));
-          break;
-        case TYPE_PARAMETER_BOUND:
-          // Genuine type usage WITHIN the type underlying a type parameter element. Maybe go ahead and apply it here.
-          break;
-        default:
-          throw new AssertionError();
-        }
-        break;
-      default:
-        throw new AssertionError();
-      }
-    }
+    // We don't do annotations here because they are handled "up" at the class level (Jandex is first and foremost an
+    // annotation index, so annotation information about all members is available "up there".  See #build(ClassInfo,
+    // TypeElement).
   }
 
   private final void build(final MethodParameterInfo mpi, final org.microbean.lang.element.VariableElement e) {
+    // Simple name.
     String n = mpi.name();
     if (n == null) {
       n = "arg" + mpi.position();
     }
     e.setSimpleName(n);
-    e.setType(this.type(new TypeContext<>(mpi, mpi.type())));
+
+    // (No enclosing element.)
     // e.setEnclosingElement(this.element(mpi.method())); // interestingly not supported by the javax.lang.model.* api
-    for (final AnnotationInstance a : mpi.declaredAnnotations()) {
-      e.addAnnotationMirror(this.annotation(a));
-    }
+    
+    // Type.
+    e.setType(this.type(new TypeContext<>(mpi, mpi.type())));
+
+    // We don't do annotations here because they are handled "up" at the class level (Jandex is first and foremost an
+    // annotation index, so annotation information about all members is available "up there".  See #build(ClassInfo,
+    // TypeElement).
   }
 
   private final void build(final RecordComponentInfo r, final org.microbean.lang.element.RecordComponentElement e) {
+    // Simple name.
     e.setSimpleName(r.name());
-    e.setType(this.type(r));
+
+    // Enclosing element.
     e.setEnclosingElement(this.element(r));
+
+    // Type.
+    e.setType(this.type(r));
+    
     e.setAccessor((org.microbean.lang.element.ExecutableElement)this.element(r.declaringClass().method(r.name())));
-    for (final AnnotationInstance a : r.declaredAnnotations()) {
-      e.addAnnotationMirror(this.annotation(a));
-    }
+
+    // We don't do annotations here because they are handled "up" at the class level (Jandex is first and foremost an
+    // annotation index, so annotation information about all members is available "up there".  See #build(ClassInfo,
+    // TypeElement).
   }
 
   private final void build(final TypeParameterInfo tpi, final org.microbean.lang.element.TypeParameterElement e) {
+    // Simple name.
     e.setSimpleName(tpi.identifier());
-    final org.microbean.lang.type.TypeVariable t = (org.microbean.lang.type.TypeVariable)this.type(tpi);
-    e.setType(t);
-    t.setDefiningElement(e);
+
+    // Enclosing element.
     switch (tpi.kind()) {
     case CLASS:
       e.setEnclosingElement(this.element(tpi.annotationTarget().asClass()));
@@ -799,6 +773,17 @@ public final class Jandex extends Modeler {
     default:
       throw new AssertionError();
     }
+
+    // Type.
+    final org.microbean.lang.type.TypeVariable t = (org.microbean.lang.type.TypeVariable)this.type(tpi);
+    e.setType(t);
+
+    // Defining element.
+    t.setDefiningElement(e);
+
+    // We don't do annotations here because they are handled "up" at the class level (Jandex is first and foremost an
+    // annotation index, so annotation information about all members is available "up there".  See #build(ClassInfo,
+    // TypeElement).
   }
 
 
@@ -813,8 +798,11 @@ public final class Jandex extends Modeler {
 
   private final void build(final ClassInfo ci, final org.microbean.lang.type.DeclaredType t) {
     final org.microbean.lang.element.TypeElement e = (org.microbean.lang.element.TypeElement)this.element(ci);
-    // Note: we must set type first, then defining element.
+
+    // Type.
     e.setType(t);
+
+    // Defining element.
     t.setDefiningElement(e);
 
     // Need to do enclosing type, if there is one
@@ -828,7 +816,9 @@ public final class Jandex extends Modeler {
       t.addTypeArgument(this.type(new TypeContext<>(ci, tp)));
     }
 
-    // TODO: *possibly* annotations, since a ClassInfo sort of represents both an element and a type.
+    // We don't do annotations here because they are handled "up" at the class level (Jandex is first and foremost an
+    // annotation index, so annotation information about all members is available "up there".  See #build(ClassInfo,
+    // TypeElement).
   }
 
   private final void build(final MethodInfo mi, final org.microbean.lang.type.ExecutableType t) {
@@ -847,19 +837,18 @@ public final class Jandex extends Modeler {
     for (final org.jboss.jandex.TypeVariable tv : mi.typeParameters()) {
       t.addTypeVariable((org.microbean.lang.type.TypeVariable)this.type(new TypeContext<>(mi, tv)));
     }
-    // TODO: annotations
+
+    // We don't do annotations here because they are handled "up" at the class level (Jandex is first and foremost an
+    // annotation index, so annotation information about all members is available "up there".  See #build(ClassInfo,
+    // TypeElement).
   }
 
   private final void build(final TypeContext<ParameterizedType> tc, final org.microbean.lang.type.DeclaredType t) {
     final ParameterizedType p = tc.type();
     final ClassInfo ci = this.classInfoFor(p);
-    if (ci == null) {
-      // The unindexedClassnameFunction returned null.
-      return;
-    }
 
     // ci represents the element.
-    t.setDefiningElement((org.microbean.lang.element.TypeElement)this.element(ci));
+    t.setDefiningElement(this.element(ci));
 
     // Will be either null, a ClassType, or a ParameterizedType.
     final Type ownerType = p.owner();
@@ -868,16 +857,25 @@ public final class Jandex extends Modeler {
     for (final Type arg : p.arguments()) {
       t.addTypeArgument(this.type(new TypeContext<>(tc.context(), arg)));
     }
+
+    // We don't do annotations here because they are handled "up" at the class level (Jandex is first and foremost an
+    // annotation index, so annotation information about all members is available "up there".  See #build(ClassInfo,
+    // TypeElement).
   }
 
   private final void build(final PrimitiveType p, final org.microbean.lang.type.PrimitiveType t) {
-    // TODO: annotations
+    // We don't do annotations here because they are handled "up" at the class level (Jandex is first and foremost an
+    // annotation index, so annotation information about all members is available "up there".  See #build(ClassInfo,
+    // TypeElement).
   }
 
   private final void build(final TypeParameterInfo tpi, final org.microbean.lang.type.TypeVariable t) {
     final org.microbean.lang.element.TypeParameterElement e = (org.microbean.lang.element.TypeParameterElement)this.element(tpi);
-    // Note: we must set type first, then defining element.
+
+    // Type.
     e.setType(t);
+
+    // Defining element.
     t.setDefiningElement(e);
 
     final AnnotationTarget context = tpi.annotationTarget();
@@ -900,8 +898,15 @@ public final class Jandex extends Modeler {
   }
 
   private final void build(final TypeContext<org.jboss.jandex.WildcardType> tc, final org.microbean.lang.type.WildcardType w) {
-    w.setExtendsBound(this.type(new TypeContext<>(tc.context(), tc.type().extendsBound())));
-    w.setSuperBound(this.type(new TypeContext<>(tc.context(), tc.type().superBound())));
+    final org.jboss.jandex.WildcardType tcType = tc.type();
+    Type bound = tcType.extendsBound();
+    if (bound != null) {
+      w.setExtendsBound(this.type(new TypeContext<>(tc.context(), bound)));
+    }
+    bound = tcType.superBound();
+    if (bound != null) {
+      w.setSuperBound(this.type(new TypeContext<>(tc.context(), bound)));
+    }
   }
 
 
@@ -911,8 +916,10 @@ public final class Jandex extends Modeler {
 
 
   private final MethodInfo annotationElementFor(final ClassInfo ci, final String name) {
-    // TODO: any validation needed?
-    return ci.isAnnotation() ? ci.method(name) : null;
+    if (ci.isAnnotation()) {
+      return ci.method(name);
+    }
+    throw new IllegalArgumentException("ci: " + ci);
   }
 
 
@@ -968,10 +975,9 @@ public final class Jandex extends Modeler {
   }
 
   final TypeParameterInfo typeParameterInfoFor(final ClassInfo context, final org.jboss.jandex.TypeVariable tv) {
+    final String id = tv.identifier();
     for (final org.jboss.jandex.TypeVariable tp : context.typeParameters()) {
-      if (tp.name().equals(tv.name())) {
-        // The structural model of Jandex really ticks me off.
-        // assert tp == tv : "tp: " + tp + "; tv: " + tv + "; equal? " + tp.equals(tv);
+      if (tp.identifier().equals(id)) {
         return new TypeParameterInfo(context, tp);
       }
     }
@@ -992,10 +998,9 @@ public final class Jandex extends Modeler {
   }
 
   final TypeParameterInfo typeParameterInfoFor(final MethodInfo context, final org.jboss.jandex.TypeVariable tv) {
+    final String id = tv.identifier();
     for (final org.jboss.jandex.TypeVariable tp : context.typeParameters()) {
-      if (tp.name().equals(tv.name())) {
-        // The structural model of Jandex really ticks me off.
-        assert tp == tv;
+      if (tp.identifier().equals(id)) {
         return new TypeParameterInfo(context, tp);
       }
     }
@@ -1043,7 +1048,11 @@ public final class Jandex extends Modeler {
   }
 
   private static final ElementKind kind(final MethodInfo m) {
-    return m.isConstructor() ? ElementKind.CONSTRUCTOR : ElementKind.METHOD;
+    return
+      m.isConstructor() ? ElementKind.CONSTRUCTOR :
+      m.name().equals("<clinit>") ? ElementKind.STATIC_INIT :
+      m.name().equals("<init>") ? ElementKind.INSTANCE_INIT :
+      ElementKind.METHOD;
   }
 
   private static final TypeKind kind(final PrimitiveType p) {
@@ -1069,9 +1078,9 @@ public final class Jandex extends Modeler {
 
   private static final NestingKind nestingKind(final NestingType n) {
     return switch (n) {
-    case ANONYMOUS -> NestingKind.ANONYMOUS;
+    case ANONYMOUS -> NestingKind.ANONYMOUS; // In fact, Jandex will never supply this.
     case INNER -> NestingKind.MEMBER;
-    case LOCAL -> NestingKind.LOCAL;
+    case LOCAL -> NestingKind.LOCAL; // In fact, Jandex will never supply this.
     case TOP_LEVEL -> NestingKind.TOP_LEVEL;
     };
   }
@@ -1090,9 +1099,9 @@ public final class Jandex extends Modeler {
 
   }
 
-  private static final record TypeParameterInfo(AnnotationTarget annotationTarget, org.jboss.jandex.TypeVariable typeVariable) {
+  public static final record TypeParameterInfo(AnnotationTarget annotationTarget, org.jboss.jandex.TypeVariable typeVariable) {
 
-    TypeParameterInfo {
+    public TypeParameterInfo {
       switch (annotationTarget.kind()) {
       case CLASS:
       case METHOD:
@@ -1103,11 +1112,23 @@ public final class Jandex extends Modeler {
       Objects.requireNonNull(typeVariable, "typeVariable");
     }
 
-    final AnnotationTarget.Kind kind() {
+    /**
+     * Returns the value of the {@code annotationTarget} record component, which will either be a {@link ClassInfo} or a
+     * {@link MethodInfo}.
+     *
+     * @return the value of the {@code annotationTarget} record component, which will either be a {@link ClassInfo} or a
+     * {@link MethodInfo}
+     */
+    @Override
+    public final AnnotationTarget annotationTarget() {
+      return this.annotationTarget;
+    }
+
+    public final AnnotationTarget.Kind kind() {
       return this.annotationTarget().kind();
     }
 
-    final String identifier() {
+    public final String identifier() {
       return this.typeVariable().identifier();
     }
 

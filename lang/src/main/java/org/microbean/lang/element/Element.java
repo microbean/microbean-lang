@@ -77,8 +77,6 @@ public abstract sealed class Element
     this.kind = this.validateKind(kind);
     this.modifiers = new LinkedHashSet<>();
     this.unmodifiableModifiers = Collections.unmodifiableSet(this.modifiers);
-    // this.enclosedElements = new ArrayList<>();
-    // this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
   }
 
   @Override // Element

@@ -22,11 +22,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 import java.util.EnumSet;
+import java.util.List;
 
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.NestingKind;
 import javax.lang.model.element.RecordComponentElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
@@ -39,13 +42,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.fail;
 
 final class TestJavaLanguageModel {
 
   private JavaLanguageModel jlm;
-  
+
   private TestJavaLanguageModel() {
     super();
   }
@@ -91,13 +97,53 @@ final class TestJavaLanguageModel {
     assertEquals("T", tp.getSimpleName().toString());
   }
 
+  @Test
+  final void testAnnotationsOnClassesInMethods() throws ClassNotFoundException {
+    final TypeElement e = jlm.elements().getTypeElement(this.getClass().getName());
+    assertNotNull(e);
+    ExecutableElement frooby = null;
+    EES:
+    for (final Element ee : e.getEnclosedElements()) {
+      switch (ee.getKind()) {
+      case METHOD:
+        frooby = (ExecutableElement)ee;
+        break EES;
+      }
+    }
+
+    // As it turns out, there is no way in the javax.lang.model.* hierarchy to actually get a local class.
+
+    // Local classes are not enclosed by their defining methods.
+    assertEquals(0, frooby.getEnclosedElements().size());
+
+    for (final Element ee : e.getEnclosedElements()) {
+      if (ee.getKind() == ElementKind.CLASS) {
+        // Possibly surprising! Local classes are not present as enclosed elements of their enclosing class either.
+        assertNotEquals(NestingKind.LOCAL, ((TypeElement)ee).getNestingKind());
+      }
+    }
+
+    // You can't get Bingo directly:
+    assertNull(jlm.elements().getTypeElement(this.getClass().getName() + "$1Bingo"));
+
+    // But it does exist, and in the reflection model you can find out all sorts of things about it.
+    final Class<?> c = Class.forName(this.getClass().getName() + "$1Bingo");
+    assertSame(this.getClass(), c.getEnclosingClass());
+    assertEquals("frooby", c.getEnclosingMethod().getName());
+  }
+
+  private static void frooby() {
+    @Skree
+    class Bingo {};
+  }
+
   private static record Gloop(String name) {
 
     // Note final here; accessor is otherwise stock
     public final String name() {
       return this.name;
     }
-    
+
   }
 
   private static class Flob<@Borf T> {
@@ -109,5 +155,11 @@ final class TestJavaLanguageModel {
   private @interface Borf {
 
   }
-  
+
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE)
+  private @interface Skree {
+
+  }
+
 }

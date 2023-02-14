@@ -23,6 +23,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 
 import javax.lang.model.type.TypeMirror;
@@ -30,16 +31,35 @@ import javax.lang.model.type.TypeMirror;
 // NOT thread safe
 public abstract class Modeler {
 
+  private final Map<Object, AnnotationMirror> annotations;
+  
   private final Map<Object, Element> elements;
 
   private final Map<Object, TypeMirror> types;
   
   protected Modeler() {
     super();
+    this.annotations = new HashMap<>();
     this.elements = new HashMap<>();
     this.types = new HashMap<>();
   }
 
+  @SuppressWarnings("unchecked")
+  protected final <K, A extends AnnotationMirror> A annotation(final K k,
+                                                               final Supplier<? extends A> s,
+                                                               final BiConsumer<? super K, ? super A> c) {
+    A r = (A)this.annotations.get(k);
+    if (r == null) {
+      final A a = s.get();
+      r = (A)this.annotations.putIfAbsent(k, a);
+      if (r == null) {
+        c.accept(k, a);
+        return a;
+      }
+    }
+    return r;
+  }
+  
   @SuppressWarnings("unchecked")
   protected final <K, E extends Element> E element(final K k,
                                                    final Supplier<? extends E> s,

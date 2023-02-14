@@ -74,6 +74,9 @@ public abstract sealed class AnnotatedConstruct implements javax.lang.model.Anno
   }
 
   public void addAnnotationMirror(final AnnotationMirror a) {
+    if (this.annotationMirrors.contains(a)) {
+      throw new IllegalArgumentException("a: " + a);
+    }
     this.annotationMirrors.add(this.validateAnnotationMirror(a));
   }
 
