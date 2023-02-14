@@ -350,6 +350,12 @@ public final class Jandex extends Modeler {
     return Collections.unmodifiableList(list);
   }
 
+
+  /*
+   * Element methods.
+   */
+
+
   public final TypeElement element(final DotName n) {
     final ClassInfo ci = this.classInfoFor(n);
     return ci == null ? null : this.element(ci);
@@ -409,6 +415,34 @@ public final class Jandex extends Modeler {
   public final TypeParameterElement element(final TypeParameterTypeTarget tt) {
     return tt == null ? null : this.element(new TypeParameterInfo(tt.enclosingTarget(), tt.target().asTypeVariable()));
   }
+
+
+  /*
+   * Type methods.
+   */
+
+
+  // TODO:
+  //
+  // Hazy type usage thoughts:
+  //
+  // There is a lot here that assumes that, for example, type(ClassInfo) is going to build the one true DeclaredType for the ClassInfo and be done.
+  //
+  // There's a distinction to be made between elements and types (we already have that in spades) and between
+  // the-type-an-element-declares, and the-type-an-element-uses, which is not yet fully clear.
+  //
+  // For example, in public class Foo<T>, Foo-the-element declares Foo-the-declared-type. Fine. Any time you call
+  // Foo-the-element's asType() method, you should get back this particular Foo-the-declared-type.
+  //
+  // But in public class Bar exends @Baz Foo<String>, Bar-the-element declares Bar-the-declared-type, and uses @Baz
+  // Foo<String>-the-declared-type where the parameterized type in question can't be shared with anything else.
+  //
+  // We have TypeContext to get most of the way there, born of type parameter and type variable silliness.  And maybe
+  // it's good enough?  But we need to make sure it's pervasive.  For example, in public class Crap extends Gorp,
+  // Gorp-the-declared-non-generic-type that Crap-the-element uses is a happens-to-be-unannotated type usage of
+  // Gorp-the-declared-non-generic-type that Gorp-the-element declares.
+  //
+  // Chew on that last paragraph.
 
   public final DeclaredType type(final AnnotationInstance ai) {
     return ai == null ? null : this.type(this.classInfoFor(ai));
@@ -616,18 +650,34 @@ public final class Jandex extends Modeler {
       case TYPE:
         // This is where things get stupid.
         final TypeTarget tt = annotationTarget.asType();
-        assert tt.enclosingTarget() == annotationTarget;
         switch (tt.usage()) {
         case CLASS_EXTENDS:
-          // Genuine type usage. Maybe go ahead and apply it here.
-          System.out.println("*** tt: " + tt);
-          ((org.microbean.lang.type.DeclaredType)this.type(tt.asClass())).addAnnotationMirror(this.annotation(a));
+          final Type type = tt.target();
+          switch (type.kind()) {
+          case CLASS:
+            ((org.microbean.lang.type.DeclaredType)this.type(type.asClassType())).addAnnotationMirror(this.annotation(a));
+            break;
+          case PARAMETERIZED_TYPE:
+            ((org.microbean.lang.type.DeclaredType)this.type(new TypeContext<>(ci, type.asParameterizedType()))).addAnnotationMirror(this.annotation(a));
+            break;
+          default:
+            throw new AssertionError();
+          }
           break;
         case EMPTY:
           // Genuine type usage on a field type, a method return type, or a method receiver type. (What about a thrown
           // type?) Maybe go ahead and apply it here.
           final EmptyTypeTarget ett = tt.asEmpty();
-          
+          if (ett.enclosingTarget().kind() == AnnotationTarget.Kind.METHOD) {
+            if (ett.isReceiver()) {
+              // Method receiver type
+            } else {
+              // Method return type
+            }
+          } else {
+            // Field type
+            assert ett.enclosingTarget().kind() == AnnotationTarget.Kind.FIELD;
+          }
           break;
         case METHOD_PARAMETER:
           // Genuine type usage WITHIN the type of a method parameter, e.g. blatz(Foo<@Bar String> baz). Maybe go ahead
@@ -732,7 +782,7 @@ public final class Jandex extends Modeler {
 
     // (No enclosing element.)
     // e.setEnclosingElement(this.element(mpi.method())); // interestingly not supported by the javax.lang.model.* api
-    
+
     // Type.
     e.setType(this.type(new TypeContext<>(mpi, mpi.type())));
 
@@ -750,7 +800,7 @@ public final class Jandex extends Modeler {
 
     // Type.
     e.setType(this.type(r));
-    
+
     e.setAccessor((org.microbean.lang.element.ExecutableElement)this.element(r.declaringClass().method(r.name())));
 
     // We don't do annotations here because they are handled "up" at the class level (Jandex is first and foremost an
