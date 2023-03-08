@@ -28,7 +28,6 @@ import java.util.Set;
 
 import java.util.function.Supplier;
 
-
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;

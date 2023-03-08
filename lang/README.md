@@ -35,3 +35,9 @@ Maven dependency:
 
 Full documentation is or will be available at
 [microbean.github.io/microbean-lang](https://microbean.github.io/microbean-lang/).
+
+# Related Issues
+
+* https://bugs.openjdk.org/browse/JDK-8225377
+* https://bugs.openjdk.org/browse/JDK-8303784
+

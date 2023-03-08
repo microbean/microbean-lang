@@ -35,6 +35,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 
 import org.junit.jupiter.api.AfterEach;
@@ -92,21 +93,41 @@ final class TestJavaLanguageModel {
   @Test
   final void testTypeParameters() {
     final TypeElement flob = jlm.elements().getTypeElement("org.microbean.lang.TestJavaLanguageModel.Flob");
-    assertNotNull(flob);
     final TypeParameterElement tp = (TypeParameterElement)flob.getTypeParameters().get(0);
     assertEquals("T", tp.getSimpleName().toString());
+  }
+
+  @Test
+  final void testReturnTypeOfTopLevelClassConstructor() {
+    final TypeElement object = jlm.elements().getTypeElement("java.lang.Object");
+    ExecutableElement c = null;
+    ENCLOSED_ELEMENTS:
+    for (final Element e : object.getEnclosedElements()) {
+      switch (e.getKind()) {
+      case CONSTRUCTOR:
+        final ExecutableElement ee = (ExecutableElement)e;
+        if (ee.getParameters().isEmpty()) {
+          c = ee;
+          break ENCLOSED_ELEMENTS;
+        }
+        break;
+      default:
+        break;
+      }
+    }
+    assertSame(TypeKind.VOID, ((ExecutableType)c.asType()).getReturnType().getKind());
   }
 
   @Test
   final void testAnnotationsOnClassesInMethods() throws ClassNotFoundException {
     final TypeElement e = jlm.elements().getTypeElement(this.getClass().getName());
     assertNotNull(e);
-    ExecutableElement frooby = null;
+    ExecutableElement baker = null;
     EES:
     for (final Element ee : e.getEnclosedElements()) {
       switch (ee.getKind()) {
       case METHOD:
-        frooby = (ExecutableElement)ee;
+        baker = (ExecutableElement)ee;
         break EES;
       }
     }
@@ -114,7 +135,7 @@ final class TestJavaLanguageModel {
     // As it turns out, there is no way in the javax.lang.model.* hierarchy to actually get a local class.
 
     // Local classes are not enclosed by their defining methods.
-    assertEquals(0, frooby.getEnclosedElements().size());
+    assertEquals(0, baker.getEnclosedElements().size());
 
     for (final Element ee : e.getEnclosedElements()) {
       if (ee.getKind() == ElementKind.CLASS) {
@@ -123,18 +144,28 @@ final class TestJavaLanguageModel {
       }
     }
 
-    // You can't get Bingo directly:
-    assertNull(jlm.elements().getTypeElement(this.getClass().getName() + "$1Bingo"));
+    // You can't get Charlie directly:
+    assertNull(jlm.elements().getTypeElement(this.getClass().getName() + "$1Charlie"));
 
     // But it does exist, and in the reflection model you can find out all sorts of things about it.
-    final Class<?> c = Class.forName(this.getClass().getName() + "$1Bingo");
+    final Class<?> c = Class.forName(this.getClass().getName() + "$1Charlie");
     assertSame(this.getClass(), c.getEnclosingClass());
-    assertEquals("frooby", c.getEnclosingMethod().getName());
+    assertEquals("baker", c.getEnclosingMethod().getName());
   }
 
-  private static void frooby() {
-    @Skree
-    class Bingo {};
+
+  /*
+   * Members for introspecting/analyzing in tests.
+   */
+
+
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE)
+  private @interface Able {}
+
+  private static void baker() {
+    @Able
+    class Charlie {};
   }
 
   private static record Gloop(String name) {
@@ -146,20 +177,10 @@ final class TestJavaLanguageModel {
 
   }
 
-  private static class Flob<@Borf T> {
-
-  }
+  private static class Flob<@Borf T> {}
 
   @Retention(RetentionPolicy.RUNTIME)
   @Target(ElementType.TYPE_PARAMETER)
-  private @interface Borf {
-
-  }
-
-  @Retention(RetentionPolicy.RUNTIME)
-  @Target(ElementType.TYPE)
-  private @interface Skree {
-
-  }
+  private @interface Borf {}
 
 }
