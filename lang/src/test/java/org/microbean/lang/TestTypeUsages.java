@@ -21,9 +21,13 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import java.util.List;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 
 import javax.lang.model.type.ArrayType;
@@ -111,6 +115,20 @@ final class TestTypeUsages {
     final AnnotationMirror a = returnType.getAnnotationMirrors().get(0); // fails
   }
 
+  @Disabled // see https://bugs.openjdk.org/browse/JDK-8225377
+  @Test
+  final void testTypeArgument() {
+    final TypeElement f = jlm.elements().getTypeElement("org.microbean.lang.TestTypeUsages.F");
+    final List<? extends TypeParameterElement> tps = f.getTypeParameters();
+    assertEquals(1, tps.size());
+    final TypeElement g = jlm.elements().getTypeElement("org.microbean.lang.TestTypeUsages.G");
+    final DeclaredType supertype = (DeclaredType)g.getSuperclass();
+    final List<?> typeArguments = supertype.getTypeArguments();
+    assertEquals(1, typeArguments.size());
+    final DeclaredType string = (DeclaredType)typeArguments.get(0);
+    assertEquals(1, string.getAnnotationMirrors().size());
+  }
+
 
   /*
    * Inner and nested classes.
@@ -118,15 +136,21 @@ final class TestTypeUsages {
 
   
   @Retention(RUNTIME)
-  // Note as an interesting curiosity that TYPE_USE implies TYPE and TYPE_PARAMETER as well.  See
+  // Note as an interesting curiosity that TYPE_USE implies ANNOTATION_TYPE, TYPE and TYPE_PARAMETER as well.  See
   // https://mail.openjdk.org/pipermail/compiler-dev/2023-February/022200.html.
   @Target({ TYPE, TYPE_USE })
   public @interface A {}
 
+  @Retention(RUNTIME)
+  // Note as an interesting curiosity that TYPE_USE implies ANNOTATION_TYPE, TYPE and TYPE_PARAMETER as well.  See
+  // https://mail.openjdk.org/pipermail/compiler-dev/2023-February/022200.html.
+  @Target({ TYPE_USE })
+  public @interface E {}
+  
   @A
-  public static final class B {
+  private static final class B {
 
-    public B() {
+    private B() {
       super();
     }
     
@@ -139,11 +163,11 @@ final class TestTypeUsages {
     }
     
   }
+
+  private static class F<T> {}
+
+  private static class G extends F<@E String> {}
   
-  @Retention(RUNTIME)
-  // Note as an interesting curiosity that TYPE_USE implies TYPE and TYPE_PARAMETER as well.  See
-  // https://mail.openjdk.org/pipermail/compiler-dev/2023-February/022200.html.
-  @Target({ TYPE_USE })
-  public @interface E {}
+  
   
 }
