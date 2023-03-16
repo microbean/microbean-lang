@@ -656,11 +656,7 @@ public final class Jandex extends Modeler {
       e.addTypeParameter((org.microbean.lang.element.TypeParameterElement)this.element(new TypeParameterInfo(ci, tp)));
     }
 
-    for (final RecordComponentInfo rc : ci.unsortedRecordComponents()) {
-      e.addEnclosedElement((org.microbean.lang.element.RecordComponentElement)this.element(rc));
-    }
-
-    // TODO: enclosed elements
+    e.setEnclosedElementsFunction(new ClassInfoEnclosedElementsGenerator(ci));
 
     for (final AnnotationInstance ai : ci.declaredAnnotations()) {
       e.addAnnotationMirror(this.annotation(ai));
@@ -1591,6 +1587,61 @@ public final class Jandex extends Modeler {
       TYPE_ARGUMENT, // e.g. the "String" in "public class Foo extends Bar<@Baz String> {}"
       COMPONENT_TYPE; // e.g. "@Baz"-annotated "[]" in "@Qux String @Bar [] @Baz []"
 
+    }
+
+  }
+
+  private final class ClassInfoEnclosedElementsGenerator implements org.microbean.lang.element.Element.EnclosedElementsGenerator {
+
+    private final ClassInfo ci;
+
+    private ClassInfoEnclosedElementsGenerator(final ClassInfo ci) {
+      super();
+      this.ci = Objects.requireNonNull(ci, "ci");
+    }
+
+    @Override
+    public final <E extends javax.lang.model.element.Element & org.microbean.lang.element.Encloseable> List<? extends E> generate(final List<? extends javax.lang.model.element.Element> es) {
+      final List<E> elements = new ArrayList<>();
+
+      // Constructors.
+      for (final MethodInfo c : ci.constructors()) {
+        @SuppressWarnings("unchecked")
+        final E e = (E)element(c);
+        elements.add(e);
+      }
+
+      // Record components.
+      for (final RecordComponentInfo r : ci.unsortedRecordComponents()) {
+        @SuppressWarnings("unchecked")
+        final E e = (E)element(r);
+        elements.add(e);
+      }
+
+      // Fields.
+      for (final FieldInfo f : ci.unsortedFields()) {
+        @SuppressWarnings("unchecked")
+        final E e = (E)element(f);
+        elements.add(e);
+      }
+
+      // Methods.
+      for (final MethodInfo m : ci.unsortedMethods()) {
+        @SuppressWarnings("unchecked")
+        final E e = (E)element(m);
+        elements.add(e);
+      }
+
+      // Member classes.
+      for (final DotName c : ci.memberClasses()) {
+        @SuppressWarnings("unchecked")
+        final E e = (E)element(c);
+        elements.add(e);
+      }
+
+      elements.removeIf(es::contains);
+      
+      return Collections.unmodifiableList(elements);
     }
 
   }

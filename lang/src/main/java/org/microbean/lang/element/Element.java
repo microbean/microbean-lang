@@ -81,46 +81,16 @@ public abstract sealed class Element
 
   @Override // Element
   public <R, P> R accept(final ElementVisitor<R, P> v, final P p) {
-    switch (this.getKind()) {
-
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-      return v.visitType((javax.lang.model.element.TypeElement)this, p);
-
-    case TYPE_PARAMETER:
-      return v.visitTypeParameter((javax.lang.model.element.TypeParameterElement)this, p);
-
-    case BINDING_VARIABLE:
-    case ENUM_CONSTANT:
-    case EXCEPTION_PARAMETER:
-    case FIELD:
-    case LOCAL_VARIABLE:
-    case PARAMETER:
-    case RESOURCE_VARIABLE:
-      return v.visitVariable((javax.lang.model.element.VariableElement)this, p);
-
-    case RECORD_COMPONENT:
-      return v.visitRecordComponent((javax.lang.model.element.RecordComponentElement)this, p);
-
-    case CONSTRUCTOR:
-    case INSTANCE_INIT:
-    case METHOD:
-    case STATIC_INIT:
-      return v.visitExecutable((javax.lang.model.element.ExecutableElement)this, p);
-
-    case PACKAGE:
-      return v.visitPackage((javax.lang.model.element.PackageElement)this, p);
-
-    case MODULE:
-      return v.visitModule((javax.lang.model.element.ModuleElement)this, p);
-
-    default:
-      return v.visitUnknown(this, p);
-
-    }
+    return switch (this.getKind()) {
+    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> v.visitType((javax.lang.model.element.TypeElement)this, p);
+    case TYPE_PARAMETER -> v.visitTypeParameter((javax.lang.model.element.TypeParameterElement)this, p);
+    case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE -> v.visitVariable((javax.lang.model.element.VariableElement)this, p);
+    case RECORD_COMPONENT -> v.visitRecordComponent((javax.lang.model.element.RecordComponentElement)this, p);
+    case CONSTRUCTOR, INSTANCE_INIT, METHOD, STATIC_INIT -> v.visitExecutable((javax.lang.model.element.ExecutableElement)this, p);
+    case PACKAGE -> v.visitPackage((javax.lang.model.element.PackageElement)this, p);
+    case MODULE -> v.visitModule((javax.lang.model.element.ModuleElement)this, p);
+    case OTHER -> v.visitUnknown(this, p);
+    };
   }
 
   @Override // Element
@@ -143,38 +113,14 @@ public abstract sealed class Element
     if (type == null) {
       return NoType.NONE;
     }
-    switch (type.getKind()) {
-    case ARRAY:
-    case BOOLEAN:
-    case BYTE:
-    case CHAR:
-    case DECLARED:
-    case DOUBLE:
-    case ERROR:
-    case EXECUTABLE:
-    case FLOAT:
-    case INT:
-    case INTERSECTION:
-    case LONG:
-    case MODULE:
-    case NONE:
-    case NULL:
-    case OTHER:
-    case PACKAGE:
-    case SHORT:
-    case TYPEVAR:
-    case UNION:
-    case VOID:
-    case WILDCARD:
-      return type;
-    default:
-      throw new IllegalArgumentException("type: " + type);
-    }
+    type.getKind(); // null check
+    return type;
   }
 
   @Override // Element
   public final List<? extends javax.lang.model.element.Element> getEnclosedElements() {
     if (this.unmodifiableEnclosedElements == null) {
+      // First time through.
       if (this.enclosedElements == null) {
         // No one has added any enclosed element by hand yet.
         if (this.enclosedElementsFunction == null) {
@@ -182,17 +128,21 @@ public abstract sealed class Element
           this.enclosedElements = new ArrayList<>();
           this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
         } else {
-          final List<javax.lang.model.element.Element> es = List.copyOf(this.enclosedElementsFunction.apply(List.of()));
+          // There's a generator.
+          final List<? extends javax.lang.model.element.Element> generatedElements = this.enclosedElementsFunction.generate(List.of());
+          final List<javax.lang.model.element.Element> es = generatedElements == null ? List.of() : List.copyOf(generatedElements);
           for (final javax.lang.model.element.Element e : es) {
             ((Encloseable)this.validateEnclosedElement(e)).setEnclosingElement(this);
           }
           this.unmodifiableEnclosedElements = es;
         }
       } else if (this.enclosedElementsFunction == null) {
+        // There are manually added enclosed elements, and no generator.
         this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
       } else {
+        // There are both manually added enclosed elements and a generator.
         final List<javax.lang.model.element.Element> unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
-        final List<? extends javax.lang.model.element.Element> generatedElements = this.enclosedElementsFunction.apply(unmodifiableEnclosedElements);
+        final List<? extends javax.lang.model.element.Element> generatedElements = this.enclosedElementsFunction.generate(unmodifiableEnclosedElements);
         if (generatedElements == null || generatedElements.isEmpty()) {
           this.unmodifiableEnclosedElements = unmodifiableEnclosedElements;
         } else {
@@ -451,10 +401,31 @@ public abstract sealed class Element
     return false;
   }
 
+  /**
+   * A generator of <em>enclosed elements</em>, where an enclosed element is one described by the {@linkplain
+   * javax.lang.model.element.Element#getEnclosedElements() documentation of the
+   * <code>javax.lang.model.element.Element#getEnclosedElements()</code> method}.
+   *
+   * @author <a href="https://about.me/lairdnelson" target="_parent">Laird Nelson</a>
+   *
+   * @see #generate(List)
+   */
   @FunctionalInterface
   public static interface EnclosedElementsGenerator {
 
-    public <E extends javax.lang.model.element.Element & Encloseable> List<? extends E> apply(final List<? extends javax.lang.model.element.Element> es);
+    /**
+     * Generates a determinate, unchanging and unmodifiable {@link List} of {@linkplain
+     * javax.lang.model.element.Element#getEnclosedElements() enclosed elements}.
+     *
+     * @param es elements that have already been enclosed and should not appear in the returned {@link List}; must not
+     * be {@code null}
+     *
+     * @return a determinate, unchanging and unmodifiable {@link List} of {@linkplain
+     * javax.lang.model.element.Element#getEnclosedElements() enclosed elements}; never {@code null}
+     *
+     * @exception NullPointerException if {@code es} is {@code null}
+     */
+    public <E extends javax.lang.model.element.Element & Encloseable> List<? extends E> generate(final List<? extends javax.lang.model.element.Element> es);
     
   }
 

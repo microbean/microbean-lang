@@ -178,7 +178,8 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
         throw new IllegalArgumentException("e: " + e);
       }
     default:
-      throw new IllegalArgumentException("e: " + e);
+      // throw new IllegalArgumentException("e: " + e);
+      return e;
     }
   }
   

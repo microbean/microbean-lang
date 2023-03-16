@@ -18,10 +18,40 @@ package org.microbean.lang.element;
 
 import javax.lang.model.element.Element;
 
+/**
+ * Something that can be enclosed by an {@link Element}.
+ *
+ * @author <a href="https://about.me/lairdnelson" target="_parent">Laird Nelson</a>
+ *
+ * @see #getEnclosingElement()
+ *
+ * @see #setEnclosingElement(Element)
+ *
+ * @see Element#getEnclosedElements()
+ */
 public interface Encloseable {
 
+  /**
+   * Returns the {@link Element} that encloses this {@link Encloseable}, or {@code null} if this {@link Encloseable} is
+   * not currently enclosed.
+   *
+   * @return the {@link Element} that encloses this {@link Encloseable}, or {@code null}
+   *
+   * @see #setEnclosingElement(Element)
+   */
   Element getEnclosingElement();
-  
+
+  /**
+   * Sets the {@link Element} that encloses this {@link Encloseable} to the supplied {@link Element}, which may be
+   * {@code null}.
+   *
+   * <p>An implementation of this method must ensure that a subsequent call to {@link #getEnclosingElement()} will
+   * return the very {@link Element} supplied to this method, or undefined behavior will result.</p>
+   *
+   * @param enclosingElement the {@link Element} that will enclose this {@link Encloseable}; may be {@code null}
+   *
+   * @see #getEnclosingElement()
+   */
   void setEnclosingElement(Element enclosingElement);
-  
+
 }
