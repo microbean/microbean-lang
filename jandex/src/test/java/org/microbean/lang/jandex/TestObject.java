@@ -31,7 +31,7 @@ import java.util.function.Predicate;
 
 import java.util.stream.Stream;
 
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.Element;
 
 import org.jboss.jandex.Indexer;
 import org.jboss.jandex.IndexView;
@@ -57,14 +57,14 @@ final class TestObject {
   
   @Test
   final void testObject() {
-    final TypeElement e = new Jandex(this.jdk).typeElement("java.lang.Object");
+    final Element e = new Jandex(this.jdk).element("java.lang.Object");
     final List<?> es = e.getEnclosedElements();
     // es.forEach(System.out::println);
   }
 
   @Test
   final void testString() {
-    final TypeElement e = new Jandex(this.jdk).typeElement("java.lang.String");
+    final Element e = new Jandex(this.jdk).element("java.lang.String");
     final List<?> es = e.getEnclosedElements();
     es.forEach(ee -> { System.out.println(ee + "; class: " + ee.getClass()); });
   }

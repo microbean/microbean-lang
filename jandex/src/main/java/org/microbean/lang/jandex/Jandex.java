@@ -368,12 +368,12 @@ public final class Jandex extends Modeler {
    */
 
 
-  public final TypeElement typeElement(final DotName n) {
+  public final Element element(final DotName n) {
     final ClassInfo ci = this.classInfoFor(n);
     return ci == null ? null : this.element(ci);
   }
 
-  public final TypeElement typeElement(final String n) {
+  public final Element element(final String n) {
     final ClassInfo ci = this.classInfoFor(n);
     return ci == null ? null : this.element(ci);
   }
@@ -395,20 +395,20 @@ public final class Jandex extends Modeler {
   }
 
   public final TypeElement element(final AnnotationInstance ai) {
-    return ai == null ? null : this.element(this.classInfoFor(ai.name()));
+    return ai == null ? null : (TypeElement)this.element(this.classInfoFor(ai.name()));
   }
 
-  public final TypeElement element(final ClassInfo ci) {
+  public final Element element(final ClassInfo ci) {
     if (ci == null) {
       return null;
     } else if (ci.isModule()) {
-      throw new UnsupportedOperationException("TODO: implement");
+      return this.element(ci.module());
     } else {
       return this.element(ci, () -> new org.microbean.lang.element.TypeElement(kind(ci), nestingKind(ci)), this::build);
     }
   }
 
-  public final TypeElement element(final ClassType ct) {
+  public final Element element(final ClassType ct) {
     return ct == null ? null : this.element(this.classInfoFor(ct));
   }
 
@@ -638,12 +638,20 @@ public final class Jandex extends Modeler {
       final List<? extends DotName> psiProviders = psi.providers();
       final List<TypeElement> providers = new ArrayList<>(psiProviders.size());
       for (final DotName psiTarget : psiProviders) {
-        providers.add(this.element(this.classInfoFor(psiTarget)));
+        providers.add((TypeElement)this.element(this.classInfoFor(psiTarget)));
       }
-      e.addDirective(new org.microbean.lang.element.ModuleElement.ProvidesDirective(this.typeElement(psi.service()), providers));
+      e.addDirective(new org.microbean.lang.element.ModuleElement.ProvidesDirective((TypeElement)this.element(psi.service()), providers));
     }
 
-    // TODO: other directives
+    e.setEnclosedElementsGenerator(() -> {
+        for (final DotName pn : mi.packages()) {
+          this.packageElement(pn);
+        }
+      });
+
+    for (final AnnotationInstance ai : mi.annotations()) {
+      e.addAnnotationMirror(this.annotation(ai));
+    }
 
   }
 
@@ -772,7 +780,7 @@ public final class Jandex extends Modeler {
     e.setType(this.type(mi));
 
     // Enclosing element.
-    final TypeElement ee = this.element(mi.declaringClass());
+    final TypeElement ee = (TypeElement)this.element(mi.declaringClass());
     assert ee != null;
     e.setEnclosingElement(ee);
     assert e.getEnclosingElement() == ee : "e: " + e + "; ee: " + ee;
@@ -909,7 +917,7 @@ public final class Jandex extends Modeler {
   private final void build(final TypeContext tc, final org.microbean.lang.type.DeclaredType t) {
     final Type tct = tc.type();
     final ClassInfo ci = this.classInfoFor(tct);
-    t.setDefiningElement(this.element(ci));
+    t.setDefiningElement((TypeElement)this.element(ci));
     switch (tct.kind()) {
     case CLASS:
       t.setEnclosingType(this.type(this.classInfoFor(ci.enclosingClass())));
@@ -985,7 +993,7 @@ public final class Jandex extends Modeler {
     final org.jboss.jandex.Type ft = fi.type();
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(fi);
     e.setType(t);
-    t.setDefiningElement((org.microbean.lang.element.TypeElement)this.typeElement(ft.name()));
+    t.setDefiningElement((org.microbean.lang.element.TypeElement)this.element(ft.name()));
     for (final AnnotationInstance ai : ft.annotations()) {
       t.addAnnotationMirror(this.annotation(ai));
     }
@@ -1048,7 +1056,7 @@ public final class Jandex extends Modeler {
     final org.jboss.jandex.Type mpit = mpi.type();
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(mpi);
     e.setType(t);
-    t.setDefiningElement((org.microbean.lang.element.TypeElement)this.typeElement(mpit.name()));
+    t.setDefiningElement((org.microbean.lang.element.TypeElement)this.element(mpit.name()));
     for (final AnnotationInstance ai : mpit.annotations()) {
       t.addAnnotationMirror(this.annotation(ai));
     }
@@ -1084,7 +1092,7 @@ public final class Jandex extends Modeler {
     final org.jboss.jandex.Type rcit = rci.type();
     final org.microbean.lang.element.RecordComponentElement e = (org.microbean.lang.element.RecordComponentElement)this.element(rci);
     e.setType(t);
-    t.setDefiningElement((org.microbean.lang.element.TypeElement)this.typeElement(rcit.name()));
+    t.setDefiningElement((org.microbean.lang.element.TypeElement)this.element(rcit.name()));
     for (final AnnotationInstance ai : rcit.annotations()) {
       t.addAnnotationMirror(this.annotation(ai));
     }
@@ -1203,7 +1211,7 @@ public final class Jandex extends Modeler {
     case METHOD -> this.typeParameterInfoFor(context.asMethod(), tv);
     case METHOD_PARAMETER -> this.typeParameterInfoFor(context.asMethodParameter(), tv);
     case RECORD_COMPONENT -> this.typeParameterInfoFor(context.asRecordComponent(), tv);
-    case TYPE -> throw new UnsupportedOperationException("TODO: implement?");
+    case TYPE -> throw new UnsupportedOperationException();
     };
   }
 
@@ -1490,7 +1498,7 @@ public final class Jandex extends Modeler {
       ci.unsortedRecordComponents().forEach(Jandex.this::element);
       ci.unsortedFields().forEach(Jandex.this::element);
       ci.unsortedMethods().forEach(Jandex.this::element);
-      ci.memberClasses().forEach(Jandex.this::typeElement);
+      ci.memberClasses().forEach(Jandex.this::element);
     }
 
   }

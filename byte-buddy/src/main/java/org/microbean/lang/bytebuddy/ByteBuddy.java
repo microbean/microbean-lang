@@ -16,12 +16,7 @@
  */
 package org.microbean.lang.bytebuddy;
 
-import java.util.Map;
 import java.util.Objects;
-
-import java.util.concurrent.ConcurrentHashMap;
-
-import java.util.function.Supplier;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -41,15 +36,13 @@ import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.pool.TypePool;
 import net.bytebuddy.pool.TypePool.Resolution;
 
+import org.microbean.lang.Modeler;
+
 import org.microbean.lang.type.DefineableType;
 
-public final class ByteBuddy {
+public final class ByteBuddy extends Modeler {
 
   private final TypePool typePool;
-
-  private final Map<Object, Element> elements;
-
-  private final Map<Object, TypeMirror> types;
 
   public ByteBuddy() {
     this(TypePool.Default.ofSystemLoader());
@@ -57,36 +50,18 @@ public final class ByteBuddy {
 
   public ByteBuddy(final TypePool typePool) {
     super();
-    this.elements = new ConcurrentHashMap<>();
-    this.types = new ConcurrentHashMap<>();
     this.typePool = Objects.requireNonNull(typePool, "typePool");
   }
 
   public Element element(final Object k) {
-    Element r = this.elements.get(k);
-    if (r == null) {
-      return switch (k) {
-      case CharSequence cs -> this.element(this.typePool.describe(cs.toString()).resolve()); // RECURSIVE
-      case MethodDescription.InDefinedShape mdids -> this.element(mdids, () -> new org.microbean.lang.element.ExecutableElement(elementKind(mdids)), this::build);
-      case PackageDescription pd -> this.element(pd, org.microbean.lang.element.PackageElement::new, this::build);
-      case TypeDescription.ForPackageDescription pd -> this.element(pd, org.microbean.lang.element.PackageElement::new, this::build);
-      case TypeDescription td -> this.element(td, () -> new org.microbean.lang.element.TypeElement(elementKind(td), nestingKind(td)), this::build);
-      default -> throw new IllegalArgumentException("k: " + k + "; k.getClass(): " + k.getClass());
-      };
-    }
-    return r;
-  }
-
-  private final <K, E extends Element> Element element(final K k,
-                                                       final Supplier<? extends E> s,
-                                                       final Builder<? super K, ? super E> b) {
-    final E e = s.get();
-    Element r = this.elements.putIfAbsent(k, e);
-    if (r == null) {
-      b.build(k, e);
-      r = e;
-    }
-    return r;
+    return switch (k) {
+    case CharSequence cs -> this.element(this.typePool.describe(cs.toString()).resolve()); // RECURSIVE
+    case MethodDescription.InDefinedShape mdids -> this.element(mdids, () -> new org.microbean.lang.element.ExecutableElement(elementKind(mdids)), this::build);
+    case PackageDescription pd -> this.element(pd, org.microbean.lang.element.PackageElement::new, this::build);
+    case TypeDescription.ForPackageDescription pd -> this.element(pd, org.microbean.lang.element.PackageElement::new, this::build);
+    case TypeDescription td -> this.element(td, () -> new org.microbean.lang.element.TypeElement(elementKind(td), nestingKind(td)), this::build);
+    default -> throw new IllegalArgumentException("k: " + k + "; k.getClass(): " + k.getClass());
+    };
   }
 
   public TypeMirror type(final Object k) {
@@ -95,37 +70,21 @@ public final class ByteBuddy {
     } else if (k == void.class || k == TypeDescription.ForLoadedType.of(void.class)) {
       return org.microbean.lang.type.NoType.VOID;
     }
-    TypeMirror r = this.types.get(k);
-    if (r == null) {
-      return switch (k) {
-      case CharSequence cs -> this.type(this.typePool.describe(cs.toString()).resolve().asGenericType()); // RECURSIVE
+    return switch (k) {
+    case CharSequence cs -> this.type(this.typePool.describe(cs.toString()).resolve().asGenericType()); // RECURSIVE
 
-      case PackageDescription pd -> org.microbean.lang.type.NoType.PACKAGE;
-      case TypeDescription td when td.isPackageType() -> org.microbean.lang.type.NoType.PACKAGE;
-      case TypeDescription td -> this.type(td.asGenericType()); // RECURSIVE
+    case PackageDescription pd -> org.microbean.lang.type.NoType.PACKAGE;
+    case TypeDescription td when td.isPackageType() -> org.microbean.lang.type.NoType.PACKAGE;
+    case TypeDescription td -> this.type(td.asGenericType()); // RECURSIVE
       
-      case TypeDescription.Generic tdg when tdg.isPrimitive() -> throw new UnsupportedOperationException("TODO: implement?");
-      case TypeDescription.Generic tdg when tdg.isArray() -> this.type(tdg, org.microbean.lang.type.ArrayType::new, this::build);
-      case TypeDescription.Generic tdg -> this.type(tdg, org.microbean.lang.type.DeclaredType::new, this::build);
+    case TypeDescription.Generic tdg when tdg.isPrimitive() -> throw new UnsupportedOperationException("TODO: implement?");
+    case TypeDescription.Generic tdg when tdg.isArray() -> this.type(tdg, org.microbean.lang.type.ArrayType::new, this::build);
+    case TypeDescription.Generic tdg -> this.type(tdg, org.microbean.lang.type.DeclaredType::new, this::build);
 
-      default -> throw new IllegalArgumentException("k: " + k + "; k.getClass(): " + k.getClass());
-      };
-    }
-    return r;
+    default -> throw new IllegalArgumentException("k: " + k + "; k.getClass(): " + k.getClass());
+    };
   }
 
-  private final <K, T extends TypeMirror> TypeMirror type(final K k,
-                                                          final Supplier<? extends T> s,
-                                                          final Builder<? super K, ? super T> b) {
-    final T t = s.get();
-    TypeMirror r = this.types.putIfAbsent(k, t);
-    if (r == null) {
-      b.build(k, t);
-      r = t;
-    }
-    return t;
-  }
-  
 
   /*
    * Type builders.

@@ -103,14 +103,6 @@ public sealed class DeclaredType extends DefineableType<TypeElement> implements 
     case RECORD:
       final javax.lang.model.type.DeclaredType elementType = (javax.lang.model.type.DeclaredType)e.asType();
       if (elementType == null) {
-        // TODO: may be too aggressive. Certain Elements (like TypeElements and TypeVariableElements) and certain
-        // TypeMirrors (like DeclaredType and TypeVariable) have circular dependencies.  Logically speaking whether such
-        // a type precedes such an element or vice versa is a matter of taste. Given that all Elements have an asType()
-        // method, but not all TypeMirrors have an asElement() method, it would seem that to build an Element you need a
-        // TypeMirror.
-        //
-        // Yes, here we would like after all is said and done for the defining TypeElement to have, as its type, this
-        // very DeclaredType.
         throw new IllegalArgumentException("e: " + e + "; e.asType() == null");
       } else if (this != elementType) {
         // We are a parameterized type, i.e. a type usage, i.e. the-type-denoted-by-Set<String>
