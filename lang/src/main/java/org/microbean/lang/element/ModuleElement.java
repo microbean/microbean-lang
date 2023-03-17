@@ -87,11 +87,27 @@ public final class ModuleElement extends org.microbean.lang.element.Element impl
     this.directives.add(validateDirective(directive));
   }
 
+  /**
+   * Returns {@code null} when invoked.
+   *
+   * @return {@code null} when invoked
+   *
+   * @see #setEnclosingElement(Element)
+   */
   @Override // ModuleElement
   public final Element getEnclosingElement() {
     return null;
   }
 
+  /**
+   * Throws an {@link UnsupportedOperationException} when invoked.
+   *
+   * @param e the enclosing {@link Element}; ignored
+   *
+   * @exception UnsupportedOperationException when invoked
+   *
+   * @see #getEnclosingElement()
+   */
   @Override // ModuleElement
   public final void setEnclosingElement(final Element e) {
     throw new UnsupportedOperationException();
@@ -212,7 +228,7 @@ public final class ModuleElement extends org.microbean.lang.element.Element impl
 
   }
 
-  public final class ProvidesDirective extends Directive implements javax.lang.model.element.ModuleElement.ProvidesDirective {
+  public static final class ProvidesDirective extends Directive implements javax.lang.model.element.ModuleElement.ProvidesDirective {
 
     private final TypeElement service;
 
@@ -241,7 +257,7 @@ public final class ModuleElement extends org.microbean.lang.element.Element impl
 
   }
 
-  public final class RequiresDirective extends Directive implements javax.lang.model.element.ModuleElement.RequiresDirective {
+  public static final class RequiresDirective extends Directive implements javax.lang.model.element.ModuleElement.RequiresDirective {
 
     private final javax.lang.model.element.ModuleElement dependency;
 
@@ -280,7 +296,7 @@ public final class ModuleElement extends org.microbean.lang.element.Element impl
 
   }
 
-  public final class UsesDirective extends Directive implements javax.lang.model.element.ModuleElement.UsesDirective {
+  public static final class UsesDirective extends Directive implements javax.lang.model.element.ModuleElement.UsesDirective {
 
     private final TypeElement service;
 

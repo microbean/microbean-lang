@@ -162,10 +162,6 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
     return this.unmodifiableRecordComponents;
   }
 
-  public final <RC extends RecordComponentElement & Encloseable> void addRecordComponent(final RC e) {
-    this.addEnclosedElement(e);
-  }
-
   @Override
   protected final <E extends javax.lang.model.element.Element> E validateEnclosedElement(E e) {
     e = super.validateEnclosedElement(e);

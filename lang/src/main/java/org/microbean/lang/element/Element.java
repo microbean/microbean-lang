@@ -43,7 +43,7 @@ import org.microbean.lang.type.Types;
 // NOT thread safe
 public abstract sealed class Element
   extends AnnotatedConstruct
-  implements javax.lang.model.element.Element, Encloseable
+  implements javax.lang.model.element.Element, Encloseable, Encloser
   permits ModuleElement,
           PackageElement,
           Parameterizable,
@@ -52,15 +52,14 @@ public abstract sealed class Element
           VariableElement
 {
 
-  // Treat as effectively final, please.
-  private List<javax.lang.model.element.Element> enclosedElements;
+  private final List<javax.lang.model.element.Element> enclosedElements;
 
   // Treat as effectively final, please.
   private List<javax.lang.model.element.Element> unmodifiableEnclosedElements;
 
   private javax.lang.model.element.Element enclosingElement;
 
-  private EnclosedElementsGenerator enclosedElementsFunction;
+  private Runnable enclosedElementsGenerator;
   
   private final ElementKind kind;
 
@@ -77,6 +76,7 @@ public abstract sealed class Element
     this.kind = this.validateKind(kind);
     this.modifiers = new LinkedHashSet<>();
     this.unmodifiableModifiers = Collections.unmodifiableSet(this.modifiers);
+    this.enclosedElements = new ArrayList<>();
   }
 
   @Override // Element
@@ -120,62 +120,29 @@ public abstract sealed class Element
   @Override // Element
   public final List<? extends javax.lang.model.element.Element> getEnclosedElements() {
     if (this.unmodifiableEnclosedElements == null) {
-      // First time through.
-      if (this.enclosedElements == null) {
-        // No one has added any enclosed element by hand yet.
-        if (this.enclosedElementsFunction == null) {
-          // There's no generator.
-          this.enclosedElements = new ArrayList<>();
-          this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
-        } else {
-          // There's a generator.
-          final List<? extends javax.lang.model.element.Element> generatedElements = this.enclosedElementsFunction.generate(List.of());
-          final List<javax.lang.model.element.Element> es = generatedElements == null ? List.of() : List.copyOf(generatedElements);
-          for (final javax.lang.model.element.Element e : es) {
-            ((Encloseable)this.validateEnclosedElement(e)).setEnclosingElement(this);
-          }
-          this.unmodifiableEnclosedElements = es;
-        }
-      } else if (this.enclosedElementsFunction == null) {
-        // There are manually added enclosed elements, and no generator.
-        this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
-      } else {
-        // There are both manually added enclosed elements and a generator.
-        final List<javax.lang.model.element.Element> unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
-        final List<? extends javax.lang.model.element.Element> generatedElements = this.enclosedElementsFunction.generate(unmodifiableEnclosedElements);
-        if (generatedElements == null || generatedElements.isEmpty()) {
-          this.unmodifiableEnclosedElements = unmodifiableEnclosedElements;
-        } else {
-          final List<javax.lang.model.element.Element> es = new ArrayList<>(this.enclosedElements.size() + generatedElements.size());
-          final Iterator<? extends javax.lang.model.element.Element> i = this.enclosedElements.iterator();
-          while (i.hasNext()) {
-            es.add(i.next());
-            i.remove();
-          }
-          es.addAll(generatedElements);
-          this.unmodifiableEnclosedElements = Collections.unmodifiableList(es);
-        }
+      this.unmodifiableEnclosedElements = Collections.unmodifiableList(this.enclosedElements);
+      if (this.enclosedElementsGenerator != null) {
+        final List<? extends javax.lang.model.element.Element> existing = List.copyOf(this.unmodifiableEnclosedElements);
+        this.enclosedElementsGenerator.run();
+        this.enclosedElements.removeIf(existing::contains);
+        this.enclosedElements.addAll(existing);
       }
     }
     return this.unmodifiableEnclosedElements;
   }
-
-  public final void setEnclosedElementsFunction(final EnclosedElementsGenerator f) {
-    if (this.enclosedElementsFunction == null) {
-      this.enclosedElementsFunction = Objects.requireNonNull(f, "f");
-    } else if (this.enclosedElementsFunction != f) {
+  
+  public final void setEnclosedElementsGenerator(final Runnable f) {
+    if (this.enclosedElementsGenerator == null) {
+      this.enclosedElementsGenerator = Objects.requireNonNull(f, "f");
+    } else if (this.enclosedElementsGenerator != f) {
       throw new IllegalStateException();
     }
   }
-  
-  public final <E extends javax.lang.model.element.Element & Encloseable> void addEnclosedElement(final E e) {
-    if (this.enclosedElementsFunction != null) {
-      throw new IllegalStateException();
-    }
+
+  // Deliberately not final to permit subclasses to override to throw UnsupportedOperationException.
+  @Override // Encloser
+  public <E extends javax.lang.model.element.Element & Encloseable> void addEnclosedElement(final E e) {
     this.validateEnclosedElement(e).setEnclosingElement(this);
-    if (this.enclosedElements == null) {      
-      this.enclosedElements = new ArrayList<>();
-    }
     this.enclosedElements.add(e);
   }
 
@@ -198,32 +165,7 @@ public abstract sealed class Element
   }
 
   protected ElementKind validateKind(final ElementKind kind) {
-    switch (kind) {
-    case ANNOTATION_TYPE:
-    case BINDING_VARIABLE:
-    case CLASS:
-    case CONSTRUCTOR:
-    case ENUM:
-    case ENUM_CONSTANT:
-    case EXCEPTION_PARAMETER:
-    case FIELD:
-    case INSTANCE_INIT:
-    case INTERFACE:
-    case LOCAL_VARIABLE:
-    case METHOD:
-    case MODULE:
-    case OTHER:
-    case PACKAGE:
-    case PARAMETER:
-    case RECORD:
-    case RECORD_COMPONENT:
-    case RESOURCE_VARIABLE:
-    case STATIC_INIT:
-    case TYPE_PARAMETER:
-      return kind;
-    default:
-      throw new IllegalArgumentException("kind: " + kind);
-    }
+    return Objects.requireNonNull(kind, "kind");
   }
 
   @Override // Element
@@ -284,8 +226,8 @@ public abstract sealed class Element
     return this.getSimpleName().length() <= 0;
   }
 
-  // Deliberately not final; ModuleElement adn TypeParameterElement need to override this.
-  @Override // Element, Encloseable
+  // Deliberately not final; ModuleElement and TypeParameterElement need to override this.
+  @Override // Element
   public javax.lang.model.element.Element getEnclosingElement() {
     return this.enclosingElement;
   }
@@ -299,6 +241,9 @@ public abstract sealed class Element
         if (enclosingElement != this) {
           if (canEnclose(enclosingElement.getKind(), this.getKind())) {
             this.enclosingElement = enclosingElement;
+            if (enclosingElement instanceof Encloser e) {
+              e.addEnclosedElement(this);
+            }
           } else {
             throw new IllegalArgumentException(enclosingElement.getKind() + " cannot enclose " + this.getKind());
           }
@@ -323,110 +268,15 @@ public abstract sealed class Element
    */
 
 
-  public static final boolean canEnclose(ElementKind k1, ElementKind k2) {
-    switch (k1) {
-    case MODULE:
-      switch (k2) {
-      case PACKAGE:
-        return true;
-      default:
-        break;
-      }
-    case PACKAGE:
-      switch (k2) {
-      case ANNOTATION_TYPE:
-      case CLASS:
-      case ENUM:
-      case INTERFACE:
-      case RECORD:
-        return true;
-      default:
-        break;
-      }
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case INTERFACE:
-      switch (k2) {
-      case ANNOTATION_TYPE:
-      case CLASS:
-      case CONSTRUCTOR:
-      case ENUM:
-      case FIELD:
-      case INSTANCE_INIT:
-      case INTERFACE:
-      case METHOD:
-      case RECORD:
-      case STATIC_INIT:
-        return true;
-      default:
-        break;
-      }
-    case ENUM:
-      switch (k2) {
-      case ANNOTATION_TYPE:
-      case CLASS:
-      case CONSTRUCTOR:
-      case ENUM:
-      case ENUM_CONSTANT:
-      case FIELD:
-      case INSTANCE_INIT:
-      case INTERFACE:
-      case METHOD:
-      case RECORD:
-      case STATIC_INIT:
-        return true;
-      default:
-        break;
-      }
-    case RECORD:
-      switch (k2) {
-      case ANNOTATION_TYPE:
-      case CLASS:
-      case CONSTRUCTOR:
-      case ENUM:
-      case FIELD:
-      case INSTANCE_INIT:
-      case INTERFACE:
-      case METHOD:
-      case RECORD:
-      case RECORD_COMPONENT:
-      case STATIC_INIT:
-        return true;
-      default:
-        break;
-      }
-    default:
-      break;
-    }
-    return false;
-  }
-
-  /**
-   * A generator of <em>enclosed elements</em>, where an enclosed element is one described by the {@linkplain
-   * javax.lang.model.element.Element#getEnclosedElements() documentation of the
-   * <code>javax.lang.model.element.Element#getEnclosedElements()</code> method}.
-   *
-   * @author <a href="https://about.me/lairdnelson" target="_parent">Laird Nelson</a>
-   *
-   * @see #generate(List)
-   */
-  @FunctionalInterface
-  public static interface EnclosedElementsGenerator {
-
-    /**
-     * Generates a determinate, unchanging and unmodifiable {@link List} of {@linkplain
-     * javax.lang.model.element.Element#getEnclosedElements() enclosed elements}.
-     *
-     * @param es elements that have already been enclosed and should not appear in the returned {@link List}; must not
-     * be {@code null}
-     *
-     * @return a determinate, unchanging and unmodifiable {@link List} of {@linkplain
-     * javax.lang.model.element.Element#getEnclosedElements() enclosed elements}; never {@code null}
-     *
-     * @exception NullPointerException if {@code es} is {@code null}
-     */
-    public <E extends javax.lang.model.element.Element & Encloseable> List<? extends E> generate(final List<? extends javax.lang.model.element.Element> es);
-    
+  public static final boolean canEnclose(final ElementKind k1, final ElementKind k2) {
+    return switch (k1) {
+    case MODULE -> k2 == ElementKind.PACKAGE;
+    case PACKAGE -> switch (k2) { case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> true; default -> false; };
+    case ANNOTATION_TYPE, CLASS, INTERFACE -> switch (k2) { case ANNOTATION_TYPE, CLASS, CONSTRUCTOR, ENUM, FIELD, INSTANCE_INIT, INTERFACE, METHOD, RECORD, STATIC_INIT -> true; default -> false; };
+    case ENUM -> switch (k2) { case ANNOTATION_TYPE, CLASS, CONSTRUCTOR, ENUM, ENUM_CONSTANT, FIELD, INSTANCE_INIT, INTERFACE, METHOD, RECORD, STATIC_INIT -> true; default -> false; };
+    case RECORD -> switch (k2) { case ANNOTATION_TYPE, CLASS, CONSTRUCTOR, ENUM, FIELD, INSTANCE_INIT, INTERFACE, METHOD, RECORD, RECORD_COMPONENT, STATIC_INIT -> true; default -> false; };
+    default -> false;
+    };
   }
 
 }
