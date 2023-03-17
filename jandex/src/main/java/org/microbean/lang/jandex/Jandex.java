@@ -615,7 +615,7 @@ public final class Jandex extends Modeler {
     for (final RequiredModuleInfo rmi : mi.requires()) {
       e.addDirective(new org.microbean.lang.element.ModuleElement.RequiresDirective(this.element(this.i.getModuleByName(rmi.name())), rmi.isStatic(), rmi.isTransitive()));
     }
-    
+
     for (final ExportedPackageInfo epi : mi.exports()) {
       final List<? extends DotName> epiTargets = epi.targets();
       final List<ModuleElement> targets = new ArrayList<>(epiTargets.size());
@@ -642,9 +642,9 @@ public final class Jandex extends Modeler {
       }
       e.addDirective(new org.microbean.lang.element.ModuleElement.ProvidesDirective(this.typeElement(psi.service()), providers));
     }
-    
+
     // TODO: other directives
-    
+
   }
 
   private final void build(final PackageInfo pi, final org.microbean.lang.element.PackageElement e) {
@@ -653,14 +653,14 @@ public final class Jandex extends Modeler {
     // Simple name.
     e.setSimpleName(pn.toString());
 
+    // Type.
+    e.setType(org.microbean.lang.type.NoType.PACKAGE);
+
     // Enclosing element.
     e.setEnclosingElement(this.element(this.i.getKnownModules().stream()
                                        .filter(m -> m.packages().contains(pn))
                                        .findFirst()
                                        .orElse(null)));
-
-    // Type.
-    e.setType(org.microbean.lang.type.NoType.PACKAGE);
 
     e.setEnclosedElementsGenerator(() -> this.i.getClassesInPackage(pn).forEach(this::element));
   }
@@ -668,6 +668,13 @@ public final class Jandex extends Modeler {
   private final void build(final ClassInfo ci, final org.microbean.lang.element.TypeElement e) {
     // Simple name.
     e.setSimpleName(ci.name().local());
+
+    // Type.
+    final org.microbean.lang.type.DeclaredType t = (org.microbean.lang.type.DeclaredType)this.type(ci);
+    e.setType(t);
+
+    // Defining element.
+    t.setDefiningElement(e);
 
     // Enclosing element.
     final Element enclosingElement;
@@ -695,13 +702,6 @@ public final class Jandex extends Modeler {
       throw new AssertionError();
     }
     e.setEnclosingElement(enclosingElement);
-
-    // Type.
-    final org.microbean.lang.type.DeclaredType t = (org.microbean.lang.type.DeclaredType)this.type(ci);
-    e.setType(t);
-
-    // Defining element.
-    t.setDefiningElement(e);
 
     // Modifiers.
     final short modifiers = ci.flags();
@@ -750,11 +750,11 @@ public final class Jandex extends Modeler {
     // Simple name.
     e.setSimpleName(fi.name());
 
-    // Enclosing element.
-    e.setEnclosingElement(this.element(fi.declaringClass()));
-
     // Type.
     e.setType(this.type(fi));
+
+    // Enclosing element.
+    e.setEnclosingElement(this.element(fi.declaringClass()));
 
     // Annotations.
     for (final AnnotationInstance ai : fi.declaredAnnotations()) {
@@ -768,14 +768,14 @@ public final class Jandex extends Modeler {
       e.setSimpleName(mi.name());
     }
 
+    // Type.
+    e.setType(this.type(mi));
+
     // Enclosing element.
     final TypeElement ee = this.element(mi.declaringClass());
     assert ee != null;
     e.setEnclosingElement(ee);
     assert e.getEnclosingElement() == ee : "e: " + e + "; ee: " + ee;
-
-    // Type.
-    e.setType(this.type(mi));
 
     // Modifiers.
     final short modifiers = mi.flags();
@@ -829,11 +829,11 @@ public final class Jandex extends Modeler {
     }
     e.setSimpleName(n);
 
-    // (No enclosing element.)
-    // e.setEnclosingElement(this.element(mpi.method())); // interestingly not supported by the javax.lang.model.* api
-
     // Type.
     e.setType(this.type(mpi));
+
+    // (No enclosing element.)
+    // e.setEnclosingElement(this.element(mpi.method())); // interestingly not supported by the javax.lang.model.* api
 
     for (final AnnotationInstance ai : mpi.declaredAnnotations()) {
       e.addAnnotationMirror(this.annotation(ai));
@@ -844,11 +844,11 @@ public final class Jandex extends Modeler {
     // Simple name.
     e.setSimpleName(r.name());
 
-    // Enclosing element.
-    e.setEnclosingElement(this.element(r));
-
     // Type.
     e.setType(this.type(r));
+
+    // Enclosing element.
+    e.setEnclosingElement(this.element(r));
 
     e.setAccessor((org.microbean.lang.element.ExecutableElement)this.element(r.declaringClass().method(r.name())));
 
@@ -861,6 +861,13 @@ public final class Jandex extends Modeler {
     // Simple name.
     e.setSimpleName(tpi.identifier());
 
+    // Type.
+    final org.microbean.lang.type.TypeVariable t = (org.microbean.lang.type.TypeVariable)this.type(tpi);
+    e.setType(t);
+
+    // Defining element.
+    t.setDefiningElement(e);
+
     // Enclosing element.
     switch (tpi.kind()) {
     case CLASS:
@@ -872,13 +879,6 @@ public final class Jandex extends Modeler {
     default:
       throw new AssertionError();
     }
-
-    // Type.
-    final org.microbean.lang.type.TypeVariable t = (org.microbean.lang.type.TypeVariable)this.type(tpi);
-    e.setType(t);
-
-    // Defining element.
-    t.setDefiningElement(e);
 
     for (final AnnotationInstance ai : tpi.typeVariable().annotations()) {
       // This is nice, in a way. We know all of these annotations will be type use annotations, because Jandex doesn't
@@ -909,13 +909,7 @@ public final class Jandex extends Modeler {
   private final void build(final TypeContext tc, final org.microbean.lang.type.DeclaredType t) {
     final Type tct = tc.type();
     final ClassInfo ci = this.classInfoFor(tct);
-    final org.microbean.lang.element.TypeElement e = (org.microbean.lang.element.TypeElement)this.element(ci);
-    // TODO: for some reason, e.asType() is null here. I thought build(ClassInfo, TypeElement) would always set it?  The
-    // cause is probably in build(ClassInfo, TypeElement) where the enclosing element (a package) is set before the type
-    // is set.
-    // When I uncomment this line, tests pass:
-    final org.microbean.lang.type.DeclaredType et = (org.microbean.lang.type.DeclaredType)this.type(ci);
-    t.setDefiningElement(e);
+    t.setDefiningElement(this.element(ci));
     switch (tct.kind()) {
     case CLASS:
       t.setEnclosingType(this.type(this.classInfoFor(ci.enclosingClass())));
