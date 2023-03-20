@@ -85,9 +85,10 @@ final class TestSupertypeVisitor {
     // Let's try it with our visitor.
 
     // Set up the fundamentals.
-    final Types types = new Types();
-    final EraseVisitor eraseVisitor = new EraseVisitor(types);
-    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(types, eraseVisitor);
+    final ElementSource es = n -> elements.getTypeElement(n);
+    final Types types = new Types(es);
+    final EraseVisitor eraseVisitor = new EraseVisitor(es, types);
+    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(es, types, eraseVisitor);
 
     final TypeMirror supertype = supertypeVisitor.visit(integerElementType);
 

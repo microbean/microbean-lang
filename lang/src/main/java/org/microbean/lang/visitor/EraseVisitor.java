@@ -27,6 +27,8 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
+import org.microbean.lang.ElementSource;
+
 import org.microbean.lang.type.DefineableType;
 import org.microbean.lang.type.Types;
 
@@ -35,8 +37,8 @@ public final class EraseVisitor extends StructuralTypeMapping<Boolean> {
 
   private final Types types;
 
-  public EraseVisitor(final Types types) {
-    super();
+  public EraseVisitor(final ElementSource elementSource, final Types types) {
+    super(elementSource);
     this.types = Objects.requireNonNull(types, "types");
   }
 

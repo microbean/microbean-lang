@@ -34,6 +34,8 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.ElementSource;
+
 import org.microbean.lang.element.DelegatingElement;
 
 import org.microbean.lang.type.Types;
@@ -61,6 +63,8 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
   // The compiler's implementation mutates this list.
   private final List<TypeMirror> to;
 
+  private final ElementSource elementSource;
+
   private final Types types;
 
   private final Map<DelegatingElement, TypeMirror> mapping;
@@ -71,12 +75,14 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
 
   private final Set<TypeMirrorPair> cache;
 
-  AdaptingVisitor(final Types types,
+  AdaptingVisitor(final ElementSource elementSource,
+                  final Types types,
                   final IsSameTypeVisitor isSameTypeVisitor,
                   final SubtypeVisitor subtypeVisitor,
                   final List<TypeVariable> from, // mutated
                   final List<TypeMirror> to) { // mutated
     super();
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.types = Objects.requireNonNull(types, "types");
     this.isSameTypeVisitor = Objects.requireNonNull(isSameTypeVisitor, "isSameTypeVisitor");
     this.subtypeVisitor = Objects.requireNonNull(subtypeVisitor, "subtypeVisitor");
@@ -90,7 +96,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
     this.visitDeclared(source, target);
     final int fromSize = this.from.size();
     for (int i = 0; i < fromSize; i++) {
-      final TypeMirror val = this.mapping.get(DelegatingElement.of(this.types.asElement(this.from.get(i), true)));
+      final TypeMirror val = this.mapping.get(DelegatingElement.of(this.types.asElement(this.from.get(i), true), this.elementSource));
       if (this.to.get(i) != val) {
         this.to.set(i, val);
       }
@@ -122,7 +128,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
   @Override
   public final Void visitTypeVariable(final TypeVariable source, final TypeMirror target) {
     assert source.getKind() == TypeKind.TYPEVAR;
-    final DelegatingElement sourceElement = DelegatingElement.of(source.asElement());
+    final DelegatingElement sourceElement = DelegatingElement.of(source.asElement(), this.elementSource);
     TypeMirror val = this.mapping.get(sourceElement);
     if (val == null) {
       val = target;

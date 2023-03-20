@@ -29,7 +29,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeMirror;
 
 // NOT thread safe
-public abstract class Modeler {
+public abstract class Modeler implements ElementSource {
 
   private final Map<Object, AnnotationMirror> annotations;
   

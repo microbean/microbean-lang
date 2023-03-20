@@ -30,6 +30,7 @@ import javax.lang.model.type.TypeVariable;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.Types;
@@ -37,6 +38,8 @@ import org.microbean.lang.type.Types;
 // Basically done
 public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends TypeMirror>, Void> {
 
+  private final ElementSource elementSource;
+  
   private final Equality equality;
 
   private final Types types;
@@ -45,11 +48,13 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
 
   private final SupertypeVisitor supertypeVisitor;
 
-  public InterfacesVisitor(final Equality equality,
+  public InterfacesVisitor(final ElementSource elementSource,
+                           final Equality equality,
                            final Types types,
                            final EraseVisitor eraseVisitor,
                            final SupertypeVisitor supertypeVisitor) {
     super(List.of());
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.eraseVisitor = Objects.requireNonNull(eraseVisitor, "eraseVisitor");
@@ -75,13 +80,13 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
         return this.eraseVisitor.visit(interfaces, true);
       }
       @SuppressWarnings("unchecked")
-      final List<? extends TypeVariable> formals =
-        (List<? extends TypeVariable>)this.types.allTypeArguments(this.types.declaredTypeMirror(t));
+      // final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)this.types.allTypeArguments(this.types.declaredTypeMirror(t));
+      final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)this.types.allTypeArguments(e.asType());
       if (formals.isEmpty()) {
         return interfaces;
       }
       assert this.supertypeVisitor.interfacesVisitor() == this;
-      return new SubstituteVisitor(this.equality, this.supertypeVisitor, formals, this.types.allTypeArguments(t))
+      return new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, formals, this.types.allTypeArguments(t))
         .visit(interfaces, x);
     default:
       return List.of();

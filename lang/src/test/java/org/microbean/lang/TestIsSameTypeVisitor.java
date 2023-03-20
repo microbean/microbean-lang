@@ -41,6 +41,8 @@ import org.junit.jupiter.api.Test;
 
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.microbean.lang.ElementSource;
+
 import org.microbean.lang.type.Types;
 
 import org.microbean.lang.visitor.ContainsTypeVisitor;
@@ -79,14 +81,15 @@ final class TestIsSameTypeVisitor {
     assertNotNull(javacTypes);
 
     // Set up the fundamentals.
-    final Types types = new Types();
-    final EraseVisitor eraseVisitor = new EraseVisitor(types);
-    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(types, eraseVisitor);
+    final ElementSource es = n -> elements.getTypeElement(n);
+    final Types types = new Types(es);
+    final EraseVisitor eraseVisitor = new EraseVisitor(es, types);
+    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(es, types, eraseVisitor);
 
     // These have cycles.
     final ContainsTypeVisitor containsTypeVisitor = new ContainsTypeVisitor(types);
-    final IsSameTypeVisitor isSameTypeVisitor = new IsSameTypeVisitor(containsTypeVisitor, supertypeVisitor, true);
-    final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(types, supertypeVisitor, isSameTypeVisitor);
+    final IsSameTypeVisitor isSameTypeVisitor = new IsSameTypeVisitor(es, containsTypeVisitor, supertypeVisitor, true);
+    final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(es, types, supertypeVisitor, isSameTypeVisitor);
     containsTypeVisitor.setSubtypeVisitor(subtypeVisitor);
     subtypeVisitor.setContainsTypeVisitor(containsTypeVisitor);
 

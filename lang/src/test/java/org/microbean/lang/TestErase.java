@@ -41,6 +41,8 @@ import org.junit.jupiter.api.Test;
 
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.microbean.lang.ElementSource;
+
 import org.microbean.lang.type.Types;
 
 import org.microbean.lang.visitor.EraseVisitor;
@@ -87,7 +89,6 @@ final class TestErase {
     assertSame(TypeKind.DECLARED, comparableIntegerType.getKind()); // ...which is kind of weird when you think about it
 
     List<? extends TypeMirror> typeArguments = comparableIntegerType.getTypeArguments();
-    // System.out.println("*** type arguments: " + typeArguments);
 
     // Cannot rely on identity for some reason:
     // assertSame(integerElementType, typeArguments.get(0));
@@ -104,12 +105,13 @@ final class TestErase {
 
     // Now do it with our stuff.
 
-    final Types types = new Types();
+    final ElementSource es = n -> elements.getTypeElement(n);
+    final Types types = new Types(es);
 
     // Make sure our stuff thinks the javac erasure is raw.
     assertTrue(types.raw(erasure));
 
-    final EraseVisitor eraseVisitor = new EraseVisitor(types);
+    final EraseVisitor eraseVisitor = new EraseVisitor(es, types);
     erasure = (DeclaredType)eraseVisitor.visit(comparableIntegerType);
     typeArguments = erasure.getTypeArguments();
     assertEquals(0, typeArguments.size());

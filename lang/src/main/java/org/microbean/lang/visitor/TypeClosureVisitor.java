@@ -28,7 +28,11 @@ import javax.lang.model.type.TypeVariable;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.ElementSource;
+
 public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, Void> {
+
+  private final ElementSource elementSource;
 
   // @GuardedBy("itself")
   private final WeakHashMap<TypeMirror, TypeClosure> closureCache;
@@ -37,8 +41,9 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
 
   private final PrecedesPredicate precedesPredicate;
 
-  public TypeClosureVisitor(final SupertypeVisitor supertypeVisitor, final PrecedesPredicate precedesPredicate) {
+  public TypeClosureVisitor(final ElementSource elementSource, final SupertypeVisitor supertypeVisitor, final PrecedesPredicate precedesPredicate) {
     super();
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
     this.precedesPredicate = Objects.requireNonNull(precedesPredicate, "precedesPredicate");
     this.closureCache = new WeakHashMap<>();
@@ -108,7 +113,7 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
           closure.prepend((TypeVariable)t); // reflexive
           break;
         case NONE:
-          closure = new TypeClosure(this.precedesPredicate);
+          closure = new TypeClosure(this.elementSource, this.precedesPredicate);
           assert t.getKind() == TypeKind.DECLARED; // ...i.e. not TYPEVAR
           closure.union(t); // reflexive
           break;

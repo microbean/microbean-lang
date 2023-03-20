@@ -34,6 +34,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
@@ -42,6 +43,8 @@ import org.microbean.lang.type.DelegatingTypeMirror;
 // NOT THREADSAFE
 public final class TypeClosure {
 
+  private final ElementSource elementSource;
+
   // DelegatingTypeMirror so things like list.contains(t) will work with arbitrary TypeMirror implementations
   private final Deque<DelegatingTypeMirror> deque;
 
@@ -49,17 +52,19 @@ public final class TypeClosure {
 
   private final BiPredicate<? super Element, ? super Element> equalsPredicate;
 
-  TypeClosure(final SupertypeVisitor supertypeVisitor, final SubtypeVisitor subtypeVisitor) {
-    this(new PrecedesPredicate(supertypeVisitor, subtypeVisitor), null);
+  TypeClosure(final ElementSource elementSource, final SupertypeVisitor supertypeVisitor, final SubtypeVisitor subtypeVisitor) {
+    this(elementSource, new PrecedesPredicate(supertypeVisitor, subtypeVisitor), null);
   }
 
-  TypeClosure(final BiPredicate<? super Element, ? super Element> precedesPredicate) {
-    this(precedesPredicate, null);
+  TypeClosure(final ElementSource elementSource, final BiPredicate<? super Element, ? super Element> precedesPredicate) {
+    this(elementSource, precedesPredicate, null);
   }
 
-  TypeClosure(final BiPredicate<? super Element, ? super Element> precedesPredicate,
+  TypeClosure(final ElementSource elementSource,
+              final BiPredicate<? super Element, ? super Element> precedesPredicate,
               final BiPredicate<? super Element, ? super Element> equalsPredicate) {
     super();
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.deque = new ArrayDeque<>(10);
     this.precedesPredicate = Objects.requireNonNull(precedesPredicate, "precedesPredicate");
     this.equalsPredicate = equalsPredicate == null ? Equality::equalsIncludingAnnotations : equalsPredicate;
@@ -82,7 +87,7 @@ public final class TypeClosure {
 
     final DelegatingTypeMirror head = this.deque.peekFirst();
     if (head == null) {
-      this.deque.addFirst(DelegatingTypeMirror.of(t));
+      this.deque.addFirst(DelegatingTypeMirror.of(t, this.elementSource));
       return;
     }
 
@@ -100,10 +105,10 @@ public final class TypeClosure {
 
     if (!this.equalsPredicate.test(e, headE)) {
       if (this.precedesPredicate.test(e, headE)) {
-        this.deque.addFirst(DelegatingTypeMirror.of(t));
+        this.deque.addFirst(DelegatingTypeMirror.of(t, this.elementSource));
       } else if (this.deque.size() == 1) {
         // No need to recurse and get fancy; just add last
-        this.deque.addLast(DelegatingTypeMirror.of(t));
+        this.deque.addLast(DelegatingTypeMirror.of(t, this.elementSource));
       } else {
         this.deque.removeFirst(); // returns head
         this.union(t); // RECURSIVE
@@ -134,7 +139,7 @@ public final class TypeClosure {
         switch (t.getKind()) {
         case DECLARED:
         case TYPEVAR:
-          this.deque.addLast(DelegatingTypeMirror.of(t));
+          this.deque.addLast(DelegatingTypeMirror.of(t, this.elementSource));
           break;
         default:
           throw new IllegalArgumentException("t: " + t);
@@ -176,7 +181,7 @@ public final class TypeClosure {
       this.deque.addFirst(head1); // put head1 back
     } else if (this.precedesPredicate.test(head2E, head1E)) {
       this.union(list.subList(1, size)); // RECURSIVE
-      this.deque.addFirst(DelegatingTypeMirror.of(head2));
+      this.deque.addFirst(DelegatingTypeMirror.of(head2, this.elementSource));
     } else {
       this.deque.removeFirst(); // removes head1
       this.union(list); // RECURSIVE
@@ -190,7 +195,7 @@ public final class TypeClosure {
     if (t.getKind() != TypeKind.TYPEVAR) {
       throw new IllegalArgumentException("t: " + t);
     }
-    this.deque.addFirst(DelegatingTypeMirror.of(t));
+    this.deque.addFirst(DelegatingTypeMirror.of(t, this.elementSource));
   }
 
   // Port of javac's Types#closureMin(List<Type>)
@@ -205,7 +210,7 @@ public final class TypeClosure {
 
     for (int i = 0, next = 1; i < size; i++, next++) {
       final TypeMirror current = array[i];
-      boolean keep = !toSkip.contains(DelegatingTypeMirror.of(current));
+      boolean keep = !toSkip.contains(DelegatingTypeMirror.of(current, this.elementSource));
       if (keep && current.getKind() == TypeKind.TYPEVAR && next < size) {
         for (int j = next; j < size; j++) {
           if (subtypeVisitor.withCapture(false).visit(array[j], current)) {
@@ -228,7 +233,7 @@ public final class TypeClosure {
             if (subtypeVisitor.withCapture(false).visit(current, t)) {
               // As we're processing this.list, we can skip supertypes of current (t, here) because we know current is
               // already more specialized than they are.
-              toSkip.add(DelegatingTypeMirror.of(t));
+              toSkip.add(DelegatingTypeMirror.of(t, this.elementSource));
             }
           }
         }

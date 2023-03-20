@@ -27,23 +27,28 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVisitor;
 
+import org.microbean.lang.ElementSource;
+
 public non-sealed class TypeVariable extends DefineableType<TypeParameterElement> implements javax.lang.model.type.TypeVariable {
+
+  private final ElementSource elementSource;
 
   private TypeMirror upperBound;
 
   private TypeMirror lowerBound;
 
-  public TypeVariable() {
+  public TypeVariable(final ElementSource elementSource) {
     super(TypeKind.TYPEVAR);
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
   }
 
-  public TypeVariable(final TypeMirror upperBound) {
-    this();
+  public TypeVariable(final ElementSource elementSource, final TypeMirror upperBound) {
+    this(elementSource);
     this.setUpperBound(upperBound);
   }
 
-  public TypeVariable(final TypeMirror upperBound, final TypeMirror lowerBound) {
-    this();
+  public TypeVariable(final ElementSource elementSource, final TypeMirror upperBound, final TypeMirror lowerBound) {
+    this(elementSource);
     this.setUpperBound(upperBound);
     this.setLowerBound(lowerBound);
   }
@@ -68,7 +73,7 @@ public non-sealed class TypeVariable extends DefineableType<TypeParameterElement
   @Override // TypeVariable
   public final TypeMirror getUpperBound() {
     final TypeMirror t = this.upperBound;
-    return t == null ? Types.JAVA_LANG_OBJECT_TYPE : t;
+    return t == null ? this.elementSource.element("java.lang.Object").asType() : t;
   }
 
   public final void setUpperBound(final TypeMirror upperBound) {
@@ -125,20 +130,7 @@ public non-sealed class TypeVariable extends DefineableType<TypeParameterElement
 
 
   private static final TypeMirror validateLowerBound(final TypeMirror lowerBound) {
-    if (lowerBound == null) {
-      return NullType.INSTANCE;
-    }
-    return lowerBound;
-  }
-
-  public static final TypeVariable of(final TypeVariable tv) {
-    if (tv instanceof TypeVariable dtv) {
-      return dtv;
-    }
-    final TypeVariable r = new TypeVariable(tv.getUpperBound(), tv.getLowerBound());
-    r.addAnnotationMirrors(tv.getAnnotationMirrors());
-    r.setDefiningElement((TypeParameterElement)tv.asElement());
-    return r;
+    return lowerBound == null ? NullType.INSTANCE : lowerBound;
   }
 
 }

@@ -32,6 +32,7 @@ import javax.lang.model.type.TypeVariable;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.element.DelegatingElement;
@@ -46,6 +47,8 @@ final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
   private final Set<DelegatingElement> seenTypes; // in the compiler, the field is called seenTypes but stores Symbols (Elements).
 
+  private final ElementSource elementSource;
+
   private final Equality equality;
 
   private final Types types;
@@ -54,12 +57,14 @@ final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
   private final SubtypeVisitor subtypeVisitor;
 
-  AsSuperVisitor(final Equality equality,
+  AsSuperVisitor(final ElementSource elementSource,
+                 final Equality equality,
                  final Types types,
                  final SupertypeVisitor supertypeVisitor,
                  final SubtypeVisitor subtypeVisitor) {
     super();
     this.seenTypes = new HashSet<>();
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
@@ -109,7 +114,7 @@ final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
       if (this.equality.equals(te, sym)) {
         return t;
       }
-      final DelegatingElement c = DelegatingElement.of(te);
+      final DelegatingElement c = DelegatingElement.of(te, this.elementSource);
       if (this.seenTypes.add(c)) {
         try {
           final TypeMirror st = this.supertypeVisitor.visit(t);

@@ -36,10 +36,12 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.UnionType;
 import javax.lang.model.type.WildcardType;
 
+import org.microbean.lang.ElementSource;
+
 public final class ValidatingVisitor extends StructuralTypeMapping<Void> {
 
-  public ValidatingVisitor() {
-    super();
+  public ValidatingVisitor(final ElementSource elementSource) {
+    super(elementSource);
   }
   
   @Override // SimpleTypeVisitor6

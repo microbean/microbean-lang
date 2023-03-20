@@ -33,6 +33,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 final class SubstituteVisitor extends StructuralTypeMapping<Void> {
@@ -57,11 +58,12 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
    */
 
 
-  SubstituteVisitor(final Equality equality,
+  SubstituteVisitor(final ElementSource elementSource,
+                    final Equality equality,
                     final SupertypeVisitor supertypeVisitor,
                     List<? extends TypeMirror> from,
                     List<? extends TypeMirror> to) {
-    super();
+    super(elementSource);
     this.equality = equality == null ? new Equality(false) : equality;
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
     // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3321-L3322
@@ -91,7 +93,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
 
   final SubstituteVisitor with(final List<? extends TypeMirror> from,
                                final List<? extends TypeMirror> to) {
-    return new SubstituteVisitor(this.equality, this.supertypeVisitor, from, to);
+    return new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, from, to);
   }
 
   // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3382-L3411
@@ -226,7 +228,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
       // we do too.
 
       // Create a new TypeVariable whose upper bound is the just-visited upper bound.
-      final org.microbean.lang.type.TypeVariable newTv = new org.microbean.lang.type.TypeVariable(visitedUpperBound, tv.getLowerBound());
+      final org.microbean.lang.type.TypeVariable newTv = new org.microbean.lang.type.TypeVariable(this.elementSource, visitedUpperBound, tv.getLowerBound());
       newTv.setDefiningElement((TypeParameterElement)tv.asElement());
 
       // Replace the type variable at position i (the very one we're looking at) with the new, newly-bounded type
@@ -281,7 +283,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
     // and doctored in phase 3.
     for (int i = 0; i < newTvs.size(); i++) {
       final org.microbean.lang.type.TypeVariable upperBoundlessTv = newTvs.get(i);
-      final org.microbean.lang.type.TypeVariable newTv = new org.microbean.lang.type.TypeVariable(visitedUpperBounds.get(i), upperBoundlessTv.getLowerBound());
+      final org.microbean.lang.type.TypeVariable newTv = new org.microbean.lang.type.TypeVariable(this.elementSource, visitedUpperBounds.get(i), upperBoundlessTv.getLowerBound());
       newTv.setDefiningElement((TypeParameterElement)upperBoundlessTv.asElement());
       newTvs.set(i, newTv);
     }

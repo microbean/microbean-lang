@@ -55,6 +55,7 @@ public final class ByteBuddy extends Modeler {
 
   public Element element(final Object k) {
     return switch (k) {
+    case String s -> this.element(s);
     case CharSequence cs -> this.element(this.typePool.describe(cs.toString()).resolve()); // RECURSIVE
     case MethodDescription.InDefinedShape mdids -> this.element(mdids, () -> new org.microbean.lang.element.ExecutableElement(elementKind(mdids)), this::build);
     case PackageDescription pd -> this.element(pd, org.microbean.lang.element.PackageElement::new, this::build);
@@ -62,6 +63,11 @@ public final class ByteBuddy extends Modeler {
     case TypeDescription td -> this.element(td, () -> new org.microbean.lang.element.TypeElement(elementKind(td), nestingKind(td)), this::build);
     default -> throw new IllegalArgumentException("k: " + k + "; k.getClass(): " + k.getClass());
     };
+  }
+
+  @Override // ElementSource
+  public Element element(final String n) {
+    return this.element(this.typePool.describe(n).resolve());
   }
 
   public TypeMirror type(final Object k) {

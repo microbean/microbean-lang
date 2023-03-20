@@ -373,6 +373,7 @@ public final class Jandex extends Modeler {
     return ci == null ? null : this.element(ci);
   }
 
+  @Override // Modeler
   public final Element element(final String n) {
     final ClassInfo ci = this.classInfoFor(n);
     return ci == null ? null : this.element(ci);
@@ -478,7 +479,7 @@ public final class Jandex extends Modeler {
     case PRIMITIVE:
       return this.type(fi, () -> new org.microbean.lang.type.PrimitiveType(kind(t.asPrimitiveType())), this::build);
     case TYPE_VARIABLE:
-      return this.type(fi, org.microbean.lang.type.TypeVariable::new, this::build);
+      return this.type(fi, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
     case TYPE_VARIABLE_REFERENCE:
     case UNRESOLVED_TYPE_VARIABLE:
     case VOID:
@@ -506,7 +507,7 @@ public final class Jandex extends Modeler {
     case PRIMITIVE:
       return this.type(mpi, () -> new org.microbean.lang.type.PrimitiveType(kind(t.asPrimitiveType())), this::build);
     case TYPE_VARIABLE:
-      return this.type(mpi, org.microbean.lang.type.TypeVariable::new, this::build);
+      return this.type(mpi, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
     case TYPE_VARIABLE_REFERENCE:
     case UNRESOLVED_TYPE_VARIABLE:
     case VOID:
@@ -530,7 +531,7 @@ public final class Jandex extends Modeler {
     case PRIMITIVE:
       return this.type(rci, () -> new org.microbean.lang.type.PrimitiveType(kind(t.asPrimitiveType())), this::build);
     case TYPE_VARIABLE:
-      return this.type(rci, org.microbean.lang.type.TypeVariable::new, this::build);
+      return this.type(rci, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
     case TYPE_VARIABLE_REFERENCE:
     case UNRESOLVED_TYPE_VARIABLE:
     case VOID:
@@ -576,7 +577,7 @@ public final class Jandex extends Modeler {
   }
 
   public final javax.lang.model.type.TypeVariable type(final TypeParameterInfo tpi) {
-    return tpi == null ? null : (org.microbean.lang.type.TypeVariable)this.type(tpi, org.microbean.lang.type.TypeVariable::new, this::build);
+    return tpi == null ? null : (org.microbean.lang.type.TypeVariable)this.type(tpi, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
   }
 
 
@@ -747,7 +748,13 @@ public final class Jandex extends Modeler {
       e.addTypeParameter((org.microbean.lang.element.TypeParameterElement)this.element(new TypeParameterInfo(ci, tp)));
     }
 
-    e.setEnclosedElementsGenerator(new ClassInfoEnclosedElementsGenerator(ci));
+    e.setEnclosedElementsGenerator(() -> {
+        ci.constructors().forEach(this::element);
+        ci.unsortedRecordComponents().forEach(this::element);
+        ci.unsortedFields().forEach(this::element);
+        ci.unsortedMethods().forEach(this::element);
+        ci.memberClasses().forEach(this::element);
+      });
 
     for (final AnnotationInstance ai : ci.declaredAnnotations()) {
       e.addAnnotationMirror(this.annotation(ai));
@@ -1478,27 +1485,6 @@ public final class Jandex extends Modeler {
       TYPE_ARGUMENT, // e.g. the "String" in "public class Foo extends Bar<@Baz String> {}"
       COMPONENT_TYPE; // e.g. "@Baz"-annotated "[]" in "@Qux String @Bar [] @Baz []"
 
-    }
-
-  }
-
-  private final class ClassInfoEnclosedElementsGenerator implements Runnable {
-
-    private final ClassInfo ci;
-
-    private ClassInfoEnclosedElementsGenerator(final ClassInfo ci) {
-      super();
-      this.ci = Objects.requireNonNull(ci, "ci");
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public final void run() {
-      ci.constructors().forEach(Jandex.this::element);
-      ci.unsortedRecordComponents().forEach(Jandex.this::element);
-      ci.unsortedFields().forEach(Jandex.this::element);
-      ci.unsortedMethods().forEach(Jandex.this::element);
-      ci.memberClasses().forEach(Jandex.this::element);
     }
 
   }

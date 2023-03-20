@@ -42,6 +42,7 @@ import javax.lang.model.element.VariableElement;
 
 import javax.lang.model.type.TypeMirror;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
@@ -57,17 +58,20 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   private final Element delegate;
 
+  private final ElementSource elementSource;
+
   private final Equality ehc;
-  
-  
+
+
   /*
    * Constructors.
    */
 
 
-  private DelegatingElement(final Element delegate, final Equality ehc) {
+  private DelegatingElement(final Element delegate, final ElementSource elementSource, final Equality ehc) {
     super();
     this.delegate = Objects.requireNonNull(delegate, "delegate");
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.ehc = ehc == null ? new Equality(true) : ehc;
   }
 
@@ -249,12 +253,12 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ExecutableElement
   public final TypeMirror getReceiverType() {
-    return DelegatingTypeMirror.of(this.asType()).getReceiverType();
+    return DelegatingTypeMirror.of(this.asType(), this.elementSource).getReceiverType();
   }
 
   @Override // ExecutableElement
   public final TypeMirror getReturnType() {
-    return DelegatingTypeMirror.of(this.asType()).getReturnType();
+    return DelegatingTypeMirror.of(this.asType(), this.elementSource).getReturnType();
   }
 
   @Override // Element
@@ -278,7 +282,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ExecutableElement
   public final List<? extends TypeMirror> getThrownTypes() {
-    return DelegatingTypeMirror.of(this.asType()).getThrownTypes();
+    return DelegatingTypeMirror.of(this.asType(), this.elementSource).getThrownTypes();
   }
 
   @Override // ExecutableElement
@@ -362,12 +366,12 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
    */
 
 
-  public static final DelegatingElement of(final Element e) {
-    return of(e, null);
+  public static final DelegatingElement of(final Element e, final ElementSource elementSource) {
+    return of(e, elementSource, null);
   }
 
-  public static final DelegatingElement of(final Element e, final Equality ehc) {
-    return e instanceof DelegatingElement d ? d : new DelegatingElement(e, ehc);
+  public static final DelegatingElement of(final Element e, final ElementSource elementSource, final Equality ehc) {
+    return e instanceof DelegatingElement d ? d : new DelegatingElement(e, elementSource, ehc);
   }
 
 }

@@ -111,9 +111,8 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
     assert w.getKind() == TypeKind.WILDCARD;
     switch (s.getKind()) {
     case TYPEVAR:
-      // Return true if s is a SyntheticCapturedType that captures w,
-      // which just means that the wildcard that s captures is the
-      // same one as w.
+      // Return true if s is a Capture that captures w, which just means that the wildcard that s captures is the same
+      // one as w.
       return s instanceof Capture sct && this.visitWildcard(w, sct.getWildcardType());
     case WILDCARD:
       return this.visitWildcard(w, (WildcardType)s);

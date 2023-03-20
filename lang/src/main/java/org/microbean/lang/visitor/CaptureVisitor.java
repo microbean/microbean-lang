@@ -33,6 +33,7 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.Capture;
@@ -43,6 +44,8 @@ import org.microbean.lang.type.Types;
 // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4388-L4456
 final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
 
+  private final ElementSource elementSource;
+  
   private final Equality equality;
 
   private final Types types;
@@ -55,13 +58,15 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
 
   private final TypeClosureVisitor typeClosureVisitor;
 
-  CaptureVisitor(final Equality equality,
+  CaptureVisitor(final ElementSource elementSource,
+                 final Equality equality,
                  final Types types,
                  final SupertypeVisitor supertypeVisitor,
                  final SubtypeVisitor subtypeVisitor,
                  final MemberTypeVisitor memberTypeVisitor,
                  final TypeClosureVisitor typeClosureVisitor) {
     super();
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
@@ -88,7 +93,8 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
       if (capturedEnclosingType != enclosingType) {
         final Element element = t.asElement();
         final TypeMirror memberType = this.memberTypeVisitor.visit(capturedEnclosingType, element);
-        t = (DeclaredType)new SubstituteVisitor(this.equality,
+        t = (DeclaredType)new SubstituteVisitor(this.elementSource,
+                                                this.equality,
                                                 this.supertypeVisitor,
                                                 ((DeclaredType)element.asType()).getTypeArguments(),
                                                 t.getTypeArguments())
@@ -104,7 +110,8 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
     }
 
     // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4399-L4401
-    if (this.types.raw(t) || !this.types.parameterized(t)) {
+    if (this.types.allTypeArguments(t).isEmpty() || this.types.raw(t)) {
+    // if (this.types.raw(t) || !this.types.parameterized(t)) {
       // (Suppose somehow t were an intersection type (which gets modeled as a ClassType as well in javac). t would then
       // be considered to be raw following the rules of javac (not sure about the language specification; the two
       // frequently diverge). So it is accurate for this visitor not to implement visitIntersection().)
@@ -112,7 +119,8 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
     }
 
     // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4403-L4406
-    final DeclaredType G = this.types.declaredTypeMirror(t);
+    // final DeclaredType G = this.types.declaredTypeMirror(t);
+    final DeclaredType G = (DeclaredType)t.asElement().asType();
     final List<? extends TypeVariable> A = (List<? extends TypeVariable>)G.getTypeArguments();
     final List<? extends TypeMirror> T = t.getKind() == TypeKind.DECLARED ? ((DeclaredType)t).getTypeArguments() : List.of();
     final List<? extends TypeMirror> S = withFreshCapturedTypeVariables(T);
@@ -130,17 +138,17 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
         captured = true;
         TypeMirror Ui = currentAHead.getUpperBound();
         if (Ui == null) {
-          Ui = Types.JAVA_LANG_OBJECT_TYPE;
+          Ui = this.elementSource.element("java.lang.Object").asType();
         }
         final Capture Si = (Capture)currentSHead;
         final WildcardType Ti = (WildcardType)currentTHead;
         Si.setLowerBound(Ti.getSuperBound());
         final TypeMirror TiExtendsBound = Ti.getExtendsBound();
         if (TiExtendsBound == null) {
-          Si.setUpperBound(new SubstituteVisitor(this.equality, this.supertypeVisitor, A, S).visit(Ui));
+          Si.setUpperBound(new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, A, S).visit(Ui));
         } else {
           // TiExtendsBound can be DECLARED, INTERSECTION or TYPEVAR
-          Si.setUpperBound(glb(TiExtendsBound, new SubstituteVisitor(this.equality, this.supertypeVisitor, A, S).visit(Ui)));
+          Si.setUpperBound(glb(TiExtendsBound, new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, A, S).visit(Ui)));
         }
       }
     }
@@ -229,7 +237,7 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
     final int size = minimumTypes.size();
     switch (size) {
     case 0:
-      return Types.JAVA_LANG_OBJECT_TYPE;
+      return this.elementSource.element("java.lang.Object").asType();
     case 1:
       return minimumTypes.get(0);
     }

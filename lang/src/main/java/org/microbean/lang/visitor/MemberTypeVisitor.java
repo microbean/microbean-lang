@@ -31,6 +31,7 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.Types;
@@ -39,6 +40,8 @@ import org.microbean.lang.type.Types;
 // https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2294-L2340
 final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
+  private final ElementSource elementSource;
+  
   private final Equality equality;
 
   private final Types types;
@@ -49,12 +52,14 @@ final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
   private final SupertypeVisitor supertypeVisitor;
 
-  MemberTypeVisitor(final Equality equality,
+  MemberTypeVisitor(final ElementSource elementSource,
+                    final Equality equality,
                     final Types types,
                     final AsSuperVisitor asSuperVisitor,
                     final EraseVisitor eraseVisitor,
                     final SupertypeVisitor supertypeVisitor) {
     super();
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.asSuperVisitor = Objects.requireNonNull(asSuperVisitor, "asSuperVisitor");
@@ -78,24 +83,23 @@ final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
     if (!this.types.isStatic(e)) {
       final Element enclosingElement = e.getEnclosingElement();
       final TypeMirror enclosingType = enclosingElement.asType();
-      if (this.types.parameterized(enclosingType)) {
+      final List<? extends TypeMirror> enclosingTypeTypeArguments = this.types.allTypeArguments(enclosingType);
+      if (!enclosingTypeTypeArguments.isEmpty()) {
         assert enclosingType.getKind() == TypeKind.DECLARED;
         assert enclosingType instanceof DeclaredType;
         final TypeMirror baseType = this.asSuperVisitor.asOuterSuper(t, enclosingElement);
         if (baseType != null) {
-          final List<? extends TypeMirror> enclosingTypeTypeArguments = this.types.allTypeArguments(enclosingType);
-          if (!enclosingTypeTypeArguments.isEmpty()) {
-            final List<? extends TypeMirror> baseTypeTypeArguments = this.types.allTypeArguments(baseType);
-            if (baseTypeTypeArguments.isEmpty()) {
-              // baseType is raw
-              return this.eraseVisitor.visit(e.asType());
-            } else {
-              return new SubstituteVisitor(this.equality,
-                                           this.supertypeVisitor,
-                                           enclosingTypeTypeArguments,
-                                           baseTypeTypeArguments)
-                .visit(e.asType());
-            }
+          final List<? extends TypeMirror> baseTypeTypeArguments = this.types.allTypeArguments(baseType);
+          if (baseTypeTypeArguments.isEmpty()) {
+            // baseType is raw
+            return this.eraseVisitor.visit(e.asType());
+          } else {
+            return new SubstituteVisitor(this.elementSource,
+                                         this.equality,
+                                         this.supertypeVisitor,
+                                         enclosingTypeTypeArguments,
+                                         baseTypeTypeArguments)
+              .visit(e.asType());
           }
         }
       }

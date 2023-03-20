@@ -39,6 +39,7 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.Types;
@@ -46,6 +47,8 @@ import org.microbean.lang.type.Types;
 // Basically done
 // See https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1109-L1238
 public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
+
+  private final ElementSource elementSource;
 
   private final Equality equality;
 
@@ -63,25 +66,29 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   AsSuperVisitor asSuperVisitor;
 
-  public SubtypeVisitor(final Types types,
-                        final SupertypeVisitor supertypeVisitor,
-                        final IsSameTypeVisitor isSameTypeVisitor) {
-    this(null, types, supertypeVisitor, isSameTypeVisitor);
-  }
-  
-  public SubtypeVisitor(final Equality equality,
+  public SubtypeVisitor(final ElementSource elementSource,
                         final Types types,
                         final SupertypeVisitor supertypeVisitor,
                         final IsSameTypeVisitor isSameTypeVisitor) {
-    this(equality, types, supertypeVisitor, isSameTypeVisitor, true);
+    this(elementSource, null, types, supertypeVisitor, isSameTypeVisitor);
   }
 
-  public SubtypeVisitor(final Equality equality,
+  public SubtypeVisitor(final ElementSource elementSource,
+                        final Equality equality,
+                        final Types types,
+                        final SupertypeVisitor supertypeVisitor,
+                        final IsSameTypeVisitor isSameTypeVisitor) {
+    this(elementSource, equality, types, supertypeVisitor, isSameTypeVisitor, true);
+  }
+
+  public SubtypeVisitor(final ElementSource elementSource,
+                        final Equality equality,
                         final Types types,
                         final SupertypeVisitor supertypeVisitor,
                         final IsSameTypeVisitor isSameTypeVisitor,
                         final boolean capture) {
     super(Boolean.FALSE);
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
@@ -102,7 +109,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
       return this;
     }
     final SubtypeVisitor subtypeVisitor =
-      new SubtypeVisitor(this.equality, this.types, this.supertypeVisitor, isSameTypeVisitor, capture);
+      new SubtypeVisitor(this.elementSource, this.equality, this.types, this.supertypeVisitor, isSameTypeVisitor, capture);
     subtypeVisitor.containsTypeVisitor = this.containsTypeVisitor;
     subtypeVisitor.asSuperVisitor = this.asSuperVisitor;
     return subtypeVisitor;
@@ -126,7 +133,9 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
       if (tct.getKind().isPrimitive()) {
         return this.isSameTypeVisitor.visit(tct, sct);
       } else if (this.capture) {
-        return new SubtypeVisitor(this.equality, this.types, this.supertypeVisitor, this.isSameTypeVisitor, false).visit(tct, sct);
+        return
+          new SubtypeVisitor(this.elementSource, this.equality, this.types, this.supertypeVisitor, this.isSameTypeVisitor, false)
+          .visit(tct, sct);
       } else {
         return this.visit(tct, sct);
       }
@@ -152,7 +161,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   private final Boolean visitDeclaredOrIntersection(final TypeMirror t, final TypeMirror s) {
     assert t.getKind() == TypeKind.DECLARED || t.getKind() == TypeKind.INTERSECTION;
-    final TypeMirror sup = this.asSuperVisitor.visit(t, this.types.asElement(s, true));
+    final TypeMirror sup = this.asSuperVisitor.visit(t, this.types.asElement(s, true /* yes, generate synthetic elements */));
     if (sup == null) {
       return false;
     } else if (sup.getKind() != TypeKind.DECLARED) {
@@ -166,7 +175,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     final DeclaredType sDt = (DeclaredType)s;
     return
       supDt.asElement() == sDt.asElement() &&
-      (!this.types.parameterized(sDt) || this.containsTypeRecursive(sDt, supDt)) &&
+      (this.types.allTypeArguments(sDt).isEmpty() || this.containsTypeRecursive(sDt, supDt)) &&
       this.withCapture(false).visit(supDt.getEnclosingType(), sDt.getEnclosingType());
   }
 
@@ -328,10 +337,10 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   private final TypeMirror rewriteSupers(final TypeMirror t) {
     // I guess t could be an ArrayType (i.e. generic array type)
-    if (this.types.parameterized(t)) {
+    if (!this.types.allTypeArguments(t).isEmpty()) {
       List<TypeVariable> from = new ArrayList<>();
       List<TypeMirror> to = new ArrayList<>();
-      new AdaptingVisitor(this.types, this.isSameTypeVisitor, this, from, to).adaptSelf((DeclaredType)t);
+      new AdaptingVisitor(this.elementSource, this.types, this.isSameTypeVisitor, this, from, to).adaptSelf((DeclaredType)t);
       if (!from.isEmpty()) {
         final List<TypeMirror> rewrite = new ArrayList<>();
         boolean changed = false;
@@ -358,7 +367,12 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
         }
         if (changed) {
           // (If t is a DeclaredType or a TypeVariable, call asElement().asType() and visit that.)
-          return new SubstituteVisitor(this.equality, this.supertypeVisitor, from, rewrite).visit(this.types.declaredTypeMirror(t));
+          return new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, from, rewrite)
+            .visit(switch (t.getKind()) {
+              case DECLARED -> ((DeclaredType)t).asElement().asType();
+              case TYPEVAR -> ((TypeVariable)t).asElement().asType();
+              default -> t;
+              });
         }
       }
     }

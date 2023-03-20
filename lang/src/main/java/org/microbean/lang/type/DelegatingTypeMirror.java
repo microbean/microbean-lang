@@ -38,6 +38,7 @@ import javax.lang.model.type.TypeVisitor;
 import javax.lang.model.type.UnionType;
 import javax.lang.model.type.WildcardType;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.NoType;
@@ -45,14 +46,17 @@ import org.microbean.lang.type.Types;
 
 public final class DelegatingTypeMirror implements ArrayType, ErrorType, ExecutableType, IntersectionType, javax.lang.model.type.NoType, NullType, PrimitiveType, TypeVariable, UnionType, WildcardType {
 
+  private final ElementSource elementSource;
+
   private final TypeMirror delegate;
 
   // private final BiFunction<? super DelegatingTypeMirror, ? super TypeMirror, ? extends Boolean> equals;
   private final Equality ehc;
 
-  private DelegatingTypeMirror(final TypeMirror delegate, final Equality ehc) {
+  private DelegatingTypeMirror(final TypeMirror delegate, final ElementSource elementSource, final Equality ehc) {
     super();
     this.delegate = Objects.requireNonNull(delegate, "delegate");
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.ehc = ehc == null ? new Equality(true) : ehc;
   }
 
@@ -76,7 +80,7 @@ public final class DelegatingTypeMirror implements ArrayType, ErrorType, Executa
   public final TypeMirror delegate() {
     return this.delegate;
   }
-  
+
   @Override // UnionType
   public final List<? extends TypeMirror> getAlternatives() {
     switch (this.delegate.getKind()) {
@@ -163,7 +167,7 @@ public final class DelegatingTypeMirror implements ArrayType, ErrorType, Executa
     case TYPEVAR:
       return ((TypeVariable)this.delegate).getUpperBound();
     default:
-      return Types.JAVA_LANG_OBJECT_TYPE;
+      return this.elementSource.element("java.lang.Object").asType();
     }
   }
 
@@ -258,15 +262,15 @@ public final class DelegatingTypeMirror implements ArrayType, ErrorType, Executa
     return this.delegate.toString();
   }
 
-  public static final DelegatingTypeMirror of(final TypeMirror t) {
-    return of(t, null);
+  public static final DelegatingTypeMirror of(final TypeMirror t, final ElementSource elementSource) {
+    return of(t, elementSource, null);
   }
-  
-  public static final DelegatingTypeMirror of(final TypeMirror t, final Equality ehc) {
+
+  public static final DelegatingTypeMirror of(final TypeMirror t, final ElementSource elementSource, final Equality ehc) {
     if (t instanceof DelegatingTypeMirror d) {
       return d;
     }
-    return new DelegatingTypeMirror(t, ehc);
+    return new DelegatingTypeMirror(t, elementSource, ehc);
   }
 
 }

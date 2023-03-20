@@ -37,6 +37,7 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.element.DelegatingElement;
@@ -46,6 +47,8 @@ import org.microbean.lang.type.Types;
 // Basically done
 // isSameType() in javac's Types.java
 public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
+
+  private final ElementSource elementSource;
 
   private final Equality equality;
 
@@ -58,17 +61,20 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
   // See comments in visitExecutable().
   // private final HasSameParameterTypesVisitor hasSameParameterTypesVisitor; // inner class
 
-  public IsSameTypeVisitor(final ContainsTypeVisitor containsTypeVisitor,
+  public IsSameTypeVisitor(final ElementSource elementSource,
+                           final ContainsTypeVisitor containsTypeVisitor,
                            final SupertypeVisitor supertypVisitor,
                            final boolean wildcardsCompatible) {
-    this(null, containsTypeVisitor, supertypVisitor, wildcardsCompatible);
+    this(elementSource, null, containsTypeVisitor, supertypVisitor, wildcardsCompatible);
   }
-  
-  public IsSameTypeVisitor(final Equality equality,
+
+  public IsSameTypeVisitor(final ElementSource elementSource,
+                           final Equality equality,
                            final ContainsTypeVisitor containsTypeVisitor,
                            final SupertypeVisitor supertypeVisitor,
                            final boolean wildcardsComparable) {
     super(Boolean.FALSE);
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(false) : equality;
     this.containsTypeVisitor = Objects.requireNonNull(containsTypeVisitor, "containsTypeVisitor");
     containsTypeVisitor.setIsSameTypeVisitor(this);
@@ -164,7 +170,7 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     return
       superBound != null &&
       s.getExtendsBound() == null &&
-      this.visitDeclared(t, Types.JAVA_LANG_OBJECT_TYPE) &&
+      this.visitDeclared(t, this.elementSource.element("java.lang.Object").asType()) &&
       this.visit(t, superBound);
   }
 
@@ -194,7 +200,8 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     if (!hasSameBounds(t, s)) {
       return false;
     }
-    final ExecutableType substitutedS = new SubstituteVisitor(this.equality,
+    final ExecutableType substitutedS = new SubstituteVisitor(this.elementSource,
+                                                              this.equality,
                                                               this.supertypeVisitor,
                                                               s.getTypeVariables(),
                                                               t.getTypeVariables())
@@ -259,7 +266,7 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     for (final TypeMirror ti : this.supertypeVisitor.interfacesVisitor().visitIntersection(t, null)) {
       assert ti.getKind() == TypeKind.DECLARED;
       assert ti instanceof DeclaredType;
-      tMap.put(DelegatingElement.of(((DeclaredType)t).asElement()), ti);
+      tMap.put(DelegatingElement.of(((DeclaredType)t).asElement(), this.elementSource), ti);
     }
     for (final TypeMirror si : this.supertypeVisitor.interfacesVisitor().visitIntersection(s, null)) {
       assert si.getKind() == TypeKind.DECLARED;
@@ -354,7 +361,7 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     return
       s.getExtendsBound() == null &&
       s.getSuperBound() != null &&
-      this.visit(t, Types.JAVA_LANG_OBJECT_TYPE);
+      this.visit(t, this.elementSource.element("java.lang.Object").asType());
   }
 
   @Override
@@ -444,7 +451,8 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     while (ti.hasNext() &&
            si.hasNext() &&
            this.visit(ti.next().getUpperBound(),
-                      new SubstituteVisitor(this.equality,
+                      new SubstituteVisitor(this.elementSource,
+                                            this.equality,
                                             this.supertypeVisitor,
                                             sVariables,
                                             tVariables).visit(si.next().getUpperBound()))) { // TODO: concurrent iteration exception?

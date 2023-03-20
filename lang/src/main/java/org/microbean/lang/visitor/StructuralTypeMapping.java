@@ -19,6 +19,7 @@ package org.microbean.lang.visitor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import javax.lang.model.element.TypeElement;
 
@@ -31,13 +32,18 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.ElementSource;
+
 import org.microbean.lang.type.Types;
 
 // See https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L244
 class StructuralTypeMapping<S> extends SimpleTypeVisitor14<TypeMirror, S> {
 
-  StructuralTypeMapping() {
+  protected final ElementSource elementSource;
+
+  StructuralTypeMapping(final ElementSource elementSource) {
     super();
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
   }
 
   @Override // SimpleTypeVisitor6
@@ -126,7 +132,7 @@ class StructuralTypeMapping<S> extends SimpleTypeVisitor14<TypeMirror, S> {
     final TypeMirror visitedSuperBound;
     if (extendsBound == null) {
       if (superBound == null) {
-        extendsBound = Types.JAVA_LANG_OBJECT_TYPE;
+        extendsBound = this.elementSource.element("java.lang.Object").asType();
         visitedExtendsBound = this.visit(extendsBound, s);
         visitedSuperBound = null;
       } else {

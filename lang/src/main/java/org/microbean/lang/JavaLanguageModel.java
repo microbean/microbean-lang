@@ -43,7 +43,9 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
-public final class JavaLanguageModel implements AutoCloseable {
+import org.microbean.lang.ElementSource;
+
+public final class JavaLanguageModel implements AutoCloseable, ElementSource {
   
   private volatile ProcessingEnvironment pe;
 
@@ -100,6 +102,11 @@ public final class JavaLanguageModel implements AutoCloseable {
   public final void close() {
     this.runningLatch.countDown();
     this.pe = null;
+  }
+
+  @Override // ElementSource
+  public final Element element(final String n) {
+    return this.elements().getTypeElement(n);
   }
   
   public final Elements elements() {

@@ -32,6 +32,7 @@ import javax.lang.model.type.TypeVariable;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.NoType;
@@ -42,20 +43,11 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
 
 
   /*
-   * Static fields.
-   */
-
-
-  private static final TypeMirror TOP_LEVEL_ARRAY_SUPERTYPE =
-    new org.microbean.lang.type.IntersectionType(List.of(Types.JAVA_LANG_OBJECT_TYPE,
-                                                         Types.JAVA_IO_SERIALIZABLE_TYPE,
-                                                         Types.JAVA_LANG_CLONEABLE_TYPE));
-
-
-  /*
    * Instance fields.
    */
 
+
+  private final ElementSource elementSource;
 
   private final Equality equality;
 
@@ -73,20 +65,23 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
    */
 
 
-  public SupertypeVisitor(final Types types,
+  public SupertypeVisitor(final ElementSource elementSource,
+                          final Types types,
                           final EraseVisitor eraseVisitor) {
-    this(null, types, eraseVisitor);
+    this(elementSource, null, types, eraseVisitor);
   }
-  
-  public SupertypeVisitor(final Equality equality,
+
+  public SupertypeVisitor(final ElementSource elementSource,
+                          final Equality equality,
                           final Types types,
                           final EraseVisitor eraseVisitor) {
     super();
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.eraseVisitor = Objects.requireNonNull(eraseVisitor, "eraseVisitor");
     this.boundingClassVisitor = new BoundingClassVisitor(); // (inner class)
-    this.interfacesVisitor = new InterfacesVisitor(this.equality, types, eraseVisitor, this);
+    this.interfacesVisitor = new InterfacesVisitor(elementSource, this.equality, types, eraseVisitor, this);
   }
 
 
@@ -105,11 +100,18 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
     final TypeMirror componentType = t.getComponentType();
     if (componentType.getKind().isPrimitive() || isObjectType(componentType)) {
       // e.g. int[] or Object[]
-      return TOP_LEVEL_ARRAY_SUPERTYPE;
+      return this.topLevelArraySupertype();
     }
     final org.microbean.lang.type.ArrayType a = new org.microbean.lang.type.ArrayType(this.visit(componentType));
     a.addAnnotationMirrors(t.getAnnotationMirrors());
     return a;
+  }
+
+  private final IntersectionType topLevelArraySupertype() {
+    return
+      new org.microbean.lang.type.IntersectionType(List.of(this.elementSource.element("java.lang.Object").asType(),
+                                                           this.elementSource.element("java.io.Serializable").asType(),
+                                                           this.elementSource.element("java.lang.Cloneable").asType()));
   }
 
   // The compiler's code is borderline incomprehensible.
@@ -118,8 +120,9 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
   @SuppressWarnings("unchecked")
   public final TypeMirror visitDeclared(final DeclaredType t, final Void x) {
     assert t.getKind() == TypeKind.DECLARED;
-    final TypeMirror supertype = ((TypeElement)t.asElement()).getSuperclass();
-    // TODO: if supertype is DefaultNoType.NONE...? as would happen when t.asElement() is an interface?  The compiler
+    final TypeElement element = (TypeElement)t.asElement();
+    final TypeMirror supertype = element.getSuperclass();
+    // TODO: if supertype is DefaultNoType.NONE...? as would happen when element is an interface?  The compiler
     // does some wonky caching initialization:
     // https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2536-L2537
     // I wonder: does it sneakily set this field to Object.class?  Or does it let it be TypeKind.NONE?
@@ -127,20 +130,21 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
       return this.eraseVisitor.visit(supertype, true);
     }
 
-    // Get the actual declared type.  If, for example, t represents the type "behind" the element "List<String>", then
-    // Types.declaredTypeMirror(t) returns the declared type "behind" the element "List<E>".
-    final DeclaredType declaredType = Types.declaredTypeMirror(t);
+    // Get the actual declared type.  If, for example, t represents the type denoted by "List<String>", then get the
+    // type denoted by "List<E>".
+    final DeclaredType declaredType = (DeclaredType)element.asType();
 
     // The type arguments of such a declared type are always type variables (declared by type parameters).  In the type
-    // "behind" the element "List<E>", the sole type *argument* is the type "behind" the element "E", and the sole type
-    // parameter that declares that type is the element "E" itself.
+    // denoted by "List<E>", the sole type *argument* is the type denoted by (the type parameter element) "E", and the
+    // sole type parameter element that declares that type is the element "E" itself.
     @SuppressWarnings("unchecked")
     final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)Types.allTypeArguments(declaredType);
     if (formals.isEmpty()) {
       return supertype;
     }
     return
-      new SubstituteVisitor(this.equality,
+      new SubstituteVisitor(this.elementSource,
+                            this.equality,
                             this,
                             formals,
                             (List<? extends TypeVariable>)Types.allTypeArguments(this.boundingClassVisitor.visitDeclared(t, x)))
