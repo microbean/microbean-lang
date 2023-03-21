@@ -175,8 +175,8 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
   @Override
   public final WildcardType visitWildcard(final WildcardType wt, final Void x) {
     assert wt.getKind() == TypeKind.WILDCARD;
-    TypeMirror extendsBound = wt.getExtendsBound();
-    TypeMirror superBound = wt.getSuperBound();
+    final TypeMirror extendsBound = wt.getExtendsBound();
+    final TypeMirror superBound = wt.getSuperBound();
     if (superBound == null) {
       if (extendsBound == null) {
         // Unbounded.  No need to do anything else.
@@ -264,7 +264,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
     // phase 3.
     final List<org.microbean.lang.type.TypeVariable> newTvs = new ArrayList<>(tvs.size());
     for (final TypeVariable tv : tvs) {
-      final org.microbean.lang.type.TypeVariable newTv = new org.microbean.lang.type.TypeVariable(null, tv.getLowerBound());
+      final org.microbean.lang.type.TypeVariable newTv = new org.microbean.lang.type.TypeVariable(this.elementSource, null, tv.getLowerBound());
       newTv.setDefiningElement((TypeParameterElement)tv.asElement());
       newTvs.add(newTv);
     }

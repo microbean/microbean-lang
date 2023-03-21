@@ -64,7 +64,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   private ContainsTypeVisitor containsTypeVisitor;
 
-  AsSuperVisitor asSuperVisitor;
+  private AsSuperVisitor asSuperVisitor;
 
   public SubtypeVisitor(final ElementSource elementSource,
                         final Types types,
@@ -97,6 +97,13 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     this.cache = new HashSet<>();
   }
 
+  public final void setAsSuperVisitor(final AsSuperVisitor v) {
+    if (this.asSuperVisitor != null) {
+      throw new IllegalStateException();
+    }
+    this.asSuperVisitor = Objects.requireNonNull(v, "v");
+  }
+  
   public final void setContainsTypeVisitor(final ContainsTypeVisitor v) {
     if (this.containsTypeVisitor != null) {
       throw new IllegalStateException();
@@ -161,6 +168,15 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   private final Boolean visitDeclaredOrIntersection(final TypeMirror t, final TypeMirror s) {
     assert t.getKind() == TypeKind.DECLARED || t.getKind() == TypeKind.INTERSECTION;
+    // javac implements the subtype relation in a bizarre half-visitor, half-not-visitor setup, where equality and some
+    // edge cases are tested first, and then the visitor is applied if the test fails. This means the visitor javac uses
+    // is exceptionally weird. See for yourself:
+    // https://github.com/openjdk/jdk/blob/jdk-21%2B14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1068-L1105
+    //
+    // Here, we try to fold this into the visitor itself.
+    if (this.equality.equals(t, s, false)) {
+      return Boolean.TRUE;
+    }
     final TypeMirror sup = this.asSuperVisitor.visit(t, this.types.asElement(s, true /* yes, generate synthetic elements */));
     if (sup == null) {
       return false;
@@ -197,8 +213,14 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   @Override
   public final Boolean visitNoType(final NoType t, final TypeMirror s) {
-    final TypeKind kind = t.getKind();
-    return kind == TypeKind.VOID && kind == s.getKind();
+    // javac implements the subtype relation in a bizarre half-visitor, half-not-visitor setup, where equality and some
+    // edge cases are tested first, and then the visitor is applied if the test fails. This means the visitor javac uses
+    // is exceptionally weird. See for yourself:
+    // https://github.com/openjdk/jdk/blob/jdk-21%2B14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1068-L1105
+    //
+    // So javac's isSubtype() will return true for two NoType.NONE instances, but its visitor will return false. But in
+    // practice, the visitor's comparison is never executed. We marry the two here.
+    return this.equality.equals(t, s, false);
   }
 
   @Override
@@ -292,7 +314,14 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
   @Override
   public final Boolean visitTypeVariable(final TypeVariable t, final TypeMirror s) {
     assert t.getKind() == TypeKind.TYPEVAR;
-    return this.withCapture(false).visit(t.getUpperBound(), s);
+    // javac implements the subtype relation in a bizarre half-visitor, half-not-visitor setup, where equality and some
+    // edge cases are tested first, and then the visitor is applied if the test fails. This means the visitor javac uses
+    // is exceptionally weird. See for yourself:
+    // https://github.com/openjdk/jdk/blob/jdk-21%2B14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1068-L1105
+    //
+    // We try to marry javac's visitor-based subtype relation and its non-visitor-based isSubtype method, which is why
+    // you see the equality test here.
+    return this.equality.equals(t, s, false) || this.withCapture(false).visit(t.getUpperBound(), s);
   }
 
   @Override

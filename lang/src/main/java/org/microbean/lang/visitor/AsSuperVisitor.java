@@ -43,7 +43,7 @@ import org.microbean.lang.type.Types;
 // Basically done
 //
 // https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2165-L2221
-final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
+public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
   private final Set<DelegatingElement> seenTypes; // in the compiler, the field is called seenTypes but stores Symbols (Elements).
 
@@ -57,11 +57,11 @@ final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
   private final SubtypeVisitor subtypeVisitor;
 
-  AsSuperVisitor(final ElementSource elementSource,
-                 final Equality equality,
-                 final Types types,
-                 final SupertypeVisitor supertypeVisitor,
-                 final SubtypeVisitor subtypeVisitor) {
+  public AsSuperVisitor(final ElementSource elementSource,
+                        final Equality equality,
+                        final Types types,
+                        final SupertypeVisitor supertypeVisitor,
+                        final SubtypeVisitor subtypeVisitor) {
     super();
     this.seenTypes = new HashSet<>();
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
@@ -69,8 +69,11 @@ final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
     this.types = Objects.requireNonNull(types, "types");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
     this.subtypeVisitor = Objects.requireNonNull(subtypeVisitor, "subtypeVisitor");
+    this.subtypeVisitor.setAsSuperVisitor(this);
   }
 
+  // (Remember in all this we're modeling things like javac, which tends to love spaghetti. This method is called only
+  // by MemberTypeVisitor.)
   final TypeMirror asOuterSuper(TypeMirror t, final Element sym) {
     switch (t.getKind()) {
     case ARRAY:
