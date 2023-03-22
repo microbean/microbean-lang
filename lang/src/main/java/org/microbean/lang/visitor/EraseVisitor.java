@@ -92,11 +92,11 @@ public final class EraseVisitor extends StructuralTypeMapping<Boolean> {
     //
     // In this toolkit, we don't want to get into the same "cache stuff in the symbol" business if we can at all help
     // it.
-    DeclaredType erasedType;
+    final org.microbean.lang.type.DeclaredType erasedType;
     if (t instanceof org.microbean.lang.type.DeclaredType dt && dt.isErased()) {
-      erasedType = t;
+      erasedType = dt;
     } else {
-      final org.microbean.lang.type.DeclaredType dt = new org.microbean.lang.type.DeclaredType(true);
+      final org.microbean.lang.type.DeclaredType dt = new org.microbean.lang.type.DeclaredType(true /* erased */);
       dt.setEnclosingType(this.visit(t.getEnclosingType(), false));
       dt.setDefiningElement((TypeElement)t.asElement());
       assert this.types.raw(dt);
@@ -106,18 +106,13 @@ public final class EraseVisitor extends StructuralTypeMapping<Boolean> {
     // in javac.
     /*
     if (Boolean.TRUE.equals(recurse)) {
-      // This is extremely weird.  In the compiler, if recurse is
-      // true, then an ErasedClassType (subtype of ClassType) is
-      // created to decorate the already-decorated ClassType being
-      // erased.  An ErasedClassType differs from a regular ClassType
-      // only in that it returns true from its hasErasedSuperclasses()
-      // method, whereas ClassType#hasErasedSuperclasses() returns
-      // isRaw().  Maybe this is just a performance optimization?
+      // This is extremely weird.  In the compiler, if recurse is true, then an ErasedClassType (subtype of ClassType)
+      // is created to decorate the already-decorated ClassType being erased.  An ErasedClassType differs from a regular
+      // ClassType only in that it returns true from its hasErasedSuperclasses() method, whereas
+      // ClassType#hasErasedSuperclasses() returns isRaw().  Maybe this is just a performance optimization?
       //
-      // ErasedClassType does not appear anywhere else in all of the JDK,
-      // so it seems to exist solely to return true from its
-      // hasErasedSuperclasses().  Note that isRaw() will also return
-      // true for erased classes.
+      // ErasedClassType does not appear anywhere else in all of the JDK, so it seems to exist solely to return true
+      // from its hasErasedSuperclasses().  Note that isRaw() will also return true for erased classes.
       erasedType = new DefaultDeclaredType(erasedType.getEnclosingType(), List.of(), true, List.of());
     }
     */

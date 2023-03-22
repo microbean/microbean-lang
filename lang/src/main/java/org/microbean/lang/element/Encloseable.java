@@ -33,9 +33,6 @@ public interface Encloseable {
    * Sets the {@link Element} that encloses this {@link Encloseable} to the supplied {@link Element}, which may be
    * {@code null}.
    *
-   * <p>An implementation of this method must ensure that a subsequent call to {@link #getEnclosingElement()} will
-   * return the very {@link Element} supplied to this method, or undefined behavior will result.</p>
-   *
    * @param enclosingElement the {@link Element} that will enclose this {@link Encloseable}; may be {@code null}
    */
   public void setEnclosingElement(final Element enclosingElement);

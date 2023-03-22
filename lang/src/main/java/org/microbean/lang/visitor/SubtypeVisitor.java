@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.QualifiedNameable;
 
@@ -168,6 +169,10 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   private final Boolean visitDeclaredOrIntersection(final TypeMirror t, final TypeMirror s) {
     assert t.getKind() == TypeKind.DECLARED || t.getKind() == TypeKind.INTERSECTION;
+    if (s == null || s.getKind() == TypeKind.NULL) {
+      // There is no declared or intersection type that is a subtype of the null type.
+      return Boolean.FALSE;
+    }
     // javac implements the subtype relation in a bizarre half-visitor, half-not-visitor setup, where equality and some
     // edge cases are tested first, and then the visitor is applied if the test fails. This means the visitor javac uses
     // is exceptionally weird. See for yourself:
@@ -177,7 +182,9 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     if (this.equality.equals(t, s, false)) {
       return Boolean.TRUE;
     }
-    final TypeMirror sup = this.asSuperVisitor.visit(t, this.types.asElement(s, true /* yes, generate synthetic elements */));
+    final Element sElement = this.types.asElement(s, true /* yes, generate synthetic elements */);
+    assert sElement != null : "sElement == null; s: " + s;
+    final TypeMirror sup = this.asSuperVisitor.visit(t, sElement);
     if (sup == null) {
       return false;
     } else if (sup.getKind() != TypeKind.DECLARED) {

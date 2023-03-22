@@ -73,9 +73,7 @@
   <dependencyManagement>
     <dependencies>
 
-
       <!-- Normal dependencies. -->
-
 
       <dependency>
         <groupId>io.smallrye</groupId>
@@ -87,7 +85,7 @@
       <dependency>
         <groupId>net.bytebuddy</groupId>
         <artifactId>byte-buddy</artifactId>
-        <version>1.12.22</version>
+        <version>1.14.2</version>
         <type>jar</type>
       </dependency>
 
@@ -99,23 +97,16 @@
       </dependency>
 
       <dependency>
-        <groupId>org.jboss</groupId>
-        <artifactId>jandex</artifactId>
-        <version>2.4.3.Final</version>
-        <type>jar</type>
-      </dependency>
-
-      <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-api</artifactId>
-        <version>5.9.0</version>
+        <version>5.9.2</version>
         <type>jar</type>
       </dependency>
 
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-engine</artifactId>
-        <version>5.9.0</version>
+        <version>5.9.2</version>
         <type>jar</type>
       </dependency>
 
@@ -191,15 +182,15 @@
         </plugin>
         <plugin>
           <artifactId>maven-dependency-plugin</artifactId>
-          <version>3.3.0</version>
+          <version>3.5.0</version>
         </plugin>
         <plugin>
           <artifactId>maven-deploy-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.1.0</version>
         </plugin>
         <plugin>
           <artifactId>maven-enforcer-plugin</artifactId>
-          <version>3.1.0</version>
+          <version>3.2.1</version>
         </plugin>
         <plugin>
           <artifactId>maven-gpg-plugin</artifactId>
@@ -207,15 +198,15 @@
         </plugin>
         <plugin>
           <artifactId>maven-install-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.1.0</version>
         </plugin>
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
-          <version>3.2.2</version>
+          <version>3.3.0</version>
         </plugin>
         <plugin>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>3.4.1</version>
+          <version>3.5.0</version>
           <configuration>
             <additionalJOptions combine.children="append">
               <additionalJOption>-J-Dhttp.agent=maven-javadoc-plugin</additionalJOption>
@@ -230,15 +221,15 @@
         </plugin>
         <plugin>
           <artifactId>maven-plugin-plugin</artifactId>
-          <version>3.6.4</version>
+          <version>3.8.1</version>
         </plugin>
         <plugin>
           <artifactId>maven-project-info-reports-plugin</artifactId>
-          <version>3.4.1</version>
+          <version>3.4.2</version>
         </plugin>
         <plugin>
           <artifactId>maven-release-plugin</artifactId>
-          <version>3.0.0-M6</version> <!-- see https://issues.apache.org/jira/browse/MRELEASE-1038 -->
+          <version>3.0.0</version> <!-- see https://issues.apache.org/jira/browse/MRELEASE-1038 -->
         </plugin>
         <plugin>
           <artifactId>maven-resources-plugin</artifactId>
@@ -246,7 +237,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-scm-plugin</artifactId>
-          <version>1.13.0</version>
+          <version>2.0.0</version>
         </plugin>
         <plugin>
           <artifactId>maven-scm-publish-plugin</artifactId>
@@ -254,7 +245,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-site-plugin</artifactId>
-          <version>4.0.0-M4</version>
+          <version>4.0.0-M5</version>
           <executions>
             <execution>
               <id>Stage site</id>
@@ -279,7 +270,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.0.0-M7</version>
+          <version>3.0.0</version>
           <configuration>
             <argLine>--enable-preview</argLine>
             <properties>
@@ -305,22 +296,22 @@
         </plugin>
         <plugin>
           <artifactId>maven-toolchains-plugin</artifactId>
-          <version>3.1.0</version>
+          <version>3.0.0</version>
         </plugin>
         <plugin>
           <groupId>com.github.spotbugs</groupId>
           <artifactId>spotbugs-maven-plugin</artifactId>
-          <version>4.7.1.1</version>
+          <version>4.7.3.2</version>
         </plugin>
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>versions-maven-plugin</artifactId>
-          <version>2.11.0</version>
+          <version>2.15.0</version>
         </plugin>
         <plugin>
-          <groupId>org.jboss.jandex</groupId>
+          <groupId>io.smallrye</groupId>
           <artifactId>jandex-maven-plugin</artifactId>
-          <version>1.2.3</version>
+          <version>3.0.5</version>
         </plugin>
         <plugin>
           <groupId>org.sonatype.plugins</groupId>
@@ -345,7 +336,7 @@
     </pluginManagement>
     <plugins>
       <plugin>
-        <groupId>org.jboss.jandex</groupId>
+        <groupId>io.smallrye</groupId>
         <artifactId>jandex-maven-plugin</artifactId>
         <executions>
           <execution>
@@ -362,14 +353,14 @@
 
   <properties>
 
-    <maven.compiler.source>19</maven.compiler.source>
-    <maven.compiler.target>19</maven.compiler.target>
+    <maven.compiler.source>20</maven.compiler.source>
+    <maven.compiler.target>20</maven.compiler.target>
 
     <!-- maven-javadoc-plugin properties -->
     <bottom><![CDATA[Copyright &copy; ${project.inceptionYear}&ndash;{currentYear}, <a href="${project.organization.url}" target="_top">${project.organization.name}</a>. All rights reserved.]]></bottom>
     <detectJavaApiLink>false</detectJavaApiLink>
     <detectLinks>false</detectLinks>
-    <links>https://docs.oracle.com/en/java/javase/19/docs/api/,https://microbean.github.io/microbean-development-annotations/apidocs/,https://javadoc.io/doc/net.bytebuddy/byte-buddy/latest,https://javadoc.io/doc/io.smallrye/jandex/latest</links>
+    <links>https://docs.oracle.com/en/java/javase/20/docs/api/,https://microbean.github.io/microbean-development-annotations/apidocs/,https://javadoc.io/doc/net.bytebuddy/byte-buddy/latest,https://javadoc.io/doc/io.smallrye/jandex/latest</links>
 
     <!-- maven-release-plugin properties; see http://maven.apache.org/maven-release/maven-release-plugin/ -->
     <goals>deploy,post-site,scm-publish:publish-scm</goals>

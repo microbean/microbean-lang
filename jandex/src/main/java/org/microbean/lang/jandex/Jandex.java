@@ -678,7 +678,8 @@ public final class Jandex extends Modeler {
     // Simple name.
     e.setSimpleName(ci.name().local());
 
-    // Type.
+    // Type. Note that we haven't done type parameters yet, so the type arguments belonging to the type won't have
+    // corresponding type parameters yet.
     final org.microbean.lang.type.DeclaredType t = (org.microbean.lang.type.DeclaredType)this.type(ci);
     e.setType(t);
 
@@ -745,8 +746,14 @@ public final class Jandex extends Modeler {
 
     // Type parameters.
     for (final org.jboss.jandex.TypeVariable tp : ci.typeParameters()) {
-      e.addTypeParameter((org.microbean.lang.element.TypeParameterElement)this.element(new TypeParameterInfo(ci, tp)));
+      final org.microbean.lang.element.TypeParameterElement tpe =
+        (org.microbean.lang.element.TypeParameterElement)this.element(new TypeParameterInfo(ci, tp));
+      assert ((javax.lang.model.type.TypeVariable)tpe.asType()).asElement() == tpe :
+        "tpe.asType(): " + tpe.asType() +
+        "; tpe.asType().asElement(): " + ((javax.lang.model.type.TypeVariable)tpe.asType()).asElement();
+      e.addTypeParameter(tpe);
     }
+    assert e.getTypeParameters().size() == ci.typeParameters().size();
 
     e.setEnclosedElementsGenerator(() -> {
         ci.constructors().forEach(this::element);
@@ -977,9 +984,9 @@ public final class Jandex extends Modeler {
     }
 
     // Now type arguments (which will be type variables), if there are any.
-    int position = 0;
-    for (final org.jboss.jandex.TypeVariable tp : ci.typeParameters()) {
-      t.addTypeArgument(this.type(new TypeContext(ci, tp, position++, TypeContext.Kind.TYPE_ARGUMENT)));
+    final List<? extends org.jboss.jandex.TypeVariable> tps = ci.typeParameters();
+    for (int i = 0; i < tps.size(); i++) {
+      t.addTypeArgument(this.type(new TypeContext(ci, tps.get(i), i, TypeContext.Kind.TYPE_ARGUMENT)));
     }
 
     // There isn't a way to get type use annotations on ci.

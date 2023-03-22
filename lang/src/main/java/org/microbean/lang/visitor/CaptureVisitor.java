@@ -111,7 +111,6 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
 
     // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4399-L4401
     if (this.types.allTypeArguments(t).isEmpty() || this.types.raw(t)) {
-    // if (this.types.raw(t) || !this.types.parameterized(t)) {
       // (Suppose somehow t were an intersection type (which gets modeled as a ClassType as well in javac). t would then
       // be considered to be raw following the rules of javac (not sure about the language specification; the two
       // frequently diverge). So it is accurate for this visitor not to implement visitIntersection().)
@@ -148,7 +147,8 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
           Si.setUpperBound(new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, A, S).visit(Ui));
         } else {
           // TiExtendsBound can be DECLARED, INTERSECTION or TYPEVAR
-          Si.setUpperBound(glb(TiExtendsBound, new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, A, S).visit(Ui)));
+          Si.setUpperBound(glb(TiExtendsBound,
+                               new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, A, S).visit(Ui)));
         }
       }
     }

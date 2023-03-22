@@ -16,7 +16,6 @@
  */
 package org.microbean.lang.visitor;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
@@ -26,6 +25,8 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
+
+import org.microbean.lang.ElementSource;
 
 import org.microbean.lang.type.Capture;
 import org.microbean.lang.type.Types;
@@ -61,24 +62,31 @@ import org.microbean.lang.type.Types;
 // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1562-L1611
 public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
+  private final ElementSource elementSource;
+  
   private final Types types;
 
   private IsSameTypeVisitor isSameTypeVisitor;
 
   private SubtypeVisitor subtypeVisitor;
 
-  public ContainsTypeVisitor(final Types types) {
-    super(Boolean.FALSE);
+  public ContainsTypeVisitor(final ElementSource elementSource, final Types types) {
+    super(Boolean.FALSE /* default value */);
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.types = Objects.requireNonNull(types, "types");
   }
 
+  // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1524-L1531
   final boolean visit(final List<? extends TypeMirror> t, final List<? extends TypeMirror> s) {
-    final Iterator<? extends TypeMirror> tIterator = t.iterator();
-    final Iterator<? extends TypeMirror> sIterator = s.iterator();
-    while (tIterator.hasNext() && sIterator.hasNext() && this.visit(tIterator.next(), sIterator.next())) {
-      // do nothing
+    if (t.size() == s.size()) {
+      for (int i = 0; i < t.size(); i++) {
+        if (!this.visit(t.get(i), s.get(i))) {
+          return false;
+        }
+      }
+      return true;
     }
-    return !tIterator.hasNext() && !sIterator.hasNext();
+    return false;
   }
 
   public final void setIsSameTypeVisitor(final IsSameTypeVisitor v) {
@@ -106,6 +114,7 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
     return Boolean.TRUE;
   }
 
+  // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1585-L1596
   @Override
   public final Boolean visitWildcard(final WildcardType w, final TypeMirror s) {
     assert w.getKind() == TypeKind.WILDCARD;
@@ -115,26 +124,23 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
       // one as w.
       return s instanceof Capture sct && this.visitWildcard(w, sct.getWildcardType());
     case WILDCARD:
-      return this.visitWildcard(w, (WildcardType)s);
+      if (this.isSameTypeVisitor.visit(w, s)) {
+        return true;
+      }
+      // fall through
     default:
-      return false;
-    }
-  }
-
-  private final boolean visitWildcard(final WildcardType t, final WildcardType s) {
-    assert t.getKind() == TypeKind.WILDCARD && s.getKind() == TypeKind.WILDCARD;
-    if (this.isSameTypeVisitor.visit(t, s)) {
-      return true;
-    }
-    final TypeMirror tSuperBound = t.getSuperBound();
-    if (tSuperBound == null) {
-      // Extends bounded (or unbounded).  So extends bounded AND:
-      return this.subtypeVisitor.withCapture(false).visit(this.types.extendsBound(s), this.types.extendsBound(t));
-    } else if (t.getExtendsBound() == null) {
-      // Super bounded.  So super bounded AND:
-      return this.subtypeVisitor.withCapture(false).visit(tSuperBound, this.types.superBound(s));
-    } else {
-      throw new IllegalArgumentException("t: " + t + "; s: " + s);
+      final TypeMirror wSuperBound = w.getSuperBound();
+      if (wSuperBound == null) {
+        // ? or ? extends Foo
+        // Upper/extends-bounded (and possibly unbounded, which is the same thing).
+        return this.subtypeVisitor.withCapture(false).visit(this.types.extendsBound(s), this.types.extendsBound(w));
+      } else if (w.getExtendsBound() == null) {
+        // ? super Foo
+        // Lower/super-bounded.
+        return this.subtypeVisitor.withCapture(false).visit(wSuperBound, this.types.superBound(s));
+      } else {
+        throw new IllegalArgumentException("w: " + w);
+      }
     }
   }
 

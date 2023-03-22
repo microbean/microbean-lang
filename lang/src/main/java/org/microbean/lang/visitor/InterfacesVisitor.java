@@ -80,13 +80,13 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
         return this.eraseVisitor.visit(interfaces, true);
       }
       @SuppressWarnings("unchecked")
-      // final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)this.types.allTypeArguments(this.types.declaredTypeMirror(t));
       final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)this.types.allTypeArguments(e.asType());
       if (formals.isEmpty()) {
         return interfaces;
       }
       assert this.supertypeVisitor.interfacesVisitor() == this;
-      return new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, formals, this.types.allTypeArguments(t))
+      return
+        new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, formals, this.types.allTypeArguments(t))
         .visit(interfaces, x);
     default:
       return List.of();

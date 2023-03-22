@@ -16,6 +16,10 @@
  */
 package org.microbean.lang;
 
+import javax.lang.model.element.TypeElement;
+
+import javax.lang.model.type.DeclaredType;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +33,9 @@ import org.microbean.lang.visitor.IsSameTypeVisitor;
 import org.microbean.lang.visitor.SubtypeVisitor;
 import org.microbean.lang.visitor.SupertypeVisitor;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class TestIsAssignable {
 
@@ -57,7 +63,7 @@ final class TestIsAssignable {
     final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(es, types, eraseVisitor);
 
     // These have cycles.
-    final ContainsTypeVisitor containsTypeVisitor = new ContainsTypeVisitor(types);
+    final ContainsTypeVisitor containsTypeVisitor = new ContainsTypeVisitor(es, types);
     final IsSameTypeVisitor isSameTypeVisitor = new IsSameTypeVisitor(es, containsTypeVisitor, supertypeVisitor, true);
     final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(es, types, supertypeVisitor, isSameTypeVisitor);
     final AsSuperVisitor asSuperVisitor = new AsSuperVisitor(es, null, types, supertypeVisitor, subtypeVisitor);
@@ -65,6 +71,16 @@ final class TestIsAssignable {
     subtypeVisitor.setContainsTypeVisitor(containsTypeVisitor);
 
     assertSame(Boolean.TRUE, subtypeVisitor.visit(es.element("java.lang.String").asType(), es.element("java.lang.Object").asType()));
+
+    final DeclaredType listString = this.jlm.types().getDeclaredType((TypeElement)es.element("java.util.List"), es.element("java.lang.String").asType());
+    final DeclaredType listQuestionMark = this.jlm.types().getDeclaredType((TypeElement)es.element("java.util.List"), this.jlm.types().getWildcardType(null, null));
+
+    assertFalse(this.jlm.types().isAssignable(listQuestionMark, listString));
+    assertSame(Boolean.FALSE, subtypeVisitor.visit(listQuestionMark, listString));
+
+    assertTrue(this.jlm.types().isAssignable(listString, listQuestionMark));
+    assertSame(Boolean.TRUE, subtypeVisitor.visit(listString, listQuestionMark));
+
   }
   
 }

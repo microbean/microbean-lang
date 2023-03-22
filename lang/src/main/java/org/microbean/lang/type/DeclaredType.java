@@ -85,12 +85,10 @@ public sealed class DeclaredType extends DefineableType<TypeElement> implements 
 
   @Override
   protected TypeKind validateKind(final TypeKind kind) {
-    switch (kind) {
-    case DECLARED:
-      return kind;
-    default:
-      throw new IllegalArgumentException("kind: " + kind);
-    }
+    return switch (kind) {
+    case DECLARED -> kind;
+    default -> throw new IllegalArgumentException("kind: " + kind);
+    };
   }
 
   @Override // DefineableType<TypeElement>
@@ -123,13 +121,13 @@ public sealed class DeclaredType extends DefineableType<TypeElement> implements 
 
   public final boolean isErased() {
     final Boolean erased = this.erased;
-    return erased == null ? false : erased;
+    return erased == null ? false : erased.booleanValue();
   }
 
   public final void setErased(final boolean b) {
     final Boolean old = this.erased;
     if (old == null) {
-      this.erased = b;
+      this.erased = Boolean.valueOf(b);
     } else if (!old.equals(Boolean.valueOf(b))) {
       throw new IllegalStateException();
     }
@@ -187,19 +185,6 @@ public sealed class DeclaredType extends DefineableType<TypeElement> implements 
     } else if (this.isErased()) {
       throw new IllegalStateException("this.isErased()");
     }
-    /*
-    final Parameterizable definingElement = this.asElement();
-    if (definingElement != null && definingElement.getTypeParameters().isEmpty()) {
-      throw new IllegalArgumentException("No corresponding type parameter for type argument t (" + t + ")");
-    }
-    */
-    /*
-    if (definingElement == null) {
-      throw new IllegalStateException("this.asElement() == null; no way to divine type parameters");
-    } else if (definingElement.getTypeParameters().isEmpty()) {
-      throw new IllegalArgumentException("No corresponding type parameter for type argument t (" + t + ")");
-    }
-    */
 
     switch (t.getKind()) {
     case ARRAY:

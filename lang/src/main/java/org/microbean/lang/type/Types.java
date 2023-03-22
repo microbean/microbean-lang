@@ -53,8 +53,9 @@ public final class Types {
   }
 
   public final javax.lang.model.type.TypeMirror extendsBound(final javax.lang.model.type.TypeMirror t) {
+    // javac's "wildUpperBound".
     // See
-    // https://github.com/openjdk/jdk/blob/jdk-18+37/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L130-L143
+    // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L130-L143
     switch (t.getKind()) {
     case WILDCARD:
       final javax.lang.model.type.WildcardType w = (javax.lang.model.type.WildcardType)t;
@@ -76,7 +77,7 @@ public final class Types {
         }
       } else {
         // See
-        // https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L138.
+        // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L138.
         // A (javac) WildcardType's bound field is NOT the same as its type field.  The lang model only exposes the type
         // field.
         //
@@ -121,7 +122,7 @@ public final class Types {
 
   public final javax.lang.model.type.TypeMirror superBound(final javax.lang.model.type.TypeMirror t) {
     // See
-    // https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L157-L167
+    // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L157-L167
     return switch (t.getKind()) {
     case WILDCARD -> {
       final javax.lang.model.type.TypeMirror superBound = ((javax.lang.model.type.WildcardType)t).getSuperBound();

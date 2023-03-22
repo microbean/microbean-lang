@@ -220,7 +220,8 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
 
       final TypeMirror upperBound = tv.getUpperBound();
 
-      // Compute a new upper bound for it.  Note the usage of tvs and visitedTvs in the from and to slots respectively.
+      // Compute a new upper bound for it.  Note the usage of tvs and visitedTvs in the from and to slots of the visitor
+      // respectively.
       final TypeMirror visitedUpperBound = visitor.visit(upperBound); // RECURSIVE
 
       // It *seems* that if upperBound and visitedUpperBound are identical we wouldn't have to do anything below.  But
@@ -228,7 +229,8 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
       // we do too.
 
       // Create a new TypeVariable whose upper bound is the just-visited upper bound.
-      final org.microbean.lang.type.TypeVariable newTv = new org.microbean.lang.type.TypeVariable(this.elementSource, visitedUpperBound, tv.getLowerBound());
+      final org.microbean.lang.type.TypeVariable newTv =
+        new org.microbean.lang.type.TypeVariable(this.elementSource, visitedUpperBound, tv.getLowerBound());
       newTv.setDefiningElement((TypeParameterElement)tv.asElement());
 
       // Replace the type variable at position i (the very one we're looking at) with the new, newly-bounded type
@@ -251,20 +253,21 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
     for (final TypeVariable tv : tvs) {
       final TypeMirror upperBound = tv.getUpperBound();
       final TypeMirror visitedUpperBound = this.visit(upperBound);
-      visitedUpperBounds.add(visitedUpperBound);
+      visitedUpperBounds.add(visitedUpperBound); // this could end up being pointless if changed is false; nothing for it
       if (!changed && upperBound != visitedUpperBound) {
         changed = true;
       }
     }
     if (!changed) {
-      return tvs;
+      return tvs; // preserve identity whenever possible
     }
 
     // Phase 2: Create a list of type variables temporarily without upper bounds.  We will give them upper bounds in
     // phase 3.
     final List<org.microbean.lang.type.TypeVariable> newTvs = new ArrayList<>(tvs.size());
     for (final TypeVariable tv : tvs) {
-      final org.microbean.lang.type.TypeVariable newTv = new org.microbean.lang.type.TypeVariable(this.elementSource, null, tv.getLowerBound());
+      final org.microbean.lang.type.TypeVariable newTv =
+        new org.microbean.lang.type.TypeVariable(this.elementSource, null, tv.getLowerBound());
       newTv.setDefiningElement((TypeParameterElement)tv.asElement());
       newTvs.add(newTv);
     }
@@ -283,7 +286,8 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
     // and doctored in phase 3.
     for (int i = 0; i < newTvs.size(); i++) {
       final org.microbean.lang.type.TypeVariable upperBoundlessTv = newTvs.get(i);
-      final org.microbean.lang.type.TypeVariable newTv = new org.microbean.lang.type.TypeVariable(this.elementSource, visitedUpperBounds.get(i), upperBoundlessTv.getLowerBound());
+      final org.microbean.lang.type.TypeVariable newTv =
+        new org.microbean.lang.type.TypeVariable(this.elementSource, visitedUpperBounds.get(i), upperBoundlessTv.getLowerBound());
       newTv.setDefiningElement((TypeParameterElement)upperBoundlessTv.asElement());
       newTvs.set(i, newTv);
     }
@@ -300,28 +304,14 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
   private static final boolean anyMatches(final Iterable<? extends TypeMirror> ts,
                                           final Collection<? extends TypeMirror> ss,
                                           final BiPredicate<? super TypeMirror, ? super TypeMirror> p) {
-    if (!ss.isEmpty()) {
-      for (final TypeMirror t : ts) {
-        if (matchesAny(t, ss, p)) {
+    for (final TypeMirror t : ts) {
+      for (final TypeMirror s : ss) {
+        if (p.test(t, s)) {
           return true;
         }
       }
     }
     return false;
   }
-
-  // Does at least one s in ss "pass the test" represented by p when p is invoked with t and s?
-  private static final boolean matchesAny(final TypeMirror t,
-                                          final Iterable<? extends TypeMirror> ss,
-                                          final BiPredicate<? super TypeMirror, ? super TypeMirror> p) {
-    for (final TypeMirror s : ss) {
-      if (p.test(t, s)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-
 
 }

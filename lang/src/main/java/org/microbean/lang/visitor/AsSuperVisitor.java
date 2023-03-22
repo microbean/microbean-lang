@@ -74,15 +74,14 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
 
   // (Remember in all this we're modeling things like javac, which tends to love spaghetti. This method is called only
   // by MemberTypeVisitor.)
-  final TypeMirror asOuterSuper(TypeMirror t, final Element sym) {
+  final TypeMirror asOuterSuper(TypeMirror t, final Element element) {
     switch (t.getKind()) {
     case ARRAY:
-      final TypeMirror elementType = sym.asType();
-      return this.subtypeVisitor.withCapture(true).visit(t, elementType) ? elementType : null;
+      return this.visit(t, element);
     case DECLARED:
     case INTERSECTION:
       do {
-        final TypeMirror s = this.visit(t, sym);
+        final TypeMirror s = this.visit(t, element);
         if (s != null) {
           return s;
         }
@@ -98,23 +97,24 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
   }
 
   @Override
-  public final TypeMirror visitArray(final ArrayType t, final Element sym) {
+  public final TypeMirror visitArray(final ArrayType t, final Element element) {
     assert t.getKind() == TypeKind.ARRAY;
-    final TypeMirror x = sym.asType();
-    return this.subtypeVisitor.withCapture(true).visit(t, x) ? x : null;
+    final TypeMirror s = element.asType();
+    return this.subtypeVisitor.withCapture(true).visit(t, s) ? s : null;
   }
 
   @Override
-  public final TypeMirror visitDeclared(final DeclaredType t, final Element sym) {
+  public final TypeMirror visitDeclared(final DeclaredType t, final Element element) {
     assert t.getKind() == TypeKind.DECLARED;
-    return this.visitDeclaredOrIntersection(t, sym);
+    return this.visitDeclaredOrIntersection(t, element);
   }
 
-  private final TypeMirror visitDeclaredOrIntersection(final TypeMirror t, final Element sym) {
+  private final TypeMirror visitDeclaredOrIntersection(final TypeMirror t, final Element element) {
     assert t.getKind() == TypeKind.DECLARED || t.getKind() == TypeKind.INTERSECTION;
+    Objects.requireNonNull(element, "element");
     final Element te = this.types.asElement(t, true);
     if (te != null) {
-      if (this.equality.equals(te, sym)) {
+      if (this.equality.equals(te, element)) {
         return t;
       }
       final DelegatingElement c = DelegatingElement.of(te, this.elementSource);
@@ -125,7 +125,7 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
           case DECLARED:
           case INTERSECTION:
           case TYPEVAR:
-            final TypeMirror x = this.visit(st, sym);
+            final TypeMirror x = this.visit(st, element);
             if (x != null) {
               return x;
             }
@@ -133,9 +133,9 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
           default:
             break;
           }
-          if (sym.getKind().isInterface()) {
+          if (element.getKind().isInterface()) {
             for (final TypeMirror iface : this.supertypeVisitor.interfacesVisitor().visit(t)) {
-              final TypeMirror x = this.visit(iface, sym);
+              final TypeMirror x = this.visit(iface, element);
               if (x != null) {
                 return x;
               }
@@ -150,21 +150,21 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
   }
 
   @Override
-  public final TypeMirror visitError(final ErrorType t, final Element sym) {
+  public final TypeMirror visitError(final ErrorType t, final Element element) {
     assert t.getKind() == TypeKind.ERROR;
     return t;
   }
 
   @Override
-  public final TypeMirror visitIntersection(final IntersectionType t, final Element sym) {
+  public final TypeMirror visitIntersection(final IntersectionType t, final Element element) {
     assert t.getKind() == TypeKind.INTERSECTION;
-    return this.visitDeclaredOrIntersection(t, sym);
+    return this.visitDeclaredOrIntersection(t, element);
   }
 
   @Override
-  public final TypeMirror visitTypeVariable(final TypeVariable t, final Element sym) {
+  public final TypeMirror visitTypeVariable(final TypeVariable t, final Element element) {
     assert t.getKind() == TypeKind.TYPEVAR;
-    return this.equality.equals(t.asElement(), sym) ? t : this.visit(t.getUpperBound(), sym);
+    return this.equality.equals(t.asElement(), element) ? t : this.visit(t.getUpperBound(), element);
   }
 
 }
