@@ -24,8 +24,8 @@
 module org.microbean.lang.bytebuddy {
 
   requires java.compiler;
-  requires net.bytebuddy;
-  requires org.microbean.lang;
+  requires transitive net.bytebuddy;
+  requires transitive org.microbean.lang;
 
   exports org.microbean.lang.bytebuddy;
 

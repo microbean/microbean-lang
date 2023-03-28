@@ -35,6 +35,9 @@ import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.Types;
 
+import static org.microbean.lang.type.Types.allTypeArguments;
+import static org.microbean.lang.type.Types.isInterface;
+
 // Basically done
 public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends TypeMirror>, Void> {
 
@@ -80,13 +83,13 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
         return this.eraseVisitor.visit(interfaces, true);
       }
       @SuppressWarnings("unchecked")
-      final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)this.types.allTypeArguments(e.asType());
+      final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)allTypeArguments(e.asType());
       if (formals.isEmpty()) {
         return interfaces;
       }
       assert this.supertypeVisitor.interfacesVisitor() == this;
       return
-        new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, formals, this.types.allTypeArguments(t))
+        new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, formals, allTypeArguments(t))
         .visit(interfaces, x);
     default:
       return List.of();
@@ -107,11 +110,11 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
       // (Technically an illegal state.)
       return List.of();
     case 1:
-      return this.types.isInterface(bounds.get(0)) ? bounds : List.of();
+      return isInterface(bounds.get(0)) ? bounds : List.of();
     default:
       // TODO: if we want to get fancy and permit multiple classes in here we have to not presume that everything from
       // position 1 on is a non-interface
-      return this.types.isInterface(bounds.get(0)) ? bounds : bounds.subList(1, size);
+      return isInterface(bounds.get(0)) ? bounds : bounds.subList(1, size);
     }
   }
 

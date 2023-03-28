@@ -83,6 +83,7 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
     return this.unmodifiableInterfaces;
   }
 
+  @SuppressWarnings("fallthrough")
   public final void addInterface(final TypeMirror i) {
     switch (i.getKind()) {
     case DECLARED:

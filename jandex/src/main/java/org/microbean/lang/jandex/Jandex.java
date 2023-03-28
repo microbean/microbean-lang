@@ -470,23 +470,13 @@ public final class Jandex extends Modeler {
       return null;
     }
     final Type t = fi.type();
-    switch (t.kind()) {
-    case ARRAY:
-      return this.type(fi, org.microbean.lang.type.ArrayType::new, this::build);
-    case CLASS:
-    case PARAMETERIZED_TYPE:
-      return this.type(fi, org.microbean.lang.type.DeclaredType::new, this::build);
-    case PRIMITIVE:
-      return this.type(fi, () -> new org.microbean.lang.type.PrimitiveType(kind(t.asPrimitiveType())), this::build);
-    case TYPE_VARIABLE:
-      return this.type(fi, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
-    case TYPE_VARIABLE_REFERENCE:
-    case UNRESOLVED_TYPE_VARIABLE:
-    case VOID:
-    case WILDCARD_TYPE:
-    default:
-      throw new AssertionError();
-    }
+    return switch (t.kind()) {
+    case ARRAY -> this.type(fi, org.microbean.lang.type.ArrayType::new, this::build);
+    case CLASS, PARAMETERIZED_TYPE -> this.type(fi, org.microbean.lang.type.DeclaredType::new, this::build);
+    case PRIMITIVE -> this.type(fi, () -> new org.microbean.lang.type.PrimitiveType(kind(t.asPrimitiveType())), this::build);
+    case TYPE_VARIABLE -> this.type(fi, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
+    default -> throw new IllegalStateException("t: " + t);
+    };
   }
 
   public final ExecutableType type(final MethodInfo mi) {
@@ -498,23 +488,13 @@ public final class Jandex extends Modeler {
       return null;
     }
     final Type t = mpi.type();
-    switch (t.kind()) {
-    case ARRAY:
-      return this.type(mpi, org.microbean.lang.type.ArrayType::new, this::build);
-    case CLASS:
-    case PARAMETERIZED_TYPE:
-      return this.type(mpi, org.microbean.lang.type.DeclaredType::new, this::build);
-    case PRIMITIVE:
-      return this.type(mpi, () -> new org.microbean.lang.type.PrimitiveType(kind(t.asPrimitiveType())), this::build);
-    case TYPE_VARIABLE:
-      return this.type(mpi, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
-    case TYPE_VARIABLE_REFERENCE:
-    case UNRESOLVED_TYPE_VARIABLE:
-    case VOID:
-    case WILDCARD_TYPE:
-    default:
-      throw new AssertionError();
-    }
+    return switch (t.kind()) {
+    case ARRAY -> this.type(mpi, org.microbean.lang.type.ArrayType::new, this::build);
+    case CLASS, PARAMETERIZED_TYPE -> this.type(mpi, org.microbean.lang.type.DeclaredType::new, this::build);
+    case PRIMITIVE -> this.type(mpi, () -> new org.microbean.lang.type.PrimitiveType(kind(t.asPrimitiveType())), this::build);
+    case TYPE_VARIABLE -> this.type(mpi, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
+    default -> throw new IllegalStateException("t: " + t);
+    };
   }
 
   public final TypeMirror type(final RecordComponentInfo rci) {
@@ -522,54 +502,27 @@ public final class Jandex extends Modeler {
       return null;
     }
     final Type t = rci.type();
-    switch (t.kind()) {
-    case ARRAY:
-      return this.type(rci, org.microbean.lang.type.ArrayType::new, this::build);
-    case CLASS:
-    case PARAMETERIZED_TYPE:
-      return this.type(rci, org.microbean.lang.type.DeclaredType::new, this::build);
-    case PRIMITIVE:
-      return this.type(rci, () -> new org.microbean.lang.type.PrimitiveType(kind(t.asPrimitiveType())), this::build);
-    case TYPE_VARIABLE:
-      return this.type(rci, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
-    case TYPE_VARIABLE_REFERENCE:
-    case UNRESOLVED_TYPE_VARIABLE:
-    case VOID:
-    case WILDCARD_TYPE:
-    default:
-      throw new AssertionError();
-    }
+    return switch (t.kind()) {
+    case ARRAY -> this.type(rci, org.microbean.lang.type.ArrayType::new, this::build);
+    case CLASS, PARAMETERIZED_TYPE -> this.type(rci, org.microbean.lang.type.DeclaredType::new, this::build);
+    case PRIMITIVE -> this.type(rci, () -> new org.microbean.lang.type.PrimitiveType(kind(t.asPrimitiveType())), this::build);
+    case TYPE_VARIABLE -> this.type(rci, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
+    default -> throw new IllegalStateException("rci.type(): " + t);
+    };
   }
 
   public final TypeMirror type(final TypeContext k) {
-    if (k == null) {
-      return null;
-    }
-    final Type type = k.type();
-    if (type == null) {
-      return null;
-    }
-    switch (type.kind()) {
-    case ARRAY:
-      return this.type(k, org.microbean.lang.type.ArrayType::new, this::build);
-    case CLASS:
-    case PARAMETERIZED_TYPE:
-      return this.type(k, org.microbean.lang.type.DeclaredType::new, this::build);
-    case PRIMITIVE:
-      return this.type(type.asPrimitiveType(), () -> new org.microbean.lang.type.PrimitiveType(kind(type.asPrimitiveType())), this::build);
-    case TYPE_VARIABLE:
-      return this.type(this.typeParameterInfoFor(k));
-    case TYPE_VARIABLE_REFERENCE:
-      return this.type(new TypeContext(k.context(), type.asTypeVariableReference().follow(), k.position(), k.kind())); // k.kind() had better be TYPE_ARGUMENT?
-    case UNRESOLVED_TYPE_VARIABLE:
-      throw new AssertionError();
-    case VOID:
-      return org.microbean.lang.type.NoType.VOID;
-    case WILDCARD_TYPE:
-      return this.type(k, org.microbean.lang.type.WildcardType::new, this::build);
-    default:
-      throw new AssertionError();
-    }
+    final Type type = k == null ? null : k.type();
+    return type == null ? null : switch (type.kind()) {
+    case ARRAY -> this.type(k, org.microbean.lang.type.ArrayType::new, this::build);
+    case CLASS, PARAMETERIZED_TYPE -> this.type(k, org.microbean.lang.type.DeclaredType::new, this::build);
+    case PRIMITIVE -> this.type(type.asPrimitiveType(), () -> new org.microbean.lang.type.PrimitiveType(kind(type.asPrimitiveType())), this::build);
+    case TYPE_VARIABLE -> this.type(this.typeParameterInfoFor(k));
+    case TYPE_VARIABLE_REFERENCE -> this.type(new TypeContext(k.context(), type.asTypeVariableReference().follow(), k.position(), k.kind())); // k.kind() had better be TYPE_ARGUMENT?
+    case UNRESOLVED_TYPE_VARIABLE -> throw new AssertionError();
+    case VOID -> org.microbean.lang.type.NoType.VOID;
+    case WILDCARD_TYPE -> this.type(k, org.microbean.lang.type.WildcardType::new, this::build);
+    };
   }
 
   public final <T extends TypeMirror> T type(final T t) {
@@ -577,7 +530,7 @@ public final class Jandex extends Modeler {
   }
 
   public final javax.lang.model.type.TypeVariable type(final TypeParameterInfo tpi) {
-    return tpi == null ? null : (org.microbean.lang.type.TypeVariable)this.type(tpi, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
+    return tpi == null ? null : this.type(tpi, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
   }
 
 
@@ -686,11 +639,7 @@ public final class Jandex extends Modeler {
     // Defining element.
     t.setDefiningElement(e);
 
-    // Enclosing element.
-    final Element enclosingElement;
-    switch (e.getNestingKind()) {
-    case ANONYMOUS:
-    case LOCAL:
+    e.setEnclosingElement(switch (e.getNestingKind()) {
       // Anonymous and local classes are effectively ignored in the javax.lang.model.* hierarchy. The documentation for
       // javax.lang.model.element.Element#getEnclosedElements() says, in part: "A class or interface is considered to
       // enclose the fields, methods, constructors, record components, and member classes and interfaces that it
@@ -700,18 +649,10 @@ public final class Jandex extends Modeler {
       // may change as this API or the programming language evolves."
       //
       // Additionally, Jandex provides no access to local or anonymous classes at all.
-      enclosingElement = null;
-      break;
-    case MEMBER:
-      enclosingElement = this.element(this.classInfoFor(ci.enclosingClass()));
-      break;
-    case TOP_LEVEL:
-      enclosingElement = this.packageElement(ci.name().prefix());
-      break;
-    default:
-      throw new AssertionError();
-    }
-    e.setEnclosingElement(enclosingElement);
+    case ANONYMOUS, LOCAL -> null;
+    case MEMBER -> this.element(this.classInfoFor(ci.enclosingClass()));
+    case TOP_LEVEL -> this.packageElement(ci.name().prefix());
+      });
 
     // Modifiers.
     final short modifiers = ci.flags();
@@ -891,16 +832,11 @@ public final class Jandex extends Modeler {
     t.setDefiningElement(e);
 
     // Enclosing element.
-    switch (tpi.kind()) {
-    case CLASS:
-      e.setEnclosingElement(this.element(tpi.annotationTarget().asClass()));
-      break;
-    case METHOD:
-      e.setEnclosingElement(this.element(tpi.annotationTarget().asMethod()));
-      break;
-    default:
-      throw new AssertionError();
-    }
+    e.setEnclosingElement(switch (tpi.kind()) {
+      case CLASS -> this.element(tpi.annotationTarget().asClass());
+      case METHOD -> this.element(tpi.annotationTarget().asMethod());
+      default -> throw new AssertionError();
+      });
 
     for (final AnnotationInstance ai : tpi.typeVariable().annotations()) {
       // This is nice, in a way. We know all of these annotations will be type use annotations, because Jandex doesn't
@@ -1388,7 +1324,7 @@ public final class Jandex extends Modeler {
   // Represents a "type context" in the parlance of
   // https://docs.oracle.com/javase/specs/jls/se19/html/jls-4.html#jls-4.11. Not all such type contexts are represented
   // here.
-  private static final class TypeContext {
+  public static final class TypeContext {
 
     private final TypeContext parent;
 

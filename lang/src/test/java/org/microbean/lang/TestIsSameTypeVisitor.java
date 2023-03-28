@@ -31,6 +31,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
+import javax.lang.model.type.TypeVisitor;
 
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Type.ClassType;
@@ -45,11 +46,16 @@ import org.microbean.lang.ElementSource;
 
 import org.microbean.lang.type.Types;
 
+import org.microbean.lang.visitor.AsSuperVisitor;
+import org.microbean.lang.visitor.CaptureVisitor;
 import org.microbean.lang.visitor.ContainsTypeVisitor;
 import org.microbean.lang.visitor.EraseVisitor;
 import org.microbean.lang.visitor.IsSameTypeVisitor;
+import org.microbean.lang.visitor.MemberTypeVisitor;
+import org.microbean.lang.visitor.PrecedesPredicate;
 import org.microbean.lang.visitor.SubtypeVisitor;
 import org.microbean.lang.visitor.SupertypeVisitor;
+import org.microbean.lang.visitor.TypeClosureVisitor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -81,17 +87,7 @@ final class TestIsSameTypeVisitor {
     assertNotNull(javacTypes);
 
     // Set up the fundamentals.
-    final ElementSource es = n -> elements.getTypeElement(n);
-    final Types types = new Types(es);
-    final EraseVisitor eraseVisitor = new EraseVisitor(es, types);
-    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(es, types, eraseVisitor);
-
-    // These have cycles.
-    final ContainsTypeVisitor containsTypeVisitor = new ContainsTypeVisitor(es, types);
-    final IsSameTypeVisitor isSameTypeVisitor = new IsSameTypeVisitor(es, containsTypeVisitor, supertypeVisitor, true);
-    final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(es, types, supertypeVisitor, isSameTypeVisitor);
-    containsTypeVisitor.setSubtypeVisitor(subtypeVisitor);
-    subtypeVisitor.setContainsTypeVisitor(containsTypeVisitor);
+    final Visitors visitors = new Visitors(n -> elements.getTypeElement(n));
 
     // Should be ready to go.
     

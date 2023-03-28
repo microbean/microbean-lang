@@ -132,13 +132,13 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
 
     // Get the actual declared type.  If, for example, t represents the type denoted by "List<String>", then get the
     // type denoted by "List<E>".
-    final DeclaredType declaredType = (DeclaredType)element.asType();
+    final DeclaredType typeDeclaration = (DeclaredType)element.asType();
 
     // The type arguments of such a declared type are always type variables (declared by type parameters).  In the type
     // denoted by "List<E>", the sole type *argument* is the type denoted by (the type parameter element) "E", and the
     // sole type parameter element that declares that type is the element "E" itself.
     @SuppressWarnings("unchecked")
-    final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)Types.allTypeArguments(declaredType);
+    final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)Types.allTypeArguments(typeDeclaration);
     if (formals.isEmpty()) {
       return supertype;
     }

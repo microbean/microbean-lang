@@ -24,7 +24,7 @@
 module org.microbean.lang {
 
   requires static jdk.compiler;
-  requires java.compiler;
+  requires transitive java.compiler;
 
   exports org.microbean.lang.element;
   exports org.microbean.lang.type;

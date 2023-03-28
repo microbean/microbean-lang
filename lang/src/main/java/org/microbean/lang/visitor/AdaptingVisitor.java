@@ -40,6 +40,9 @@ import org.microbean.lang.element.DelegatingElement;
 
 import org.microbean.lang.type.Types;
 
+import static org.microbean.lang.type.Types.allTypeArguments;
+import static org.microbean.lang.type.Types.asElement;
+
 /**
  * Does something adapting-like.
  *
@@ -96,7 +99,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
     this.visitDeclared(source, target);
     final int fromSize = this.from.size();
     for (int i = 0; i < fromSize; i++) {
-      final TypeMirror val = this.mapping.get(DelegatingElement.of(this.types.asElement(this.from.get(i), true), this.elementSource));
+      final TypeMirror val = this.mapping.get(DelegatingElement.of(asElement(this.from.get(i), true), this.elementSource));
       if (this.to.get(i) != val) {
         this.to.set(i, val);
       }
@@ -120,7 +123,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
   public final Void visitDeclared(final DeclaredType source, final TypeMirror target) {
     assert source.getKind() == TypeKind.DECLARED;
     if (target.getKind() == TypeKind.DECLARED) {
-      this.adaptRecursive(this.types.allTypeArguments(source), this.types.allTypeArguments(target));
+      this.adaptRecursive(allTypeArguments(source), allTypeArguments(target));
     }
     return null;
   }

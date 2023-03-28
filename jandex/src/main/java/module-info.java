@@ -21,11 +21,12 @@
  * @author <a href="https://about.me/lairdnelson"
  * target="_parent">Laird Nelson</a>
  */
+@SuppressWarnings({ "requires-automatic", "requires-transitive-automatic" })
 module org.microbean.lang.jandex {
 
-  requires java.compiler;
-  requires org.jboss.jandex; // yes, even though it's at SmallRye
-  requires org.microbean.lang;
+  requires transitive java.compiler;
+  requires transitive org.jboss.jandex; // yes, even though it's at SmallRye
+  requires transitive org.microbean.lang;
 
   exports org.microbean.lang.jandex;
 

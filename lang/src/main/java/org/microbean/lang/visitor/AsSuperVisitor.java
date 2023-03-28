@@ -40,6 +40,19 @@ import org.microbean.lang.element.DelegatingElement;
 import org.microbean.lang.type.NoType;
 import org.microbean.lang.type.Types;
 
+import static org.microbean.lang.type.Types.asElement;
+
+/**
+ * Given a {@link TypeMirror} and an {@link Element}, attempts to find a supertype of that {@link TypeMirror} whose
+ * defining element is equal to (normally is identical to) the supplied {@link Element}.
+ *
+ * <p>For example, given a type denoted by {@code List<String>}, and a {@link javax.lang.model.element.TypeElement}
+ * denoted by {@code Collection}, the result of visitation will be the type denoted by {@code Collection<String>}.</p>
+ *
+ * <p>{@code javac} does odd things with this and arrays and it is not clear that its documentation matches its
+ * code. Consequently I don't have a lot of faith in the {@link visitArray(ArrayType, Element)} method as of this
+ * writing.</p>
+ */
 // Basically done
 //
 // https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2165-L2221
@@ -55,21 +68,26 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
 
   private final SupertypeVisitor supertypeVisitor;
 
-  private final SubtypeVisitor subtypeVisitor;
+  private SubtypeVisitor subtypeVisitor;
 
   public AsSuperVisitor(final ElementSource elementSource,
                         final Equality equality,
                         final Types types,
-                        final SupertypeVisitor supertypeVisitor,
-                        final SubtypeVisitor subtypeVisitor) {
+                        final SupertypeVisitor supertypeVisitor) {
     super();
     this.seenTypes = new HashSet<>();
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
-    this.subtypeVisitor = Objects.requireNonNull(subtypeVisitor, "subtypeVisitor");
-    this.subtypeVisitor.setAsSuperVisitor(this);
+  }
+
+  public final void setSubtypeVisitor(final SubtypeVisitor subtypeVisitor) {
+    if (subtypeVisitor.asSuperVisitor() != this) {
+      throw new IllegalArgumentException("subtypeVisitor");
+    } else if (subtypeVisitor != this.subtypeVisitor) {
+      this.subtypeVisitor = subtypeVisitor;
+    }
   }
 
   // (Remember in all this we're modeling things like javac, which tends to love spaghetti. This method is called only
@@ -96,6 +114,23 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
     }
   }
 
+  // This is extraordinarily weird. In javac, all (non-generic? all?) array types have, as their synthetic element, one
+  // synthetic element that is a ClassSymbol named "Array". So the type denoted by, say, byte[] and the type denoted by
+  // Object[] both return exactly the same ClassSymbol reference from their asElement() method/sym field. See
+  // Symtab.java line 483ish.
+  //
+  // Now, what type does that ClassSymbol have?  It is built like this:
+  //
+  //   arrayClass = new ClassSymbol(PUBLIC|ACYCLIC, names.Array, noSymbol);
+  //
+  // The first argument is a bunch of flags. OK. The second is, as we've seen, equal to, simply, "Array".  The third is
+  // its owner/enclosing element, which is nothing.
+  //
+  // This three-argument constructor delegates to the canonical four-argument constructor. What's missing? The type.  So
+  // when you build a ClassSymbol from the three-argument constructor, you effectively supply "new
+  // ClassType(Type.noType, null, null)" as its type argument.  If I'm reading this right and translating properly to
+  // the javax.lang.model hierarchy, that Element's asType() method will return a ClassType/DeclaredType (!) with no
+  // enclosing type and no type arguments.
   @Override
   public final TypeMirror visitArray(final ArrayType t, final Element element) {
     assert t.getKind() == TypeKind.ARRAY;
@@ -112,39 +147,40 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
   private final TypeMirror visitDeclaredOrIntersection(final TypeMirror t, final Element element) {
     assert t.getKind() == TypeKind.DECLARED || t.getKind() == TypeKind.INTERSECTION;
     Objects.requireNonNull(element, "element");
-    final Element te = this.types.asElement(t, true);
-    if (te != null) {
-      if (this.equality.equals(te, element)) {
-        return t;
+    final Element te = asElement(t, true /* yes, generate synthetic elements a la javac */);
+    if (te == null) {
+      return null;
+    } else if (this.equality.equals(te, element)) {
+      return t;
+    }
+    final DelegatingElement c = DelegatingElement.of(te, this.elementSource);
+    if (!this.seenTypes.add(c)) { // javac calls it seenTypes but it stores Symbols/Elements
+      return null;
+    }
+    try {
+      final TypeMirror st = this.supertypeVisitor.visit(t);
+      switch (st.getKind()) {
+      case DECLARED:
+      case INTERSECTION:
+      case TYPEVAR:
+        final TypeMirror x = this.visit(st, element);
+        if (x != null) {
+          return x;
+        }
+        break;
+      default:
+        break;
       }
-      final DelegatingElement c = DelegatingElement.of(te, this.elementSource);
-      if (this.seenTypes.add(c)) {
-        try {
-          final TypeMirror st = this.supertypeVisitor.visit(t);
-          switch (st.getKind()) {
-          case DECLARED:
-          case INTERSECTION:
-          case TYPEVAR:
-            final TypeMirror x = this.visit(st, element);
-            if (x != null) {
-              return x;
-            }
-            break;
-          default:
-            break;
+      if (element.getKind().isInterface()) {
+        for (final TypeMirror iface : this.supertypeVisitor.interfacesVisitor().visit(t)) {
+          final TypeMirror x = this.visit(iface, element);
+          if (x != null) {
+            return x;
           }
-          if (element.getKind().isInterface()) {
-            for (final TypeMirror iface : this.supertypeVisitor.interfacesVisitor().visit(t)) {
-              final TypeMirror x = this.visit(iface, element);
-              if (x != null) {
-                return x;
-              }
-            }
-          }
-        } finally {
-          this.seenTypes.remove(c);
         }
       }
+    } finally {
+      this.seenTypes.remove(c);
     }
     return null;
   }

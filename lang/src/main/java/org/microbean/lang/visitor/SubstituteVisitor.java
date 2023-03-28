@@ -93,13 +93,16 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
 
   final SubstituteVisitor with(final List<? extends TypeMirror> from,
                                final List<? extends TypeMirror> to) {
+    if (from == this.from && to == this.to) {
+      return this;
+    }
     return new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, from, to);
   }
 
   // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3382-L3411
   @Override
-  public final ExecutableType visitExecutable(ExecutableType e, final Void x) {
-    assert e.getKind() == TypeKind.EXECUTABLE;
+  public final ExecutableType visitExecutable(ExecutableType t, final Void x) {
+    assert t.getKind() == TypeKind.EXECUTABLE;
 
     /*
       if (Type.containsAny(to, t.tvars)) {
@@ -111,26 +114,26 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
       }
     */
 
-    List<? extends TypeVariable> typeVariables = e.getTypeVariables();
+    List<? extends TypeVariable> typeVariables = t.getTypeVariables();
     if (anyMatches(this.to, typeVariables, this.equality::equals)) {
-      e = new org.microbean.lang.type.ExecutableType(e, newInstances(typeVariables));
-      typeVariables = e.getTypeVariables();
+      t = new org.microbean.lang.type.ExecutableType(t, newInstances(typeVariables));
+      typeVariables = t.getTypeVariables();
     }
 
     // Now do substitution on the type variable bounds themselves.
     final List<? extends TypeVariable> visitedTypeVariables = this.visitUpperBoundsOf(typeVariables);
 
     // Visit the other "parts" of the method that are structurally relevant.
-    ExecutableType visitedE = (ExecutableType)super.visitExecutable(e, x);
+    ExecutableType visitedT = (ExecutableType)super.visitExecutable(t, x);
 
     if (typeVariables == visitedTypeVariables) {
-      if (e == visitedE) {
-        return e;
+      if (t == visitedT) {
+        return t;
       }
     } else {
-      visitedE = this.with(typeVariables, visitedTypeVariables).visitExecutable(visitedE, x);
+      visitedT = this.with(typeVariables, visitedTypeVariables).visitExecutable(visitedT, x);
     }
-    return new org.microbean.lang.type.ExecutableType(visitedE, visitedTypeVariables);
+    return new org.microbean.lang.type.ExecutableType(visitedT, visitedTypeVariables);
   }
 
   @Override
@@ -248,7 +251,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
 
     // Phase 1 (it appears): effectively call visit() on the upper bound of all the type variables.  If this didn't
     // result in any changes, we're done.
-    List<TypeMirror> visitedUpperBounds = null; // new ArrayList<>(tvs.size());
+    final List<TypeMirror> visitedUpperBounds = new ArrayList<>(tvs.size()); // could be pointless if nothing changed
     boolean changed = false;
     for (final TypeVariable tv : tvs) {
       final TypeMirror upperBound = tv.getUpperBound();
@@ -288,7 +291,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
       final org.microbean.lang.type.TypeVariable upperBoundlessTv = newTvs.get(i);
       final org.microbean.lang.type.TypeVariable newTv =
         new org.microbean.lang.type.TypeVariable(this.elementSource, visitedUpperBounds.get(i), upperBoundlessTv.getLowerBound());
-      newTv.setDefiningElement((TypeParameterElement)upperBoundlessTv.asElement());
+      newTv.setDefiningElement(upperBoundlessTv.asElement());
       newTvs.set(i, newTv);
     }
 
@@ -301,6 +304,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
    */
 
 
+  // Does at least one t in ts "match" at least one s in ss according to p?
   private static final boolean anyMatches(final Iterable<? extends TypeMirror> ts,
                                           final Collection<? extends TypeMirror> ss,
                                           final BiPredicate<? super TypeMirror, ? super TypeMirror> p) {

@@ -132,6 +132,39 @@ public final class Types {
     };
   }
 
+  public final javax.lang.model.type.TypeMirror box(final javax.lang.model.type.TypeMirror t) {
+    return t == null ? null : switch (t.getKind()) {
+    case BOOLEAN -> this.es.element("java.lang.Boolean").asType();
+    case BYTE -> this.es.element("java.lang.Byte").asType();
+    case CHAR -> this.es.element("java.lang.Character").asType();
+    case DOUBLE -> this.es.element("java.lang.Double").asType();
+    case FLOAT -> this.es.element("java.lang.Float").asType();
+    case INT -> this.es.element("java.lang.Integer").asType();
+    case LONG -> this.es.element("java.lang.Long").asType();
+    case SHORT -> this.es.element("java.lang.Short").asType();
+    case VOID -> this.es.element("java.lang.Void").asType();
+    default -> t;
+    };
+  }
+
+  public final javax.lang.model.type.TypeMirror unbox(final javax.lang.model.type.TypeMirror t) {
+    return t == null ? null : switch (t.getKind()) {
+    case DECLARED -> switch (((javax.lang.model.element.QualifiedNameable)((javax.lang.model.type.DeclaredType)t).asElement()).getQualifiedName().toString()) {
+    case "java.lang.Boolean" -> org.microbean.lang.type.PrimitiveType.BOOLEAN;
+    case "java.lang.Byte" -> org.microbean.lang.type.PrimitiveType.BYTE;
+    case "java.lang.Character" -> org.microbean.lang.type.PrimitiveType.CHAR;
+    case "java.lang.Double" -> org.microbean.lang.type.PrimitiveType.DOUBLE;
+    case "java.lang.Float" -> org.microbean.lang.type.PrimitiveType.FLOAT;
+    case "java.lang.Integer" -> org.microbean.lang.type.PrimitiveType.INT;
+    case "java.lang.Long" -> org.microbean.lang.type.PrimitiveType.LONG;
+    case "java.lang.Short" -> org.microbean.lang.type.PrimitiveType.SHORT;
+    case "java.lang.Void" -> org.microbean.lang.type.NoType.VOID;
+    default -> t;
+    };
+    default -> t;
+    };
+  }
+
   // Not visitor-based in javac
   public static final List<? extends javax.lang.model.type.TypeMirror> allTypeArguments(final javax.lang.model.type.TypeMirror t) {
     return t == null ? List.of() : switch (t.getKind()) {
@@ -367,7 +400,7 @@ public final class Types {
   // See
   // https://github.com/openjdk/jdk/blob/67ecd30327086c5d7628c4156f8d9dcccb0f4d09/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L1154-L1164
   public final boolean raw(final javax.lang.model.type.TypeMirror t) {
-    return switch (t.getKind()) {
+    return t == null ? false : switch (t.getKind()) {
     case ARRAY -> raw(((ArrayType)t).getComponentType());
     case DECLARED -> {
       final javax.lang.model.type.TypeMirror typeDeclaration = typeDeclaration(t);

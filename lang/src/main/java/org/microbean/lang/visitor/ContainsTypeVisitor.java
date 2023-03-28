@@ -76,33 +76,36 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
     this.types = Objects.requireNonNull(types, "types");
   }
 
+  final void setIsSameTypeVisitor(final IsSameTypeVisitor v) {
+    if (v.containsTypeVisitor() != this) {
+      throw new IllegalArgumentException("v: " + v);
+    } else if (v != this.isSameTypeVisitor) {
+      this.isSameTypeVisitor = v;
+    }
+  }
+
+  final void setSubtypeVisitor(final SubtypeVisitor v) {
+    if (v.containsTypeVisitor() != this) {
+      throw new IllegalArgumentException("v: " + v);
+    } else if (v != this.subtypeVisitor) {
+      this.subtypeVisitor = v;
+    }
+  }
+  
   // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1524-L1531
-  final boolean visit(final List<? extends TypeMirror> t, final List<? extends TypeMirror> s) {
-    if (t.size() == s.size()) {
-      for (int i = 0; i < t.size(); i++) {
-        if (!this.visit(t.get(i), s.get(i))) {
-          return false;
-        }
+  final boolean visit(final List<? extends TypeMirror> t, final List<? extends TypeMirror> s) {    
+    final int size = t.size();
+    if (size <= 0 || size != s.size()) {
+      return false;
+    }
+    for (int i = 0; i < size; i++) {
+      if (!this.visit(t.get(i), s.get(i))) {
+        return false;
       }
-      return true;
     }
-    return false;
+    return true;
   }
-
-  public final void setIsSameTypeVisitor(final IsSameTypeVisitor v) {
-    if (this.isSameTypeVisitor != null) {
-      throw new IllegalStateException();
-    }
-    this.isSameTypeVisitor = Objects.requireNonNull(v, "v");
-  }
-
-  public final void setSubtypeVisitor(final SubtypeVisitor v) {
-    if (this.subtypeVisitor != null) {
-      throw new IllegalStateException();
-    }
-    this.subtypeVisitor = Objects.requireNonNull(v, "v");
-  }
-
+  
   @Override
   protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
     return this.isSameTypeVisitor.visit(t, s);
@@ -116,16 +119,22 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
 
   // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1585-L1596
   @Override
-  public final Boolean visitWildcard(final WildcardType w, final TypeMirror s) {
+  @SuppressWarnings("fallthrough")
+  public final Boolean visitWildcard(final WildcardType w, TypeMirror s) {
     assert w.getKind() == TypeKind.WILDCARD;
     switch (s.getKind()) {
     case TYPEVAR:
       // Return true if s is a Capture that captures w, which just means that the wildcard that s captures is the same
       // one as w.
-      return s instanceof Capture sct && this.visitWildcard(w, sct.getWildcardType());
+      if (s instanceof Capture sct) {
+        s = sct.getWildcardType();
+      } else {
+        return Boolean.FALSE;
+      }
+      // fall through
     case WILDCARD:
       if (this.isSameTypeVisitor.visit(w, s)) {
-        return true;
+        return Boolean.TRUE;
       }
       // fall through
     default:

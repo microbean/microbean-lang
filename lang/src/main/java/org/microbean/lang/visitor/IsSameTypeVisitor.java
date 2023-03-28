@@ -52,14 +52,11 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
 
   private final Equality equality;
 
-  private final ContainsTypeVisitor containsTypeVisitor;
+  final ContainsTypeVisitor containsTypeVisitor;
 
   private final SupertypeVisitor supertypeVisitor;
 
   private final boolean wildcardsComparable;
-
-  // See comments in visitExecutable().
-  // private final HasSameParameterTypesVisitor hasSameParameterTypesVisitor; // inner class
 
   public IsSameTypeVisitor(final ElementSource elementSource,
                            final ContainsTypeVisitor containsTypeVisitor,
@@ -76,14 +73,16 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     super(Boolean.FALSE);
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(false) : equality;
-    this.containsTypeVisitor = Objects.requireNonNull(containsTypeVisitor, "containsTypeVisitor");
-    containsTypeVisitor.setIsSameTypeVisitor(this);
-    this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
-    // See comments in visitExecutable().
-    // this.hasSameParameterTypesVisitor = new HasSameParameterTypesVisitor();
     this.wildcardsComparable = wildcardsComparable;
+    this.containsTypeVisitor = Objects.requireNonNull(containsTypeVisitor, "containsTypeVisitor");
+    this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
+    containsTypeVisitor.setIsSameTypeVisitor(this);
   }
 
+  final ContainsTypeVisitor containsTypeVisitor() {
+    return this.containsTypeVisitor;
+  }
+  
   @Override
   protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
     return t == s || this.equality.equals(t, s);
@@ -92,45 +91,21 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
   @Override
   public final Boolean visitArray(final ArrayType t, final TypeMirror s) {
     assert t.getKind() == TypeKind.ARRAY;
-    if (t == s) {
-      return true;
-    }
-    switch (s.getKind()) {
-    case ARRAY:
-      return this.visitArray(t, (ArrayType)s);
-    default:
-      return Boolean.FALSE;
-    }
-  }
-
-  private final boolean visitArray(final ArrayType t, final ArrayType s) {
-    assert t.getKind() == TypeKind.ARRAY;
-    assert s.getKind() == TypeKind.ARRAY;
-    if (t == s) {
-      return true;
-    }
-    final TypeMirror tct = t.getComponentType();
-    final TypeMirror sct = s.getComponentType();
-    return this.containsTypeEquivalent(tct, sct);
+    return t == s || switch (s.getKind()) {
+    case ARRAY -> this.containsTypeEquivalent(t.getComponentType(), ((ArrayType)s).getComponentType());
+    default -> Boolean.FALSE;
+    };
   }
 
   @Override
   public final Boolean visitDeclared(final DeclaredType t, final TypeMirror s) {
     assert t.getKind() == TypeKind.DECLARED;
-    if (t == s) {
-      return true;
-    }
-    switch (s.getKind()) {
-    case DECLARED:
-      return this.visitDeclared(t, (DeclaredType)s);
-    case INTERSECTION:
-      // (Basically returns false.)
-      return this.visitDeclared(t, (IntersectionType)s);
-    case WILDCARD:
-      return this.visitDeclared(t, (WildcardType)s);
-    default:
-      return false;
-    }
+    return t == s || switch (s.getKind()) {
+    case DECLARED -> this.visitDeclared(t, (DeclaredType)s);
+    case INTERSECTION -> this.visitDeclared(t, (IntersectionType)s); // basically returns false
+    case WILDCARD -> this.visitDeclared(t, (WildcardType)s);
+    default -> Boolean.FALSE;
+    };
   }
 
   // https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1424-L1426
@@ -177,53 +152,46 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
   @Override
   public final Boolean visitError(final ErrorType t, final TypeMirror s) {
     assert t.getKind() == TypeKind.ERROR;
-    return true;
+    return Boolean.TRUE;
   }
 
   @Override
   public final Boolean visitExecutable(final ExecutableType t, final TypeMirror s) {
     assert t.getKind() == TypeKind.EXECUTABLE;
-    if (t == s) {
-      return true;
-    }
-    switch (s.getKind()) {
-    case EXECUTABLE:
-      return this.visitExecutable(t, (ExecutableType)s);
-    default:
-      return false;
-    }
+    return t == s || switch (s.getKind()) {
+    case EXECUTABLE -> this.visitExecutable(t, (ExecutableType)s);
+    default -> Boolean.FALSE;
+    };
   }
 
   private final boolean visitExecutable(final ExecutableType t, final ExecutableType s) {
     assert t.getKind() == TypeKind.EXECUTABLE && s.getKind() == TypeKind.EXECUTABLE;
     assert t != s;
-    if (!hasSameBounds(t, s)) {
+
+    // In javac, an ExecutableType has its representation spread across a "ForAll" type and a "MethodType", where a
+    // ForAll type "has a" MethodType.  The ForAll type is basically a decorator, decorating its MethodType with its
+    // type variables.
+    //
+    // javac's isSameTypeVisitor TypeRelation first checks to see if two ForAlls have the "same" type variables (see
+    // hasSameBounds(); javac cannot decide on a term to mean, roughly, equivalent, using "same" and "equivalent" and
+    // "equal" oftentimes to mean the same thing).
+    //
+    // Here we follow suit:
+    final List<? extends TypeVariable> ttvs = t.getTypeVariables();
+    final List<? extends TypeVariable> stvs = s.getTypeVariables();
+    if (!hasSameBounds(ttvs, stvs)) {
       return false;
     }
-    final ExecutableType substitutedS = new SubstituteVisitor(this.elementSource,
-                                                              this.equality,
-                                                              this.supertypeVisitor,
-                                                              s.getTypeVariables(),
-                                                              t.getTypeVariables())
-      .visitExecutable(s, null);
+    final ExecutableType substitutedS =
+      new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, stvs, ttvs).visitExecutable(s, null);
     if (s != substitutedS) {
       return this.visitExecutable(t, substitutedS); // RECURSIVE
     }
-    // javac has, effectively
-    // (https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1445):
-    //
-    //   return hasSameArgs(t, s) && this.visit(t.getReturnType(), s.getReturnType())
-    //
-    // hasSameArgs() in javac ends up calling a visitor that does exactly what this current visitExecutable() method
-    // does, so effectively the compiler checks an executable twice. That seems silly. The only "extra" thing
-    // hasSameArgs does is call containsTypeEquivalent(t, s).
-    //
-    // So instead of this:
-    //
-    //   return hasSameArgs(t, s) && this.visit(t.getReturnType(), s.getReturnType());
-    //
-    // …we'll just do this:
-    return containsTypeEquivalent(t, s) && this.visit(t.getReturnType(), s.getReturnType());
+
+    // OK, we completed the "ForAll" part. Next, javac checks the MethodType "portion", which consists of the parameter
+    // types and the return type. We've already checked the type variables involved, so we know they're compatible.
+    return
+      containsTypeEquivalent(t.getParameterTypes(), s.getParameterTypes()) && this.visit(t.getReturnType(), s.getReturnType());
   }
 
   @Override
@@ -265,12 +233,10 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     final Map<DelegatingElement, TypeMirror> tMap = new HashMap<>();
     for (final TypeMirror ti : this.supertypeVisitor.interfacesVisitor().visitIntersection(t, null)) {
       assert ti.getKind() == TypeKind.DECLARED;
-      assert ti instanceof DeclaredType;
       tMap.put(DelegatingElement.of(((DeclaredType)t).asElement(), this.elementSource), ti);
     }
     for (final TypeMirror si : this.supertypeVisitor.interfacesVisitor().visitIntersection(s, null)) {
       assert si.getKind() == TypeKind.DECLARED;
-      assert si instanceof DeclaredType;
       final TypeMirror ti = tMap.remove(((DeclaredType)si).asElement());
       if (ti == null || !this.visit(ti, si)) {
         return false;
@@ -287,58 +253,25 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
       tKind == TypeKind.NONE ||
       tKind == TypeKind.PACKAGE ||
       tKind == TypeKind.VOID;
-    if (t == s) {
-      return true;
-    }
-    switch (tKind) {
-    case NONE:
-      // https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1361-L1362
-      return s.getKind() == TypeKind.NONE;
-    case PACKAGE:
-      // https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1448-L1451
-      return t == s;
-    default:
-      return this.equality.equals(t, s);
-    }
+    return t == s || switch (tKind) {
+    case NONE -> s.getKind() == TypeKind.NONE;
+    default -> this.equality.equals(t, s);
+    };
   }
 
   @Override
   public final Boolean visitNull(final NullType t, final TypeMirror s) {
     assert t.getKind() == TypeKind.NULL;
-    if (t == s) {
-      return true;
-    }
-    switch (s.getKind()) {
-    case NULL:
-      // https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1361-L1362
-      return true;
-    default:
-      return this.equality.equals(t, s);
-    }
+    return t == s || switch (s.getKind()) {
+    case NULL -> Boolean.TRUE;
+    default -> this.equality.equals(t, s);
+    };
   }
 
   @Override
   public final Boolean visitPrimitive(final PrimitiveType t, final TypeMirror s) {
-    final TypeKind tKind = t.getKind();
-    assert tKind.isPrimitive();
-    if (t == s) {
-      return true;
-    }
-    final TypeKind sKind = s.getKind();
-    switch (s.getKind()) {
-    case BOOLEAN:
-    case BYTE:
-    case CHAR:
-    case DOUBLE:
-    case FLOAT:
-    case INT:
-    case LONG:
-    case SHORT:
-      assert s.getKind().isPrimitive();
-      return tKind == sKind;
-    default:
-      return this.equality.equals(t, s);
-    }
+    assert t.getKind().isPrimitive();
+    return t == s || this.equality.equals(t, s);
   }
 
   @Override
@@ -426,39 +359,40 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     return false;
   }
 
-  // NOTE: Not currently used. See comments in visitExecutable() above.
-  //
-  // https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3245-L3256
-  //
-  // Duplication in javac all over the place.
-  /*
-  private final boolean hasSameArgs(final ExecutableType t, final ExecutableType s) {
-    return this.hasSameParameterTypesVisitor.visit(t, s);
-  }
-  */
-
   // https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3468-L3480
   private final boolean hasSameBounds(final ExecutableType t, final ExecutableType s) {
-    final List<? extends TypeVariable> tVariables = t.getTypeVariables();
-    final List<? extends TypeVariable> sVariables = s.getTypeVariables();
-    if (tVariables.size() != sVariables.size() || tVariables.isEmpty()) {
-      // This size check code is not in javac (only an emptiness check) but seems harmless and an easy productive
-      // optimization.  My guess is the size check was deemed expensive because javac's List is a linked list.
+    return hasSameBounds(t.getTypeVariables(), s.getTypeVariables());
+  }
+
+  private final boolean hasSameBounds(final List<? extends TypeVariable> ts, final List<? extends TypeVariable> ss) {
+    final int size = ts.size();
+    if (size != ss.size()) {
+      return false;
+    } else if (size > 0) {
+      final SubstituteVisitor sv = new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, ss, ts);
+      for (int i = 0; i < size; i++) {
+        final TypeVariable t = ts.get(i);
+        final TypeVariable s = ss.get(i);
+        if (!this.visit(t.getUpperBound(), sv.visit(s.getUpperBound())) ||
+            !this.visit(t.getLowerBound(), sv.visit(s.getLowerBound()))) { // lower bounds only relevant for captures
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  private final boolean containsTypeEquivalent(final List<? extends TypeMirror> ts, final List<? extends TypeMirror> ss) {
+    final int size = ts.size();
+    if (size != ss.size()) {
       return false;
     }
-    final Iterator<? extends TypeVariable> ti = tVariables.iterator();
-    final Iterator<? extends TypeVariable> si = sVariables.iterator();
-    while (ti.hasNext() &&
-           si.hasNext() &&
-           this.visit(ti.next().getUpperBound(),
-                      new SubstituteVisitor(this.elementSource,
-                                            this.equality,
-                                            this.supertypeVisitor,
-                                            sVariables,
-                                            tVariables).visit(si.next().getUpperBound()))) { // TODO: concurrent iteration exception?
-      continue;
+    for (int i = 0; i < size; i++) {
+      if (!this.containsTypeEquivalent(ts.get(i), ss.get(i))) {
+        return false;
+      }
     }
-    return !ti.hasNext() && !si.hasNext();
+    return true;
   }
 
   // https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4562-L4565
@@ -467,58 +401,5 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
       this.visit(t, s) ||
       this.containsTypeVisitor.visit(t, s) && this.containsTypeVisitor.visit(s, t);
   }
-
-  private final boolean containsTypeEquivalent(final List<? extends TypeMirror> ts, final List<? extends TypeMirror> ss) {
-    if (ts.size() != ss.size() || ts.isEmpty()) {
-      // This size check code is not in javac (only an emptiness check) but seems harmless and an easy productive
-      // optimization.  My guess is the size check was deemed expensive because javac's List is a linked list.
-      return false;
-    }
-    final Iterator<? extends TypeMirror> ti = ts.iterator();
-    final Iterator<? extends TypeMirror> si = ss.iterator();
-    while (ti.hasNext() &&
-           si.hasNext() &&
-           this.containsTypeEquivalent(ti.next(), si.next())) {
-      continue;
-    }
-    return !ti.hasNext() && !si.hasNext();
-  }
-
-  // NOTE: Not currently used.
-  //
-  // See https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3266-L3298.
-  //
-  // Note that visitExecutable, above, a port of javac logic, calls
-  // this (indirectly), and duplicates most of its logic.  This is
-  // very weird.  I don't know why the compiler checks things multiple
-  // times.
-  /*
-  private final class HasSameParameterTypesVisitor extends SimpleTypeVisitor14<Boolean, ExecutableType> {
-
-    HasSameParameterTypesVisitor() {
-      super(Boolean.FALSE);
-    }
-
-    @Override
-    public final Boolean visitExecutable(final ExecutableType t, final ExecutableType s) {
-      assert t.getKind() == TypeKind.EXECUTABLE;
-      if (s.getKind() == TypeKind.EXECUTABLE) {
-        if (hasSameBounds(t, s)) {
-          // TODO: already done in visitExecutable() above
-          return false;
-        }
-        // TODO: already done in visitExecutable() above
-        final ExecutableType substitutedS =
-          new SubstituteVisitor(supertypeVisitor, s.getTypeVariables(), t.getTypeVariables()).visitExecutable(s, null);
-        if (s != substitutedS) {
-          return this.visit(t, substitutedS);
-        }
-        return containsTypeEquivalent(t.getParameterTypes(), s.getParameterTypes());
-      }
-      return false;
-    }
-
-  }
-  */
 
 }

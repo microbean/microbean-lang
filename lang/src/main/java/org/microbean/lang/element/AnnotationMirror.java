@@ -68,7 +68,7 @@ public class AnnotationMirror implements javax.lang.model.element.AnnotationMirr
     final DeclaredType old = this.getAnnotationType();
     if (old == null) {
       if (annotationType != null) {
-        this.annotationType = this.validateAnnotationType(annotationType);
+        this.annotationType = validateAnnotationType(annotationType);
       }
     } else if (old != annotationType) {
       throw new IllegalStateException("old: " + old + "; annotationType: " + annotationType);

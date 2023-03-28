@@ -48,7 +48,7 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
     this.precedesPredicate = Objects.requireNonNull(precedesPredicate, "precedesPredicate");
     this.closureCache = new WeakHashMap<>();
   }
-
+  
   @Override
   protected final TypeClosure defaultAction(final TypeMirror t, final Void x) {
     // Interestingly, javac's Types#closure(Type) method returns a single-element list containing t if t is not a class

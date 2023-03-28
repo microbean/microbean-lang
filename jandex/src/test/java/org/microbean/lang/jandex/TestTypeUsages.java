@@ -177,6 +177,7 @@ final class TestTypeUsages {
             // (In this test we know this to be false. In the recipe, this would tell us unambiguously the type usage
             // annotation is on the actual thing being extended/implemented.)
             fail();
+            break;
           case PARAMETERIZED_TYPE:
             // (In this test we know this to be true.)
             

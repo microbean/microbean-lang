@@ -66,6 +66,10 @@ public class Equality {
     this.ia = ia;
   }
 
+  public final boolean includeAnnotations() {
+    return this.ia;
+  }
+
   public int hashCode(final Object o1) {
     return hashCode(o1, this.ia);
   }

@@ -45,7 +45,12 @@ import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.Types;
 
-// Basically done
+import static org.microbean.lang.type.Types.allTypeArguments;
+import static org.microbean.lang.type.Types.asElement;
+import static org.microbean.lang.type.Types.unboundedWildcardType;
+import static org.microbean.lang.type.Types.upperBoundedWildcardType;
+
+// Deliberately not thread safe.
 // See https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1109-L1238
 public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
@@ -61,66 +66,107 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   private final SupertypeVisitor supertypeVisitor;
 
+  private final ContainsTypeVisitor containsTypeVisitor;
+
   private final IsSameTypeVisitor isSameTypeVisitor;
 
-  private ContainsTypeVisitor containsTypeVisitor;
+  private final CaptureVisitor captureVisitor;
 
-  private AsSuperVisitor asSuperVisitor;
+  private final AsSuperVisitor asSuperVisitor;
 
-  public SubtypeVisitor(final ElementSource elementSource,
-                        final Types types,
-                        final SupertypeVisitor supertypeVisitor,
-                        final IsSameTypeVisitor isSameTypeVisitor) {
-    this(elementSource, null, types, supertypeVisitor, isSameTypeVisitor);
-  }
+  private SubtypeVisitor withCaptureVariant;
+
+  private SubtypeVisitor withoutCaptureVariant;
 
   public SubtypeVisitor(final ElementSource elementSource,
                         final Equality equality,
                         final Types types,
-                        final SupertypeVisitor supertypeVisitor,
-                        final IsSameTypeVisitor isSameTypeVisitor) {
-    this(elementSource, equality, types, supertypeVisitor, isSameTypeVisitor, true);
-  }
-
-  public SubtypeVisitor(final ElementSource elementSource,
-                        final Equality equality,
-                        final Types types,
+                        final AsSuperVisitor asSuperVisitor,
                         final SupertypeVisitor supertypeVisitor,
                         final IsSameTypeVisitor isSameTypeVisitor,
+                        final ContainsTypeVisitor containsTypeVisitor,
+                        final CaptureVisitor captureVisitor,
                         final boolean capture) {
     super(Boolean.FALSE);
+    this.cache = new HashSet<>();
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
+    this.asSuperVisitor = Objects.requireNonNull(asSuperVisitor, "asSuperVisitor");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
     this.isSameTypeVisitor = Objects.requireNonNull(isSameTypeVisitor, "isSameTypeVisitor");
-    this.capture = capture;
-    this.cache = new HashSet<>();
-  }
+    this.containsTypeVisitor = Objects.requireNonNull(containsTypeVisitor, "containsTypeVisitor");
+    this.captureVisitor = Objects.requireNonNull(captureVisitor, "captureVisitor");
 
-  public final void setAsSuperVisitor(final AsSuperVisitor v) {
-    if (this.asSuperVisitor != null) {
-      throw new IllegalStateException();
+    this.capture = capture;
+    if (capture) {
+      this.withCaptureVariant = this;
+    } else {
+      this.withoutCaptureVariant = this;
     }
-    this.asSuperVisitor = Objects.requireNonNull(v, "v");
-  }
-  
-  public final void setContainsTypeVisitor(final ContainsTypeVisitor v) {
-    if (this.containsTypeVisitor != null) {
-      throw new IllegalStateException();
-    }
-    this.containsTypeVisitor = Objects.requireNonNull(v, "v");
+
+    asSuperVisitor.setSubtypeVisitor(this);
+    containsTypeVisitor.setSubtypeVisitor(this);
+    captureVisitor.setSubtypeVisitor(this);
   }
 
   final SubtypeVisitor withCapture(final boolean capture) {
-    if (capture == this.capture) {
-      return this;
+    if (capture) {
+      if (this.withCaptureVariant == null) {
+        this.withCaptureVariant =
+          new SubtypeVisitor(this.elementSource,
+                         this.equality,
+                         this.types,
+                         this.asSuperVisitor,
+                         this.supertypeVisitor,
+                         this.isSameTypeVisitor,
+                         this.containsTypeVisitor,
+                         this.captureVisitor,
+                         true);
+      }
+      return this.withCaptureVariant;
+    } else if (this.withoutCaptureVariant == null) {
+      this.withoutCaptureVariant =
+        new SubtypeVisitor(this.elementSource,
+                           this.equality,
+                           this.types,
+                           this.asSuperVisitor,
+                           this.supertypeVisitor,
+                           this.isSameTypeVisitor,
+                           this.containsTypeVisitor,
+                           this.captureVisitor,
+                           false);
     }
-    final SubtypeVisitor subtypeVisitor =
-      new SubtypeVisitor(this.elementSource, this.equality, this.types, this.supertypeVisitor, isSameTypeVisitor, capture);
-    subtypeVisitor.containsTypeVisitor = this.containsTypeVisitor;
-    subtypeVisitor.asSuperVisitor = this.asSuperVisitor;
-    return subtypeVisitor;
+    return this.withoutCaptureVariant;
+  }
+
+  final AsSuperVisitor asSuperVisitor() {
+    return this.asSuperVisitor;
+  }
+
+  final CaptureVisitor captureVisitor() {
+    return this.captureVisitor;
+  }
+
+  final ContainsTypeVisitor containsTypeVisitor() {
+    return this.containsTypeVisitor;
+  }
+
+  @Override
+  protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
+    if (this.equality.equals(t, Objects.requireNonNull(s, "s"))) {
+      // TODO: this is always equalsNoMetadata(), which means "equals minus annotations", which, in javac, means ==
+      // except in the sole case of arrays, where the "elemtype"s are compared for equality.
+      //
+      // javac implements the subtype relation in a bizarre half-visitor, half-not-visitor setup, where equality and some
+      // edge cases are tested first, and then the visitor is applied if the test fails. This means the visitor javac uses
+      // is exceptionally weird. See for yourself:
+      // https://github.com/openjdk/jdk/blob/jdk-21%2B14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1068-L1105
+      //
+      // Here, we try to fold this into the visitor itself.
+      return Boolean.TRUE;
+    }
+    return super.defaultAction(t, s);
   }
 
   // Is t a subtype of s?
@@ -133,20 +179,15 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
   @Override
   public final Boolean visitArray(final ArrayType t, final TypeMirror s) {
     assert t.getKind() == TypeKind.ARRAY;
+    if (super.visitArray(t, s)) {
+      return Boolean.TRUE;
+    }
     final TypeKind sKind = s.getKind();
     switch (sKind) {
     case ARRAY:
       final TypeMirror tct = t.getComponentType();
       final TypeMirror sct = ((ArrayType)s).getComponentType();
-      if (tct.getKind().isPrimitive()) {
-        return this.isSameTypeVisitor.visit(tct, sct);
-      } else if (this.capture) {
-        return
-          new SubtypeVisitor(this.elementSource, this.equality, this.types, this.supertypeVisitor, this.isSameTypeVisitor, false)
-          .visit(tct, sct);
-      } else {
-        return this.visit(tct, sct);
-      }
+      return tct.getKind().isPrimitive() ? this.isSameTypeVisitor.visit(tct, sct) : this.withCapture(false).visit(tct, sct);
     case DECLARED:
       // See
       // https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1211-L1213
@@ -157,60 +198,116 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
         sName.contentEquals("java.lang.Cloneable") ||
         sName.contentEquals("java.io.Serializable");
     default:
-      return false;
+      return Boolean.FALSE;
     }
   }
 
   @Override
   public final Boolean visitDeclared(final DeclaredType t, final TypeMirror s) {
     assert t.getKind() == TypeKind.DECLARED;
+    if (super.visitDeclared(t, s)) {
+      // See
+      // https://github.com/openjdk/jdk/blob/jdk-21%2B15/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1080-L1081
+      // and defaultAction() above
+      return Boolean.TRUE;
+    }
     return this.visitDeclaredOrIntersection(t, s);
   }
 
-  private final Boolean visitDeclaredOrIntersection(final TypeMirror t, final TypeMirror s) {
+  private final Boolean visitDeclaredOrIntersection(TypeMirror t, final TypeMirror s) {
     assert t.getKind() == TypeKind.DECLARED || t.getKind() == TypeKind.INTERSECTION;
-    if (s == null || s.getKind() == TypeKind.NULL) {
-      // There is no declared or intersection type that is a subtype of the null type.
-      return Boolean.FALSE;
-    }
-    // javac implements the subtype relation in a bizarre half-visitor, half-not-visitor setup, where equality and some
-    // edge cases are tested first, and then the visitor is applied if the test fails. This means the visitor javac uses
-    // is exceptionally weird. See for yourself:
-    // https://github.com/openjdk/jdk/blob/jdk-21%2B14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1068-L1105
-    //
-    // Here, we try to fold this into the visitor itself.
-    if (this.equality.equals(t, s, false)) {
+    assert !this.equality.equals(t, s); // better have already checked it
+
+    // From javac's isSubtype(Type t, Type s, boolean capture); see
+    // https://github.com/openjdk/jdk/blob/jdk-21%2B15/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1085-L1091
+    if (s.getKind() == TypeKind.INTERSECTION) {
+      if (!this.visit(t, this.supertypeVisitor.visit(s))) {
+        return Boolean.FALSE;
+      }
+      for (final TypeMirror i : this.supertypeVisitor.interfacesVisitor().visit(s)) {
+        if (!this.visit(t, i)) {
+          return Boolean.FALSE;
+        }
+      }
       return Boolean.TRUE;
     }
-    final Element sElement = this.types.asElement(s, true /* yes, generate synthetic elements */);
+
+    if (t.getKind() == TypeKind.DECLARED) {
+      // TODO:
+      /*
+      // Generally, if 's' is a lower-bounded type variable, recur on lower bound; but
+      // for inference variables and intersections, we need to keep 's'
+      // (see JLS 4.10.2 for intersections and 18.2.3 for inference vars)
+      if (!t.hasTag(UNDETVAR) && !t.isCompound()) {
+          // TODO: JDK-8039198, bounds checking sometimes passes in a wildcard as s
+          Type lower = cvarLowerBound(wildLowerBound(s));
+          if (s != lower && !lower.hasTag(BOT))
+              return isSubtype(capture ? capture(t) : t, lower, false);
+      }
+      */
+
+      // Capture t if necessary. Capturing only does anything on a parameterized type, so therefore only on a type where
+      // t.getKind() == TypeKind.DECLARED (notably not INTERSECTION). See
+      // https://github.com/openjdk/jdk/blob/jdk-21%2B15/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1103.
+      if (this.capture) {
+        t = this.captureVisitor.visit(t);
+        assert t.getKind() == TypeKind.DECLARED;
+      }
+    }
+
+    final Element sElement = asElement(s, true /* yes, generate synthetic elements */);
     assert sElement != null : "sElement == null; s: " + s;
-    final TypeMirror sup = this.asSuperVisitor.visit(t, sElement);
-    if (sup == null) {
-      return false;
-    } else if (sup.getKind() != TypeKind.DECLARED) {
-      return this.withCapture(false).visit(sup, s);
+    final TypeMirror tsup = this.asSuperVisitor.visit(t, sElement);
+    if (tsup == null) {
+      return Boolean.FALSE;
+    } else if (tsup.getKind() != TypeKind.DECLARED) {
+      assert tsup.getKind() != TypeKind.INTERSECTION;
+      return this.withCapture(false).visit(tsup, s);
     } else if (s.getKind() != TypeKind.DECLARED) {
+      assert s.getKind() != TypeKind.INTERSECTION; // already handled above
       // The compiler ultimately does some logic that will ultimately return false if s is not a non-compound ClassType,
       // i.e. if s is anything other than a DeclaredType.  Handle that case early here.
-      return false;
+      return Boolean.FALSE;
     }
-    final DeclaredType supDt = (DeclaredType)sup;
+    final DeclaredType tsupDt = (DeclaredType)tsup;
     final DeclaredType sDt = (DeclaredType)s;
+
+    if (tsupDt.asElement() == sDt.asElement()) {
+      // so far so good
+      if (allTypeArguments(sDt).isEmpty()) {
+        // so far so good
+      } else if (this.containsTypeRecursive(sDt, tsupDt)) {
+        // so far so good
+      } else {
+        // bzzt you lose
+        return Boolean.FALSE;
+      }
+      // so far so good
+      return this.withCapture(false).visit(tsupDt.getEnclosingType(), sDt.getEnclosingType());
+    } else {
+      return Boolean.FALSE;
+    }
+
+    /*
     return
-      supDt.asElement() == sDt.asElement() &&
-      (this.types.allTypeArguments(sDt).isEmpty() || this.containsTypeRecursive(sDt, supDt)) &&
-      this.withCapture(false).visit(supDt.getEnclosingType(), sDt.getEnclosingType());
+      tsupDt.asElement() == sDt.asElement() &&
+      (allTypeArguments(sDt).isEmpty() || this.containsTypeRecursive(sDt, tsupDt)) &&
+      this.withCapture(false).visit(tsupDt.getEnclosingType(), sDt.getEnclosingType());
+    */
   }
 
   @Override
   public final Boolean visitError(final ErrorType t, final TypeMirror s) {
     assert t.getKind() == TypeKind.ERROR;
-    return true;
+    return Boolean.TRUE;
   }
 
   @Override
   public final Boolean visitIntersection(final IntersectionType t, final TypeMirror s) {
     assert t.getKind() == TypeKind.INTERSECTION;
+    if (super.visitIntersection(t, s)) {
+      return Boolean.TRUE;
+    }
     // See
     // https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1191-L1192
     // and
@@ -227,22 +324,16 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     //
     // So javac's isSubtype() will return true for two NoType.NONE instances, but its visitor will return false. But in
     // practice, the visitor's comparison is never executed. We marry the two here.
-    return this.equality.equals(t, s, false);
+    return this.equality.equals(t, s);
   }
 
   @Override
   public final Boolean visitNull(final NullType t, final TypeMirror s) {
     assert t.getKind() == TypeKind.NULL;
-    final TypeKind sKind = s.getKind();
-    switch (sKind) {
-    case ARRAY:
-    case DECLARED:
-    case NULL:
-    case TYPEVAR:
-      return true;
-    default:
-      return false;
-    }
+    return switch (s.getKind()) {
+    case ARRAY, DECLARED, NULL, TYPEVAR -> Boolean.TRUE;
+    default -> Boolean.FALSE;
+    };
   }
 
   // See https://docs.oracle.com/javase/specs/jls/se19/html/jls-4.html#jls-4.10.1
@@ -292,6 +383,8 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
       case INT:
       case LONG:
         return true;
+      default:
+        return false;
       }
     case LONG:
       switch (sKind) {
@@ -328,7 +421,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     //
     // We try to marry javac's visitor-based subtype relation and its non-visitor-based isSubtype method, which is why
     // you see the equality test here.
-    return this.equality.equals(t, s, false) || this.withCapture(false).visit(t.getUpperBound(), s);
+    return this.equality.equals(t, s) || this.withCapture(false).visit(t.getUpperBound(), s);
   }
 
   @Override
@@ -373,7 +466,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   private final TypeMirror rewriteSupers(final TypeMirror t) {
     // I guess t could be an ArrayType (i.e. generic array type)
-    if (!this.types.allTypeArguments(t).isEmpty()) {
+    if (!allTypeArguments(t).isEmpty()) {
       List<TypeVariable> from = new ArrayList<>();
       List<TypeMirror> to = new ArrayList<>();
       new AdaptingVisitor(this.elementSource, this.types, this.isSameTypeVisitor, this, from, to).adaptSelf((DeclaredType)t);
@@ -385,16 +478,19 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
           switch (s.getKind()) {
           case WILDCARD:
             // TODO: I'm not sure this case is actually possible. Ported from the javac nevertheless.
+            //
+            // TODO: I need to check and make sure I'm not getting burned by "bound", which in javac may mean, for
+            // example, "the lower bound of the type parameter element that the wildcard parameterizes"
             if (((WildcardType)s).getSuperBound() != null) {
               // TODO: maybe need to somehow ensure this shows up as non-canonical/synthetic
-              s = this.types.unboundedWildcardType(s.getAnnotationMirrors());
+              s = unboundedWildcardType(s.getAnnotationMirrors());
               changed = true;
             }
             break;
           default:
             if (s != orig) { // Don't need Equality.equals() here
               // TODO: maybe need to somehow ensure this shows up as non-canonical/synthetic
-              s = this.types.upperBoundedWildcardType(this.types.extendsBound(s), s.getAnnotationMirrors());
+              s = upperBoundedWildcardType(this.types.extendsBound(s), s.getAnnotationMirrors());
               changed = true;
             }
             break;

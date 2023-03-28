@@ -7,8 +7,8 @@
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>microBean™ Lang Parent</name>
-  <description>microBean™ Lang Parent: The parent project of the microBean™ Lang project suite.</description>
+  <name>microBean™ Lang: Parent</name>
+  <description>microBean™ Lang: Parent: The parent project of the microBean™ Lang project suite.</description>
   <inceptionYear>2023</inceptionYear>
   <url>https://microbean.github.io/microbean-lang</url>
 
@@ -169,7 +169,7 @@
         </plugin>
         <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.10.1</version>
+          <version>3.11.0</version>
           <configuration>
             <compilerArgs>
               <arg>--enable-preview</arg>

@@ -36,9 +36,12 @@ import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.Types;
 
+import static org.microbean.lang.type.Types.allTypeArguments;
+import static org.microbean.lang.type.Types.isStatic;
+
 // Basically done
 // https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2294-L2340
-final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
+public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
   private final ElementSource elementSource;
   
@@ -52,12 +55,12 @@ final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
   private final SupertypeVisitor supertypeVisitor;
 
-  MemberTypeVisitor(final ElementSource elementSource,
-                    final Equality equality,
-                    final Types types,
-                    final AsSuperVisitor asSuperVisitor,
-                    final EraseVisitor eraseVisitor,
-                    final SupertypeVisitor supertypeVisitor) {
+  public MemberTypeVisitor(final ElementSource elementSource,
+                           final Equality equality,
+                           final Types types,
+                           final AsSuperVisitor asSuperVisitor,
+                           final EraseVisitor eraseVisitor,
+                           final SupertypeVisitor supertypeVisitor) {
     super();
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
@@ -80,16 +83,16 @@ final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
   private final TypeMirror visitDeclaredOrIntersection(final TypeMirror t, final Element e) {
     assert t.getKind() == TypeKind.DECLARED || t.getKind() == TypeKind.INTERSECTION;
-    if (!this.types.isStatic(e)) {
+    if (!isStatic(e)) {
       final Element enclosingElement = e.getEnclosingElement();
       final TypeMirror enclosingType = enclosingElement.asType();
-      final List<? extends TypeMirror> enclosingTypeTypeArguments = this.types.allTypeArguments(enclosingType);
+      final List<? extends TypeMirror> enclosingTypeTypeArguments = allTypeArguments(enclosingType);
       if (!enclosingTypeTypeArguments.isEmpty()) {
         assert enclosingType.getKind() == TypeKind.DECLARED;
         assert enclosingType instanceof DeclaredType;
         final TypeMirror baseType = this.asSuperVisitor.asOuterSuper(t, enclosingElement);
         if (baseType != null) {
-          final List<? extends TypeMirror> baseTypeTypeArguments = this.types.allTypeArguments(baseType);
+          final List<? extends TypeMirror> baseTypeTypeArguments = allTypeArguments(baseType);
           if (baseTypeTypeArguments.isEmpty()) {
             // baseType is raw
             return this.eraseVisitor.visit(e.asType());

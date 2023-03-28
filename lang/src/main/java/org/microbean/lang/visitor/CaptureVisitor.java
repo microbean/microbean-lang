@@ -39,10 +39,13 @@ import org.microbean.lang.Equality;
 import org.microbean.lang.type.Capture;
 import org.microbean.lang.type.Types;
 
+import static org.microbean.lang.type.Types.allTypeArguments;
+import static org.microbean.lang.type.Types.isInterface;
+
 // Basically done
 // javac's capture implementation is not visitor-based.
 // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4388-L4456
-final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
+public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
 
   private final ElementSource elementSource;
   
@@ -52,27 +55,37 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
 
   private final SupertypeVisitor supertypeVisitor;
 
-  private final SubtypeVisitor subtypeVisitor;
+  private SubtypeVisitor subtypeVisitor;
 
   private final MemberTypeVisitor memberTypeVisitor;
 
-  private final TypeClosureVisitor typeClosureVisitor;
+  private TypeClosureVisitor typeClosureVisitor;
 
-  CaptureVisitor(final ElementSource elementSource,
-                 final Equality equality,
-                 final Types types,
-                 final SupertypeVisitor supertypeVisitor,
-                 final SubtypeVisitor subtypeVisitor,
-                 final MemberTypeVisitor memberTypeVisitor,
-                 final TypeClosureVisitor typeClosureVisitor) {
+  public CaptureVisitor(final ElementSource elementSource,
+                        final Equality equality,
+                        final Types types,
+                        final SupertypeVisitor supertypeVisitor,
+                        final MemberTypeVisitor memberTypeVisitor) {
     super();
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
-    this.subtypeVisitor = Objects.requireNonNull(subtypeVisitor, "subtypeVisitor");
     this.memberTypeVisitor = Objects.requireNonNull(memberTypeVisitor, "memberTypeVisitor");
-    this.typeClosureVisitor = Objects.requireNonNull(typeClosureVisitor, "typeClosureVisitor");
+  }
+
+  final void setSubtypeVisitor(final SubtypeVisitor v) {
+    if (v.captureVisitor() != this) {
+      throw new IllegalArgumentException("v");
+    } else if (this.subtypeVisitor != v) {
+      this.subtypeVisitor = v;
+    }
+  }
+
+  public final void setTypeClosureVisitor(final TypeClosureVisitor v) {
+    if (this.typeClosureVisitor == null || this.typeClosureVisitor != v) {
+      this.typeClosureVisitor = Objects.requireNonNull(v, "v");
+    }
   }
 
   @Override
@@ -110,7 +123,7 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
     }
 
     // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4399-L4401
-    if (this.types.allTypeArguments(t).isEmpty() || this.types.raw(t)) {
+    if (allTypeArguments(t).isEmpty() || this.types.raw(t)) {
       // (Suppose somehow t were an intersection type (which gets modeled as a ClassType as well in javac). t would then
       // be considered to be raw following the rules of javac (not sure about the language specification; the two
       // frequently diverge). So it is accurate for this visitor not to implement visitIntersection().)
@@ -118,10 +131,9 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
     }
 
     // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4403-L4406
-    // final DeclaredType G = this.types.declaredTypeMirror(t);
     final DeclaredType G = (DeclaredType)t.asElement().asType();
     final List<? extends TypeVariable> A = (List<? extends TypeVariable>)G.getTypeArguments();
-    final List<? extends TypeMirror> T = t.getKind() == TypeKind.DECLARED ? ((DeclaredType)t).getTypeArguments() : List.of();
+    final List<? extends TypeMirror> T = t.getTypeArguments(); // t.getKind() == TypeKind.DECLARED ? ((DeclaredType)t).getTypeArguments() : List.of();
     final List<? extends TypeMirror> S = withFreshCapturedTypeVariables(T);
 
     // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4408-L4449
@@ -156,7 +168,7 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
     // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4451-L4455
     if (captured) {
       assert t.getKind() == TypeKind.DECLARED;
-      return syntheticDeclaredType((DeclaredType)t, S);
+      return syntheticDeclaredType(t, S);
     }
     return t;
   }
@@ -247,7 +259,7 @@ final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
     final Collection<TypeMirror> lowers = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       final TypeMirror minimumType = minimumTypes.get(i);
-      if (!this.types.isInterface(minimumType)) {
+      if (!isInterface(minimumType)) {
         if (!classes) {
           classes = true;
         }

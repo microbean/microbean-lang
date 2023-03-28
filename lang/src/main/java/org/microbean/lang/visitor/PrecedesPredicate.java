@@ -88,7 +88,8 @@ public final class PrecedesPredicate implements BiPredicate<Element, Element> {
       default:
         // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Symbol.java#L833:
         // "Type variables always precede other kinds of symbols."  (Note that a type variable is not a symbol; I think
-        // javac means "type variables always precede other kinds of types".)
+        // javac means "type variables always precede other kinds of types". Or it could be using "type variable" to
+        // mean "type parameter element".)
         return true;
       }
     default:

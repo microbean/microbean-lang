@@ -86,7 +86,15 @@ final class TestTypeClosure {
     assertSame(integerArrayType, integerArrayClosure.get(0));
 
     // Let's prove we don't support it.
+    final Visitors visitors = new Visitors(n -> elements.getTypeElement(n));
+    try {
+      visitors.typeClosureVisitor().visit(integerArrayType);
+      fail();
+    } catch (final IllegalArgumentException expected) {
+      // OK
+    }
 
+    /*
     // Set up the fundamentals.
     final ElementSource es = n -> elements.getTypeElement(n);
     final Types types = new Types(es);
@@ -96,7 +104,7 @@ final class TestTypeClosure {
     // These have cycles.
     final ContainsTypeVisitor containsTypeVisitor = new ContainsTypeVisitor(es, types);
     final IsSameTypeVisitor isSameTypeVisitor = new IsSameTypeVisitor(es, containsTypeVisitor, supertypeVisitor, true);
-    final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(es, types, supertypeVisitor, isSameTypeVisitor);
+    final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(es, null, types, supertypeVisitor, isSameTypeVisitor);
     containsTypeVisitor.setSubtypeVisitor(subtypeVisitor);
     subtypeVisitor.setContainsTypeVisitor(containsTypeVisitor);
 
@@ -109,6 +117,7 @@ final class TestTypeClosure {
     } catch (final IllegalArgumentException expected) {
       // OK
     }
+    */
 
 
   }
@@ -147,7 +156,11 @@ final class TestTypeClosure {
     assertEquals(7, closure.size());
 
     // Let's try it with our visitor.
-
+    final Visitors visitors = new Visitors(n -> elements.getTypeElement(n));
+    final List<? extends TypeMirror> list = visitors.typeClosureVisitor().visit(integerElementType).toList();
+    assertEquals(7, list.size(), "Unexpected type closure list: " + list);
+                                           
+    /*
     // Set up the fundamentals.
     final ElementSource es = n -> elements.getTypeElement(n);
     final Types types = new Types(es);
@@ -166,7 +179,7 @@ final class TestTypeClosure {
 
     final List<? extends TypeMirror> list = typeClosureVisitor.visit(integerElementType).toList();
     assertEquals(7, list.size(), "Unexpected type closure list: " + list);
-
+    */
   }
 
 }

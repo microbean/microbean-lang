@@ -32,6 +32,8 @@ import javax.lang.model.type.WildcardType;
 
 import org.microbean.lang.type.Types;
 
+import static org.microbean.lang.type.Types.asElement;
+
 final class TypeMirrorPair {
 
   private final Types types;
@@ -84,7 +86,7 @@ final class TypeMirrorPair {
     case INTERSECTION:
       // return this.hashCode0(t);
       int result = 127 * hashCode(enclosingType(t));
-      final Element e = this.types.asElement(t, true);
+      final Element e = asElement(t, true);
       if (e != null) {
         result += flatName(e).hashCode();
       }
@@ -124,16 +126,14 @@ final class TypeMirrorPair {
 
   private final int hashCode(final TypeVariable t) {
     assert t.getKind() == TypeKind.TYPEVAR;
-    // TODO: it sure would be nice if we could use
-    // Equality.hashCode(t) here; maybe we can?
+    // TODO: it sure would be nice if we could use Equality.hashCode(t) here; maybe we can?
     return System.identityHashCode(t);
   }
 
   // https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4204-L4212
   private final int hashCode(final WildcardType t) {
     assert t.getKind() == TypeKind.WILDCARD;
-    // javac's Types#HashcodeVisitor starts with the hashcode of the
-    // wildcard's BoundKind
+    // javac's Types#HashcodeVisitor starts with the hashcode of the wildcard's BoundKind
     // (https://github.com/openjdk/jdk/blob/jdk-20+17/src/jdk.compiler/share/classes/com/sun/tools/javac/code/BoundKind.java).
     //
     // BoundKind is:
@@ -144,16 +144,13 @@ final class TypeMirrorPair {
     //  UNBOUND
     // }
     //
-    // ...so doesn't override the default enum hashcode calculation.
-    // Each constant in the enum therefore has a constant hashcode
-    // value of System.identityHashCode(CONSTANT).  We'll use 0, 1 and
-    // 2 instead.
+    // ...so doesn't override the default enum hashcode calculation.  Each constant in the enum therefore has a constant
+    // hashcode value of System.identityHashCode(CONSTANT).  We'll use 0, 1 and 2 instead.
     //
     // Other odd things:
     //
-    // * the wildcard type denoted by ? extends Object has a different
-    //   hashcode according to Types#HashcodeVisitor than does ?.  Is
-    //   this deliberate? does it matter? not sure.    
+    // * the wildcard type denoted by ? extends Object has a different hashcode according to Types#HashcodeVisitor than
+    //   does ?.  Is this deliberate? does it matter? not sure.
     final TypeMirror superBound = t.getSuperBound();
     final TypeMirror extendsBound = t.getExtendsBound();
     final int result;
@@ -228,16 +225,14 @@ final class TypeMirrorPair {
     if (prefix == null || prefix.isEmpty()) {
       return e.getSimpleName();
     }
-    return org.microbean.lang.element.Name.of(new StringBuilder(prefix).append(separator).append(e.getSimpleName().toString()).toString());
+    return org.microbean.lang.element.Name.of(new StringBuilder(prefix).append(separator).append(e.getSimpleName()).toString());
   }
 
   private static final List<? extends TypeMirror> typeArguments(final TypeMirror t) {
-    switch (t.getKind()) {
-    case DECLARED:
-      return ((DeclaredType)t).getTypeArguments();
-    default:
-      return List.of();
-    }
+    return switch (t.getKind()) {
+    case DECLARED -> ((DeclaredType)t).getTypeArguments();
+    default -> List.of();
+    };
   }
   
 }
