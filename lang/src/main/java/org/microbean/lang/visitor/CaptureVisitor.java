@@ -209,7 +209,6 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
     t.setEnclosingType(canonicalType.getEnclosingType());
     t.addTypeArguments(typeArguments);
     t.setDefiningElement((TypeElement)canonicalType.asElement());
-    assert t.asElement().asType() == canonicalType;
     return t;
   }
 

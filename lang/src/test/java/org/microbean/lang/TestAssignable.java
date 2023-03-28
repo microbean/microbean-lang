@@ -16,6 +16,9 @@
  */
 package org.microbean.lang;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.lang.model.element.TypeElement;
 
 import javax.lang.model.type.DeclaredType;
@@ -67,22 +70,38 @@ final class TestAssignable {
 
   @Test
   final void testStringAssignableToObject() {
-    ensure(true, this.es.element("java.lang.String").asType(), this.es.element("java.lang.Object").asType());
+    final DeclaredType string = (DeclaredType)this.es.element("java.lang.String").asType();
+    final DeclaredType object = (DeclaredType)this.es.element("java.lang.Object").asType();
+    assertSubtype(string, object);
+    assertAssignable(string, object);
+    assertNotSubtype(object, string);
+    assertNotAssignable(object, string);
   }
   
   @Test
   final void testListStringAssignableToListQuestionMark() {
     final DeclaredType listString = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"), this.es.element("java.lang.String").asType());
     final DeclaredType listQuestionMark = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"), this.jlm.types().getWildcardType(null, null));
-    ensure(false, listQuestionMark, listString);
-    ensure(true, listString, listQuestionMark);
+    assertSubtype(listString, listQuestionMark);
+    assertAssignable(listString, listQuestionMark);
+    assertNotSubtype(listQuestionMark, listString);
+    assertNotAssignable(listQuestionMark, listString);
   }
 
   @Test
   final void testListStringAssignableToListString() {
     final DeclaredType listString = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"), this.es.element("java.lang.String").asType());
-    final DeclaredType listQuestionMark = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"), this.jlm.types().getWildcardType(null, null));
-    ensure(true, listString, listString);
+    assertSubtype(listString, listString);
+    assertAssignable(listString, listString);
+  }
+
+  @Test
+  final void testCompilationAssignability() {
+    final List<?> listQuestionMark1 = new ArrayList<String>();
+    @SuppressWarnings("rawtypes")
+    final List rawList = listQuestionMark1; // ok
+    List<?> listQuestionMark2 = rawList; // also ok
+    listQuestionMark2 = listQuestionMark1; // also ok
   }
 
   @Test
@@ -90,17 +109,23 @@ final class TestAssignable {
     final DeclaredType rawList = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"));
     assertTrue(((com.sun.tools.javac.code.Type)rawList).isRaw());
     assertTrue(this.types.raw(rawList));
-    final DeclaredType listQuestionMark = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"), this.jlm.types().getWildcardType(null, null));
-    // Succeeds:
-    assertAssignable(rawList, listQuestionMark);
 
+    final DeclaredType listQuestionMark = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"), this.jlm.types().getWildcardType(null, null));
+    assertFalse(((com.sun.tools.javac.code.Type)listQuestionMark).isRaw());
+    assertFalse(this.types.raw(listQuestionMark));
+
+    // List<?> is a subtype of List
+    assertSubtype(listQuestionMark, rawList);
+
+    // List<?> is assignable to List, i.e. List x = (List<?>)y;
+    assertAssignable(listQuestionMark, rawList);
+    
+    // List is NOT a subtype of List<?>
     assertNotSubtype(rawList, listQuestionMark);
-    // Fails:
-    // assertSubtype(rawList, listQuestionMark);
-    //
-    // So we need to really make sure we understand what the differences are between being a subtype and being assignable.
-    //
-    // javac's Types class really calls isConvertible() from isAssignable()
+
+    // NOTE:
+    // List IS assignable to List<?>, i.e. List<?> x = (List)y;
+    assertAssignable(rawList, listQuestionMark);
   }
 
   private final void assertAssignable(final TypeMirror payload, final TypeMirror receiver) {
@@ -108,26 +133,19 @@ final class TestAssignable {
     assertTrue(this.assignableVisitor.visit(payload, receiver).booleanValue());
   }
 
-  private final void assertNotSubtype(final TypeMirror payload, final TypeMirror receiver) {
-    assertFalse(this.jlm.types().isSubtype(payload, receiver));
-    assertFalse(this.subtypeVisitor.visit(payload, receiver).booleanValue());
+  private final void assertNotAssignable(final TypeMirror payload, final TypeMirror receiver) {
+    assertFalse(this.jlm.types().isAssignable(payload, receiver));
+    assertFalse(this.assignableVisitor.visit(payload, receiver).booleanValue());
   }
-  
+
   private final void assertSubtype(final TypeMirror payload, final TypeMirror receiver) {
     assertTrue(this.jlm.types().isSubtype(payload, receiver));
     assertTrue(this.subtypeVisitor.visit(payload, receiver).booleanValue());
   }
-
-  private final void ensure(final boolean expected, final TypeMirror payload, final TypeMirror receiver) {
-    if (expected) {
-      assertTrue(this.jlm.types().isSubtype(payload, receiver), "payload (" + payload + ") is not a subtype of receiver (" + receiver + ")");
-      assertTrue(this.jlm.types().isAssignable(payload, receiver));
-      assertTrue(this.subtypeVisitor.visit(payload, receiver).booleanValue());
-    } else {
-      assertFalse(this.jlm.types().isSubtype(payload, receiver));
-      assertFalse(this.jlm.types().isAssignable(payload, receiver));
-      assertFalse(this.subtypeVisitor.visit(payload, receiver).booleanValue());
-    }
+  
+  private final void assertNotSubtype(final TypeMirror payload, final TypeMirror receiver) {
+    assertFalse(this.jlm.types().isSubtype(payload, receiver));
+    assertFalse(this.subtypeVisitor.visit(payload, receiver).booleanValue());
   }
   
 }

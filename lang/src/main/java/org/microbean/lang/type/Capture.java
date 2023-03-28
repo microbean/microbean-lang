@@ -49,8 +49,10 @@ public final class Capture extends DefineableType<javax.lang.model.element.TypeP
   protected final javax.lang.model.element.TypeParameterElement validateDefiningElement(final javax.lang.model.element.TypeParameterElement e) {
     if (e.getKind() != ElementKind.TYPE_PARAMETER) {
       throw new IllegalArgumentException("e: " + e);
-    } else if (this != e.asType()) {
-      throw new IllegalArgumentException("e: " + e + "; this (" + this + ") != e.asType() (" + e.asType() + ")");
+    }
+    final Object t = e.asType();
+    if (t != null && this != t) {
+      throw new IllegalArgumentException("e: " + e + "; this (" + this + ") != e.asType() (" + t + ")");
     }
     return e;
   }

@@ -34,6 +34,7 @@ import javax.lang.model.util.SimpleTypeVisitor14;
 import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
+import org.microbean.lang.type.NoType;
 import org.microbean.lang.type.Types;
 
 import static org.microbean.lang.type.Types.allTypeArguments;
@@ -90,7 +91,7 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
       if (!enclosingTypeTypeArguments.isEmpty()) {
         assert enclosingType.getKind() == TypeKind.DECLARED;
         assert enclosingType instanceof DeclaredType;
-        final TypeMirror baseType = this.asSuperVisitor.asOuterSuper(t, enclosingElement);
+        final TypeMirror baseType = this.asOuterSuper(t, enclosingElement);
         if (baseType != null) {
           final List<? extends TypeMirror> baseTypeTypeArguments = allTypeArguments(baseType);
           if (baseTypeTypeArguments.isEmpty()) {
@@ -131,7 +132,31 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
   @Override
   public final TypeMirror visitWildcard(final WildcardType t, final Element e) {
     assert t.getKind() == TypeKind.WILDCARD;
+    // TODO: watch out for that silly javac wildUpperBound thing
     return this.visit(this.types.extendsBound(t), e);
+  }
+
+  // https://github.com/openjdk/jdk/blob/jdk-21%2B15/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2217-L2242
+  private final TypeMirror asOuterSuper(TypeMirror t, final Element element) {
+    switch (t.getKind()) {
+    case ARRAY:
+    case TYPEVAR:
+      return this.asSuperVisitor.visit(t, element);
+    case DECLARED:
+    case INTERSECTION:
+      do {
+        final TypeMirror s = this.asSuperVisitor.visit(t, element);
+        if (s != null) {
+          return s;
+        }
+        t = t.getKind() == TypeKind.DECLARED ? ((DeclaredType)t).getEnclosingType() : NoType.NONE;
+      } while (t.getKind() == TypeKind.DECLARED || t.getKind() == TypeKind.INTERSECTION);
+      return null;
+    case ERROR:
+      return t;
+    default:
+      return null;
+    }
   }
 
 }

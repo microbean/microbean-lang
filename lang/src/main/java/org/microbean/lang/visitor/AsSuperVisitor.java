@@ -90,30 +90,6 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
     }
   }
 
-  // (Remember in all this we're modeling things like javac, which tends to love spaghetti. This method is called only
-  // by MemberTypeVisitor.)
-  final TypeMirror asOuterSuper(TypeMirror t, final Element element) {
-    switch (t.getKind()) {
-    case ARRAY:
-      return this.visit(t, element);
-    case DECLARED:
-    case INTERSECTION:
-      do {
-        final TypeMirror s = this.visit(t, element);
-        if (s != null) {
-          return s;
-        }
-        t = t.getKind() == TypeKind.DECLARED ? ((DeclaredType)t).getEnclosingType() : NoType.NONE;
-      } while (t.getKind() == TypeKind.DECLARED || t.getKind() == TypeKind.INTERSECTION);
-      return null;
-    case ERROR:
-      return t;
-    case TYPEVAR:
-    default:
-      return null;
-    }
-  }
-
   // This is extraordinarily weird. In javac, all (non-generic? all?) array types have, as their synthetic element, one
   // synthetic element that is a ClassSymbol named "Array". So the type denoted by, say, byte[] and the type denoted by
   // Object[] both return exactly the same ClassSymbol reference from their asElement() method/sym field. See

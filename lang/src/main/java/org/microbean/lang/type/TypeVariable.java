@@ -94,7 +94,7 @@ public non-sealed class TypeVariable extends DefineableType<TypeParameterElement
     }
     final Object t = e.asType();
     if (t != null && this != t) {
-      throw new IllegalArgumentException("e: " + e + "; this (" + this + ") != e.asType() (" + e.asType() + ")");
+      throw new IllegalArgumentException("e: " + e + "; this (" + this + ") != e.asType() (" + t + ")");
     }
     return e;
   }
