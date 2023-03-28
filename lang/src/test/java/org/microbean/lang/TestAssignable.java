@@ -27,19 +27,14 @@ import org.junit.jupiter.api.Test;
 
 import org.microbean.lang.type.Types;
 
-import org.microbean.lang.visitor.AsSuperVisitor;
-import org.microbean.lang.visitor.ContainsTypeVisitor;
-import org.microbean.lang.visitor.EraseVisitor;
-import org.microbean.lang.visitor.IsAssignableVisitor;
-import org.microbean.lang.visitor.IsSameTypeVisitor;
+import org.microbean.lang.visitor.AssignableVisitor;
 import org.microbean.lang.visitor.SubtypeVisitor;
-import org.microbean.lang.visitor.SupertypeVisitor;
+import org.microbean.lang.visitor.Visitors;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-final class TestIsAssignable {
+final class TestAssignable {
 
   private ElementSource es;
 
@@ -49,9 +44,9 @@ final class TestIsAssignable {
 
   private SubtypeVisitor subtypeVisitor;
 
-  private IsAssignableVisitor isAssignableVisitor;
+  private AssignableVisitor assignableVisitor;
   
-  private TestIsAssignable() {
+  private TestAssignable() {
     super();
   }
 
@@ -62,7 +57,7 @@ final class TestIsAssignable {
     this.types = new Types(this.es);
     final Visitors visitors = new Visitors(this.es);
     this.subtypeVisitor = visitors.subtypeVisitor();
-    this.isAssignableVisitor = visitors.isAssignableVisitor();
+    this.assignableVisitor = visitors.assignableVisitor();
   }
 
   @AfterEach
@@ -71,12 +66,12 @@ final class TestIsAssignable {
   }
 
   @Test
-  final void testStringIsAssignableToObject() {
+  final void testStringAssignableToObject() {
     ensure(true, this.es.element("java.lang.String").asType(), this.es.element("java.lang.Object").asType());
   }
   
   @Test
-  final void testListStringIsAssignableToListQuestionMark() {
+  final void testListStringAssignableToListQuestionMark() {
     final DeclaredType listString = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"), this.es.element("java.lang.String").asType());
     final DeclaredType listQuestionMark = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"), this.jlm.types().getWildcardType(null, null));
     ensure(false, listQuestionMark, listString);
@@ -84,14 +79,14 @@ final class TestIsAssignable {
   }
 
   @Test
-  final void testListStringIsAssignableToListString() {
+  final void testListStringAssignableToListString() {
     final DeclaredType listString = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"), this.es.element("java.lang.String").asType());
     final DeclaredType listQuestionMark = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"), this.jlm.types().getWildcardType(null, null));
     ensure(true, listString, listString);
   }
 
   @Test
-  final void testRawListIsAssignableToListQuestionMark() {
+  final void testRawListAssignableToListQuestionMark() {
     final DeclaredType rawList = this.jlm.types().getDeclaredType((TypeElement)this.es.element("java.util.List"));
     assertTrue(((com.sun.tools.javac.code.Type)rawList).isRaw());
     assertTrue(this.types.raw(rawList));
@@ -110,7 +105,7 @@ final class TestIsAssignable {
 
   private final void assertAssignable(final TypeMirror payload, final TypeMirror receiver) {
     assertTrue(this.jlm.types().isAssignable(payload, receiver));
-    assertTrue(this.isAssignableVisitor.visit(payload, receiver).booleanValue());
+    assertTrue(this.assignableVisitor.visit(payload, receiver).booleanValue());
   }
 
   private final void assertNotSubtype(final TypeMirror payload, final TypeMirror receiver) {

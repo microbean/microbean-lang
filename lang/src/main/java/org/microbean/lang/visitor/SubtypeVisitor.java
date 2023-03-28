@@ -68,7 +68,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   private final ContainsTypeVisitor containsTypeVisitor;
 
-  private final IsSameTypeVisitor isSameTypeVisitor;
+  private final SameTypeVisitor sameTypeVisitor;
 
   private final CaptureVisitor captureVisitor;
 
@@ -83,7 +83,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
                         final Types types,
                         final AsSuperVisitor asSuperVisitor,
                         final SupertypeVisitor supertypeVisitor,
-                        final IsSameTypeVisitor isSameTypeVisitor,
+                        final SameTypeVisitor sameTypeVisitor,
                         final ContainsTypeVisitor containsTypeVisitor,
                         final CaptureVisitor captureVisitor,
                         final boolean capture) {
@@ -94,7 +94,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     this.types = Objects.requireNonNull(types, "types");
     this.asSuperVisitor = Objects.requireNonNull(asSuperVisitor, "asSuperVisitor");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
-    this.isSameTypeVisitor = Objects.requireNonNull(isSameTypeVisitor, "isSameTypeVisitor");
+    this.sameTypeVisitor = Objects.requireNonNull(sameTypeVisitor, "sameTypeVisitor");
     this.containsTypeVisitor = Objects.requireNonNull(containsTypeVisitor, "containsTypeVisitor");
     this.captureVisitor = Objects.requireNonNull(captureVisitor, "captureVisitor");
 
@@ -119,7 +119,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
                          this.types,
                          this.asSuperVisitor,
                          this.supertypeVisitor,
-                         this.isSameTypeVisitor,
+                         this.sameTypeVisitor,
                          this.containsTypeVisitor,
                          this.captureVisitor,
                          true);
@@ -132,7 +132,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
                            this.types,
                            this.asSuperVisitor,
                            this.supertypeVisitor,
-                           this.isSameTypeVisitor,
+                           this.sameTypeVisitor,
                            this.containsTypeVisitor,
                            this.captureVisitor,
                            false);
@@ -187,7 +187,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     case ARRAY:
       final TypeMirror tct = t.getComponentType();
       final TypeMirror sct = ((ArrayType)s).getComponentType();
-      return tct.getKind().isPrimitive() ? this.isSameTypeVisitor.visit(tct, sct) : this.withCapture(false).visit(tct, sct);
+      return tct.getKind().isPrimitive() ? this.sameTypeVisitor.visit(tct, sct) : this.withCapture(false).visit(tct, sct);
     case DECLARED:
       // See
       // https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1211-L1213
@@ -444,7 +444,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
       if (tTypeArguments.isEmpty() || sTypeArguments.isEmpty()) {
         return false;
       }
-      final TypeMirrorPair pair = new TypeMirrorPair(this.types, this.isSameTypeVisitor, t, s);
+      final TypeMirrorPair pair = new TypeMirrorPair(this.types, this.sameTypeVisitor, t, s);
       if (this.cache.add(pair)) {
         try {
           return this.containsTypeVisitor.visit(tTypeArguments, sTypeArguments);
@@ -469,7 +469,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     if (!allTypeArguments(t).isEmpty()) {
       List<TypeVariable> from = new ArrayList<>();
       List<TypeMirror> to = new ArrayList<>();
-      new AdaptingVisitor(this.elementSource, this.types, this.isSameTypeVisitor, this, from, to).adaptSelf((DeclaredType)t);
+      new AdaptingVisitor(this.elementSource, this.types, this.sameTypeVisitor, this, from, to).adaptSelf((DeclaredType)t);
       if (!from.isEmpty()) {
         final List<TypeMirror> rewrite = new ArrayList<>();
         boolean changed = false;

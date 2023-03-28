@@ -38,19 +38,19 @@ final class TypeMirrorPair {
 
   private final Types types;
   
-  private final IsSameTypeVisitor isSameTypeVisitor;
+  private final SameTypeVisitor sameTypeVisitor;
   
   private final TypeMirror t;
   
   private final TypeMirror s;
 
   TypeMirrorPair(final Types types,
-                 final IsSameTypeVisitor isSameTypeVisitor,
+                 final SameTypeVisitor sameTypeVisitor,
                  final TypeMirror t,
                  final TypeMirror s) {
     super();
     this.types = Objects.requireNonNull(types, "types");
-    this.isSameTypeVisitor = Objects.requireNonNull(isSameTypeVisitor, "isSameTypeVisitor");
+    this.sameTypeVisitor = Objects.requireNonNull(sameTypeVisitor, "sameTypeVisitor");
     this.t = Objects.requireNonNull(t, "t");
     this.s = Objects.requireNonNull(s, "s");
   }
@@ -67,8 +67,8 @@ final class TypeMirrorPair {
     } else if (other != null && this.getClass() == other.getClass()) {
       final TypeMirrorPair her = (TypeMirrorPair)other;
       return
-        this.isSameTypeVisitor.visit(this.t, her.t) &&
-        this.isSameTypeVisitor.visit(this.s, her.s);
+        this.sameTypeVisitor.visit(this.t, her.t) &&
+        this.sameTypeVisitor.visit(this.s, her.s);
     } else {
       return false;
     }

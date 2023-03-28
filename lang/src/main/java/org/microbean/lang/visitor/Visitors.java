@@ -14,27 +14,13 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package org.microbean.lang;
+package org.microbean.lang.visitor;
 
 import javax.lang.model.type.TypeVisitor;
 
 import org.microbean.lang.ElementSource;
 
 import org.microbean.lang.type.Types;
-
-import org.microbean.lang.visitor.AsSuperVisitor;
-import org.microbean.lang.visitor.CaptureVisitor;
-import org.microbean.lang.visitor.ContainsTypeVisitor;
-import org.microbean.lang.visitor.EraseVisitor;
-import org.microbean.lang.visitor.IsAssignableVisitor;
-import org.microbean.lang.visitor.IsConvertibleVisitor;
-import org.microbean.lang.visitor.IsSameTypeVisitor;
-import org.microbean.lang.visitor.IsSubtypeUncheckedVisitor;
-import org.microbean.lang.visitor.MemberTypeVisitor;
-import org.microbean.lang.visitor.PrecedesPredicate;
-import org.microbean.lang.visitor.SubtypeVisitor;
-import org.microbean.lang.visitor.SupertypeVisitor;
-import org.microbean.lang.visitor.TypeClosureVisitor;
 
 public final class Visitors {
 
@@ -48,19 +34,19 @@ public final class Visitors {
 
   private final ContainsTypeVisitor containsTypeVisitor;
 
-  private final IsSameTypeVisitor isSameTypeVisitor;
+  private final SameTypeVisitor sameTypeVisitor;
 
   private final CaptureVisitor captureVisitor;
 
   private final SubtypeVisitor subtypeVisitor;
 
-  private final IsSubtypeUncheckedVisitor isSubtypeUncheckedVisitor;
+  private final SubtypeUncheckedVisitor subtypeUncheckedVisitor;
 
-  private final IsConvertibleVisitor isConvertibleVisitor;
+  private final ConvertibleVisitor convertibleVisitor;
 
   private final TypeClosureVisitor typeClosureVisitor;
 
-  private final IsAssignableVisitor isAssignableVisitor;
+  private final AssignableVisitor assignableVisitor;
   
   public Visitors(final ElementSource es) {
     this(es, false, true);
@@ -79,7 +65,7 @@ public final class Visitors {
 
     this.containsTypeVisitor = new ContainsTypeVisitor(es, types);
 
-    this.isSameTypeVisitor = new IsSameTypeVisitor(es, this.containsTypeVisitor, this.supertypeVisitor, wildcardsCompatible);
+    this.sameTypeVisitor = new SameTypeVisitor(es, this.containsTypeVisitor, this.supertypeVisitor, wildcardsCompatible);
 
     this.captureVisitor = new CaptureVisitor(es, null, types, this.supertypeVisitor, this.memberTypeVisitor);
 
@@ -89,15 +75,15 @@ public final class Visitors {
                          types,
                          this.asSuperVisitor,
                          this.supertypeVisitor,
-                         this.isSameTypeVisitor,
+                         this.sameTypeVisitor,
                          this.containsTypeVisitor,
                          this.captureVisitor,
                          subtypeCapture);
 
-    this.isSubtypeUncheckedVisitor = new IsSubtypeUncheckedVisitor(types, this.subtypeVisitor, this.asSuperVisitor, this.isSameTypeVisitor, subtypeCapture);
+    this.subtypeUncheckedVisitor = new SubtypeUncheckedVisitor(types, this.subtypeVisitor, this.asSuperVisitor, this.sameTypeVisitor, subtypeCapture);
 
-    this.isConvertibleVisitor = new IsConvertibleVisitor(types, this.isSubtypeUncheckedVisitor, subtypeVisitor);
-    this.isAssignableVisitor = new IsAssignableVisitor(types, this.isConvertibleVisitor);
+    this.convertibleVisitor = new ConvertibleVisitor(types, this.subtypeUncheckedVisitor, subtypeVisitor);
+    this.assignableVisitor = new AssignableVisitor(types, this.convertibleVisitor);
     
     final PrecedesPredicate precedesPredicate = new PrecedesPredicate(null, this.supertypeVisitor, this.subtypeVisitor);
     this.typeClosureVisitor = new TypeClosureVisitor(es, this.supertypeVisitor, precedesPredicate);
@@ -126,8 +112,8 @@ public final class Visitors {
     return this.containsTypeVisitor;
   }
 
-  public final IsSameTypeVisitor isSameTypeVisitor() {
-    return this.isSameTypeVisitor;
+  public final SameTypeVisitor sameTypeVisitor() {
+    return this.sameTypeVisitor;
   }
 
   public final CaptureVisitor captureVisitor() {
@@ -138,16 +124,16 @@ public final class Visitors {
     return this.subtypeVisitor;
   }
 
-  public final IsSubtypeUncheckedVisitor isSubtypeUncheckedVisitor() {
-    return this.isSubtypeUncheckedVisitor;
+  public final SubtypeUncheckedVisitor subtypeUncheckedVisitor() {
+    return this.subtypeUncheckedVisitor;
   }
 
-  public final IsConvertibleVisitor isConvertibleVisitor() {
-    return this.isConvertibleVisitor;
+  public final ConvertibleVisitor convertibleVisitor() {
+    return this.convertibleVisitor;
   }
 
-  public final IsAssignableVisitor isAssignableVisitor() {
-    return this.isAssignableVisitor;
+  public final AssignableVisitor assignableVisitor() {
+    return this.assignableVisitor;
   }
   
   public final TypeClosureVisitor typeClosureVisitor() {

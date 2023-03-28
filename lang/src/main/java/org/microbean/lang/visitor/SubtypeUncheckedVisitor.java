@@ -32,7 +32,7 @@ import org.microbean.lang.type.Types;
 import static org.microbean.lang.type.Types.asElement;
 
 // Deliberately not thread safe.
-public final class IsSubtypeUncheckedVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
+public final class SubtypeUncheckedVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
   private final Types types;
 
@@ -40,24 +40,24 @@ public final class IsSubtypeUncheckedVisitor extends SimpleTypeVisitor14<Boolean
 
   private final AsSuperVisitor asSuperVisitor;
 
-  private final IsSameTypeVisitor isSameTypeVisitor;
+  private final SameTypeVisitor sameTypeVisitor;
 
   private final boolean capture;
 
-  private IsSubtypeUncheckedVisitor withCaptureVariant;
+  private SubtypeUncheckedVisitor withCaptureVariant;
 
-  private IsSubtypeUncheckedVisitor withoutCaptureVariant;
+  private SubtypeUncheckedVisitor withoutCaptureVariant;
 
-  public IsSubtypeUncheckedVisitor(final Types types,
-                                   final SubtypeVisitor subtypeVisitor,
-                                   final AsSuperVisitor asSuperVisitor,
-                                   final IsSameTypeVisitor isSameTypeVisitor,
-                                   final boolean capture /* true by default */) {
+  public SubtypeUncheckedVisitor(final Types types,
+                                 final SubtypeVisitor subtypeVisitor,
+                                 final AsSuperVisitor asSuperVisitor,
+                                 final SameTypeVisitor sameTypeVisitor,
+                                 final boolean capture /* true by default */) {
     super();
     this.types = Objects.requireNonNull(types);
     this.subtypeVisitor = subtypeVisitor.withCapture(capture);
     this.asSuperVisitor = Objects.requireNonNull(asSuperVisitor, "asSuperVisitor");
-    this.isSameTypeVisitor = Objects.requireNonNull(isSameTypeVisitor, "isSameTypeVisitor");
+    this.sameTypeVisitor = Objects.requireNonNull(sameTypeVisitor, "sameTypeVisitor");
     this.capture = capture;
     if (capture) {
       this.withCaptureVariant = this;
@@ -66,14 +66,14 @@ public final class IsSubtypeUncheckedVisitor extends SimpleTypeVisitor14<Boolean
     }
   }
 
-  final IsSubtypeUncheckedVisitor withCapture(final boolean capture) {
+  final SubtypeUncheckedVisitor withCapture(final boolean capture) {
     if (capture) {
       if (this.withCaptureVariant == null) {
-        this.withCaptureVariant = new IsSubtypeUncheckedVisitor(this.types, this.subtypeVisitor, this.asSuperVisitor, this.isSameTypeVisitor, true);
+        this.withCaptureVariant = new SubtypeUncheckedVisitor(this.types, this.subtypeVisitor, this.asSuperVisitor, this.sameTypeVisitor, true);
       }
       return this.withCaptureVariant;
     } else if (this.withoutCaptureVariant == null) {
-      this.withoutCaptureVariant = new IsSubtypeUncheckedVisitor(this.types, this.subtypeVisitor, this.asSuperVisitor, this.isSameTypeVisitor, false);
+      this.withoutCaptureVariant = new SubtypeUncheckedVisitor(this.types, this.subtypeVisitor, this.asSuperVisitor, this.sameTypeVisitor, false);
     }
     return this.withoutCaptureVariant;
   }
@@ -104,7 +104,7 @@ public final class IsSubtypeUncheckedVisitor extends SimpleTypeVisitor14<Boolean
     case ARRAY:
       final TypeMirror tct = t.getComponentType();
       if (tct.getKind().isPrimitive()) {
-        return this.isSameTypeVisitor.visit(tct, ((ArrayType)s).getComponentType());
+        return this.sameTypeVisitor.visit(tct, ((ArrayType)s).getComponentType());
       } else {
         return this.withCapture(false).visit(tct, ((ArrayType)s).getComponentType());
       }

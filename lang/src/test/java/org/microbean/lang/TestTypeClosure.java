@@ -43,11 +43,11 @@ import org.microbean.lang.type.Types;
 
 import org.microbean.lang.visitor.ContainsTypeVisitor;
 import org.microbean.lang.visitor.EraseVisitor;
-import org.microbean.lang.visitor.IsSameTypeVisitor;
 import org.microbean.lang.visitor.PrecedesPredicate;
 import org.microbean.lang.visitor.SubtypeVisitor;
 import org.microbean.lang.visitor.SupertypeVisitor;
 import org.microbean.lang.visitor.TypeClosureVisitor;
+import org.microbean.lang.visitor.Visitors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -93,33 +93,6 @@ final class TestTypeClosure {
     } catch (final IllegalArgumentException expected) {
       // OK
     }
-
-    /*
-    // Set up the fundamentals.
-    final ElementSource es = n -> elements.getTypeElement(n);
-    final Types types = new Types(es);
-    final EraseVisitor eraseVisitor = new EraseVisitor(es, types);
-    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(es, types, eraseVisitor);
-
-    // These have cycles.
-    final ContainsTypeVisitor containsTypeVisitor = new ContainsTypeVisitor(es, types);
-    final IsSameTypeVisitor isSameTypeVisitor = new IsSameTypeVisitor(es, containsTypeVisitor, supertypeVisitor, true);
-    final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(es, null, types, supertypeVisitor, isSameTypeVisitor);
-    containsTypeVisitor.setSubtypeVisitor(subtypeVisitor);
-    subtypeVisitor.setContainsTypeVisitor(containsTypeVisitor);
-
-    final PrecedesPredicate precedesPredicate = new PrecedesPredicate(supertypeVisitor, subtypeVisitor);
-    final TypeClosureVisitor typeClosureVisitor = new TypeClosureVisitor(es, supertypeVisitor, precedesPredicate);
-
-    try {
-      typeClosureVisitor.visit(integerArrayType);
-      fail();
-    } catch (final IllegalArgumentException expected) {
-      // OK
-    }
-    */
-
-
   }
 
   @Test
@@ -159,27 +132,6 @@ final class TestTypeClosure {
     final Visitors visitors = new Visitors(n -> elements.getTypeElement(n));
     final List<? extends TypeMirror> list = visitors.typeClosureVisitor().visit(integerElementType).toList();
     assertEquals(7, list.size(), "Unexpected type closure list: " + list);
-                                           
-    /*
-    // Set up the fundamentals.
-    final ElementSource es = n -> elements.getTypeElement(n);
-    final Types types = new Types(es);
-    final EraseVisitor eraseVisitor = new EraseVisitor(es, types);
-    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(es, types, eraseVisitor);
-
-    // These have cycles.
-    final ContainsTypeVisitor containsTypeVisitor = new ContainsTypeVisitor(es, types);
-    final IsSameTypeVisitor isSameTypeVisitor = new IsSameTypeVisitor(es, containsTypeVisitor, supertypeVisitor, true);
-    final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(es, types, supertypeVisitor, isSameTypeVisitor);
-    containsTypeVisitor.setSubtypeVisitor(subtypeVisitor);
-    subtypeVisitor.setContainsTypeVisitor(containsTypeVisitor);
-
-    final PrecedesPredicate precedesPredicate = new PrecedesPredicate(supertypeVisitor, subtypeVisitor);
-    final TypeClosureVisitor typeClosureVisitor = new TypeClosureVisitor(es, supertypeVisitor, precedesPredicate);
-
-    final List<? extends TypeMirror> list = typeClosureVisitor.visit(integerElementType).toList();
-    assertEquals(7, list.size(), "Unexpected type closure list: " + list);
-    */
   }
 
 }

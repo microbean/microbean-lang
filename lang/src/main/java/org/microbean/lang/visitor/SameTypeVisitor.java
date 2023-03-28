@@ -46,7 +46,7 @@ import org.microbean.lang.type.Types;
 
 // Basically done
 // isSameType() in javac's Types.java
-public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
+public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
   private final ElementSource elementSource;
 
@@ -58,14 +58,14 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
 
   private final boolean wildcardsComparable;
 
-  public IsSameTypeVisitor(final ElementSource elementSource,
+  public SameTypeVisitor(final ElementSource elementSource,
                            final ContainsTypeVisitor containsTypeVisitor,
                            final SupertypeVisitor supertypVisitor,
                            final boolean wildcardsCompatible) {
     this(elementSource, null, containsTypeVisitor, supertypVisitor, wildcardsCompatible);
   }
 
-  public IsSameTypeVisitor(final ElementSource elementSource,
+  public SameTypeVisitor(final ElementSource elementSource,
                            final Equality equality,
                            final ContainsTypeVisitor containsTypeVisitor,
                            final SupertypeVisitor supertypeVisitor,
@@ -76,7 +76,7 @@ public final class IsSameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     this.wildcardsComparable = wildcardsComparable;
     this.containsTypeVisitor = Objects.requireNonNull(containsTypeVisitor, "containsTypeVisitor");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
-    containsTypeVisitor.setIsSameTypeVisitor(this);
+    containsTypeVisitor.setSameTypeVisitor(this);
   }
 
   final ContainsTypeVisitor containsTypeVisitor() {

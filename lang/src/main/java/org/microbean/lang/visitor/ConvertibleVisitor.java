@@ -25,20 +25,20 @@ import javax.lang.model.util.SimpleTypeVisitor14;
 
 import org.microbean.lang.type.Types;
 
-public final class IsConvertibleVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
+public final class ConvertibleVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
   private final Types types;
   
-  private final IsSubtypeUncheckedVisitor isSubtypeUncheckedVisitor;
+  private final SubtypeUncheckedVisitor subtypeUncheckedVisitor;
 
   private final SubtypeVisitor subtypeVisitor;
   
-  public IsConvertibleVisitor(final Types types,
-                              final IsSubtypeUncheckedVisitor isSubtypeUncheckedVisitor,
-                              final SubtypeVisitor subtypeVisitor) {
+  public ConvertibleVisitor(final Types types,
+                            final SubtypeUncheckedVisitor subtypeUncheckedVisitor,
+                            final SubtypeVisitor subtypeVisitor) {
     super();
     this.types = Objects.requireNonNull(types, "types");
-    this.isSubtypeUncheckedVisitor = Objects.requireNonNull(isSubtypeUncheckedVisitor, "isSubtypeUncheckedVisitor").withCapture(true);
+    this.subtypeUncheckedVisitor = Objects.requireNonNull(subtypeUncheckedVisitor, "subtypeUncheckedVisitor").withCapture(true);
     this.subtypeVisitor = Objects.requireNonNull(subtypeVisitor, "subtypeVisitor");
   }
 
@@ -46,14 +46,14 @@ public final class IsConvertibleVisitor extends SimpleTypeVisitor14<Boolean, Typ
   protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
     assert !t.getKind().isPrimitive();
     return
-      s.getKind().isPrimitive() ? this.subtypeVisitor.visit(this.types.unbox(t), s) : this.isSubtypeUncheckedVisitor.visit(t, s);
+      s.getKind().isPrimitive() ? this.subtypeVisitor.visit(this.types.unbox(t), s) : this.subtypeUncheckedVisitor.visit(t, s);
   }
 
   @Override
   public final Boolean visitPrimitive(final PrimitiveType t, final TypeMirror s) {
     assert t.getKind().isPrimitive();
     return
-      s.getKind().isPrimitive() ? this.isSubtypeUncheckedVisitor.visit(t, s) : this.subtypeVisitor.visit(this.types.box(t), s);
+      s.getKind().isPrimitive() ? this.subtypeUncheckedVisitor.visit(t, s) : this.subtypeVisitor.visit(this.types.box(t), s);
   }
 
 }

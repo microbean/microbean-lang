@@ -66,7 +66,7 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
   
   private final Types types;
 
-  private IsSameTypeVisitor isSameTypeVisitor;
+  private SameTypeVisitor sameTypeVisitor;
 
   private SubtypeVisitor subtypeVisitor;
 
@@ -76,11 +76,11 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
     this.types = Objects.requireNonNull(types, "types");
   }
 
-  final void setIsSameTypeVisitor(final IsSameTypeVisitor v) {
+  final void setSameTypeVisitor(final SameTypeVisitor v) {
     if (v.containsTypeVisitor() != this) {
       throw new IllegalArgumentException("v: " + v);
-    } else if (v != this.isSameTypeVisitor) {
-      this.isSameTypeVisitor = v;
+    } else if (v != this.sameTypeVisitor) {
+      this.sameTypeVisitor = v;
     }
   }
 
@@ -108,7 +108,7 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
   
   @Override
   protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
-    return this.isSameTypeVisitor.visit(t, s);
+    return this.sameTypeVisitor.visit(t, s);
   }
 
   @Override
@@ -133,7 +133,7 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
       }
       // fall through
     case WILDCARD:
-      if (this.isSameTypeVisitor.visit(w, s)) {
+      if (this.sameTypeVisitor.visit(w, s)) {
         return Boolean.TRUE;
       }
       // fall through

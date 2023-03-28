@@ -72,7 +72,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
 
   private final Map<DelegatingElement, TypeMirror> mapping;
 
-  private final IsSameTypeVisitor isSameTypeVisitor;
+  private final SameTypeVisitor sameTypeVisitor;
 
   private final SubtypeVisitor subtypeVisitor;
 
@@ -80,14 +80,14 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
 
   AdaptingVisitor(final ElementSource elementSource,
                   final Types types,
-                  final IsSameTypeVisitor isSameTypeVisitor,
+                  final SameTypeVisitor sameTypeVisitor,
                   final SubtypeVisitor subtypeVisitor,
                   final List<TypeVariable> from, // mutated
                   final List<TypeMirror> to) { // mutated
     super();
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.types = Objects.requireNonNull(types, "types");
-    this.isSameTypeVisitor = Objects.requireNonNull(isSameTypeVisitor, "isSameTypeVisitor");
+    this.sameTypeVisitor = Objects.requireNonNull(sameTypeVisitor, "sameTypeVisitor");
     this.subtypeVisitor = Objects.requireNonNull(subtypeVisitor, "subtypeVisitor");
     this.mapping = new HashMap<>();
     this.cache = new HashSet<>();
@@ -168,7 +168,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
       } else {
         throw new IllegalStateException("val: " + val);
       }
-    } else if (!this.isSameTypeVisitor.visit(val, target)) {
+    } else if (!this.sameTypeVisitor.visit(val, target)) {
       throw new IllegalStateException();
     }
     this.mapping.put(sourceElement, val);
@@ -195,7 +195,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
   }
 
   private final void adaptRecursive(final TypeMirror source, final TypeMirror target) {
-    final TypeMirrorPair pair = new TypeMirrorPair(this.types, this.isSameTypeVisitor, source, target);
+    final TypeMirrorPair pair = new TypeMirrorPair(this.types, this.sameTypeVisitor, source, target);
     if (this.cache.add(pair)) {
       try {
         this.visit(source, target);

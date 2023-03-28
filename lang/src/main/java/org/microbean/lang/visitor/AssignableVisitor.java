@@ -25,22 +25,22 @@ import javax.lang.model.util.SimpleTypeVisitor14;
 
 import org.microbean.lang.type.Types;
 
-public final class IsAssignableVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
+public final class AssignableVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
   private final Types types;
   
-  private final IsConvertibleVisitor isConvertibleVisitor;
+  private final ConvertibleVisitor convertibleVisitor;
   
-  public IsAssignableVisitor(final Types types,
-                             final IsConvertibleVisitor isConvertibleVisitor) {
+  public AssignableVisitor(final Types types,
+                           final ConvertibleVisitor convertibleVisitor) {
     super();
     this.types = Objects.requireNonNull(types, "types");
-    this.isConvertibleVisitor = Objects.requireNonNull(isConvertibleVisitor, "isConvertibleVisitor");
+    this.convertibleVisitor = Objects.requireNonNull(convertibleVisitor, "convertibleVisitor");
   }
 
   @Override
   protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
-    return this.isConvertibleVisitor.visit(t, s);
+    return this.convertibleVisitor.visit(t, s);
   }
 
   @Override

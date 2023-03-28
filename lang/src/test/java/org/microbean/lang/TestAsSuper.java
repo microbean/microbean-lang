@@ -38,9 +38,10 @@ import org.junit.jupiter.api.Test;
 import org.microbean.lang.visitor.AsSuperVisitor;
 import org.microbean.lang.visitor.ContainsTypeVisitor;
 import org.microbean.lang.visitor.EraseVisitor;
-import org.microbean.lang.visitor.IsSameTypeVisitor;
+import org.microbean.lang.visitor.SameTypeVisitor;
 import org.microbean.lang.visitor.SubtypeVisitor;
 import org.microbean.lang.visitor.SupertypeVisitor;
+import org.microbean.lang.visitor.Visitors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -56,7 +57,7 @@ final class TestAsSuper {
 
   private Visitors visitors;
   
-  private IsSameTypeVisitor isSameTypeVisitor;
+  private SameTypeVisitor sameTypeVisitor;
 
   private AsSuperVisitor asSuperVisitor;
   
@@ -78,8 +79,8 @@ final class TestAsSuper {
 
     // These have cycles.
     final ContainsTypeVisitor containsTypeVisitor = new ContainsTypeVisitor(this.jlm, types);
-    this.isSameTypeVisitor = new IsSameTypeVisitor(this.jlm, containsTypeVisitor, supertypeVisitor, true);
-    final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(this.jlm, types, supertypeVisitor, this.isSameTypeVisitor);
+    this.sameTypeVisitor = new SameTypeVisitor(this.jlm, containsTypeVisitor, supertypeVisitor, true);
+    final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(this.jlm, types, supertypeVisitor, this.sameTypeVisitor);
     this.asSuperVisitor = new AsSuperVisitor(this.jlm, null, types, supertypeVisitor, subtypeVisitor);
     containsTypeVisitor.setSubtypeVisitor(subtypeVisitor);
     subtypeVisitor.setContainsTypeVisitor(containsTypeVisitor);
@@ -105,7 +106,7 @@ final class TestAsSuper {
     // WTF; this fails:
     // assertSame(objectTypeDeclaration, stringTypeSuperclass);
     assertTrue(this.javacCodeTypes.isSameType((Type)objectTypeDeclaration, (Type)stringTypeSuperclass));
-    assertTrue(this.visitors.isSameTypeVisitor().visit(objectTypeDeclaration, stringTypeSuperclass));
+    assertTrue(this.visitors.sameTypeVisitor().visit(objectTypeDeclaration, stringTypeSuperclass));
     assertAsSuper(objectTypeDeclaration, stringTypeDeclaration, objectElement);
   }
 
@@ -156,7 +157,7 @@ final class TestAsSuper {
 
   private final void assertSameType(final TypeMirror t, final TypeMirror s) {
     assertTrue(this.javacCodeTypes.isSameType((Type)t, (Type)s));
-    assertTrue(this.visitors.isSameTypeVisitor().visit(t, s));
+    assertTrue(this.visitors.sameTypeVisitor().visit(t, s));
   }
 
   

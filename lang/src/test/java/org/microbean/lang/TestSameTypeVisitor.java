@@ -50,12 +50,13 @@ import org.microbean.lang.visitor.AsSuperVisitor;
 import org.microbean.lang.visitor.CaptureVisitor;
 import org.microbean.lang.visitor.ContainsTypeVisitor;
 import org.microbean.lang.visitor.EraseVisitor;
-import org.microbean.lang.visitor.IsSameTypeVisitor;
+import org.microbean.lang.visitor.SameTypeVisitor;
 import org.microbean.lang.visitor.MemberTypeVisitor;
 import org.microbean.lang.visitor.PrecedesPredicate;
 import org.microbean.lang.visitor.SubtypeVisitor;
 import org.microbean.lang.visitor.SupertypeVisitor;
 import org.microbean.lang.visitor.TypeClosureVisitor;
+import org.microbean.lang.visitor.Visitors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -65,14 +66,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @ExtendWith(AnnotationProcessingInterceptor.class)
-final class TestIsSameTypeVisitor {
+final class TestSameTypeVisitor {
 
-  private TestIsSameTypeVisitor() {
+  private TestSameTypeVisitor() {
     super();
   }
 
   @Test
-  final void testIsSameTypeVisitor(final ProcessingEnvironment env) {
+  final void testSameTypeVisitor(final ProcessingEnvironment env) {
     final javax.lang.model.util.Elements elements = env.getElementUtils();
     final javax.lang.model.util.Types javacModelTypes = env.getTypeUtils();
     assertTrue(javacModelTypes instanceof JavacTypes);
