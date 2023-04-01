@@ -57,13 +57,30 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
+/**
+ * Provides determinate hashcode and equality calculations chiefly for {@code javax.lang.model} implementations.
+ *
+ * @author <a href="https://about.me/lairdnelson" target="_parent">Laird Nelson</a>
+ *
+ * @see #hashCode(Object)
+ *
+ * @see #equals(Object, Object)
+ */
 public class Equality {
 
   private final boolean ia;
 
-  public Equality(final boolean ia) {
+  /**
+   * Creates a new {@link Equality}.
+   *
+   * @param includeAnnotations whether annotations on objects should be taken into consideration while performing
+   * hashcode and equality operations
+   *
+   * @see #includeAnnotations()
+   */
+  public Equality(final boolean includeAnnotations) {
     super();
-    this.ia = ia;
+    this.ia = includeAnnotations;
   }
 
   public final boolean includeAnnotations() {
@@ -73,7 +90,7 @@ public class Equality {
   public int hashCode(final Object o1) {
     return hashCode(o1, this.ia);
   }
-  
+
   public boolean equals(final Object o1, final Object o2) {
     return equals(o1, o2, this.ia);
   }
@@ -82,7 +99,15 @@ public class Equality {
   /*
    * Static methods.
    */
-  
+
+
+  public static final int hashCodeIncludingAnnotations(final Object o) {
+    return hashCode(o, true);
+  }
+
+  public static final int hashCodeNotIncludingAnnotations(final Object o) {
+    return hashCode(o, false);
+  }
 
   public static final int hashCode(final Object o, final boolean ia) {
     return switch (o) {
@@ -95,7 +120,7 @@ public class Equality {
     case int[] hashCodes -> hashCode(hashCodes);
     case Object[] array -> hashCode(array, ia);
     case Directive d -> hashCode(d, ia);
-    default -> System.identityHashCode(o); // illegal argument
+    default -> System.identityHashCode(o);
     };
   }
 
@@ -148,10 +173,7 @@ public class Equality {
   }
 
   private static final int hashCode(final AnnotationMirror am, final boolean ia) {
-    if (am == null) {
-      return 0;
-    }
-    return hashCode(values(am), ia);
+    return am == null ? 0 : hashCode(values(am), ia);
   }
 
   private static final int hashCode(final AnnotationValue av, final boolean ia) {
@@ -170,96 +192,47 @@ public class Equality {
     case null -> 0;
     case Element e -> hashCode(e, ia);
     case TypeMirror t -> hashCode(t, ia);
-    default -> System.identityHashCode(ac); // illegal argument
+    default -> System.identityHashCode(ac); // basically illegal argument
     };
   }
 
   private static final int hashCode(final Element e, final boolean ia) {
-    if (e == null) {
-      return 0;
-    }
-    switch (e.getKind()) {
-
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-      return hashCode((TypeElement)e, ia);
-
-    case TYPE_PARAMETER:
-      return hashCode((TypeParameterElement)e, ia);
-
-    case BINDING_VARIABLE:
-    case ENUM_CONSTANT:
-    case EXCEPTION_PARAMETER:
-    case FIELD:
-    case LOCAL_VARIABLE:
-    case PARAMETER:
-    case RESOURCE_VARIABLE:
-      return hashCode((VariableElement)e, ia);
-
-    case RECORD_COMPONENT:
-      return hashCode((RecordComponentElement)e, ia);
-
-    case CONSTRUCTOR:
-    case INSTANCE_INIT:
-    case METHOD:
-    case STATIC_INIT:
-      return hashCode((ExecutableElement)e, ia);
-
-    case PACKAGE:
-      return hashCode((PackageElement)e, ia);
-
-    case MODULE:
-      return hashCode((ModuleElement)e, ia);
-
-    default:
-      return System.identityHashCode(e); // basically illegal argument
-    }
+    return e == null ? 0 : switch (e.getKind()) {
+    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> hashCode((TypeElement)e, ia);
+    case TYPE_PARAMETER -> hashCode((TypeParameterElement)e, ia);
+    case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE -> hashCode((VariableElement)e, ia);
+    case RECORD_COMPONENT -> hashCode((RecordComponentElement)e, ia);
+    case CONSTRUCTOR, INSTANCE_INIT, METHOD, STATIC_INIT -> hashCode((ExecutableElement)e, ia);
+    case PACKAGE -> hashCode((PackageElement)e, ia);
+    case MODULE -> hashCode((ModuleElement)e, ia);
+    default -> System.identityHashCode(e); // basically illegal argument
+    };
   }
 
   private static final int hashCode(final ExecutableElement e, final boolean ia) {
     if (e == null) {
       return 0;
-    }
-    switch (e.getKind()) {
-    case CONSTRUCTOR:
-    case INSTANCE_INIT:
-    case METHOD:
-    case STATIC_INIT:
-      break;
-    default:
+    } else if (!e.getKind().isExecutable()) {
       return System.identityHashCode(e); // illegal argument
     }
-    // This gets tricky. If we're truly trying to do value-based
-    // hashcodes, we have a catch-22: a method's hashcode must include
-    // the hashcodes of its parameters, and parameters, taken in
-    // isolation, must include the hashcodes of their enclosing
-    // element (method).  That's an infinite loop.
+    // This gets tricky. If we're truly trying to do value-based hashcodes, we have a catch-22: a method's hashcode must
+    // include the hashcodes of its parameters, and parameters, taken in isolation, must include the hashcodes of their
+    // enclosing element (method).  That's an infinite loop.
     //
-    // Next, VariableElement, which is the class assigned to
-    // executable/method/constructor parameters, is also used for
-    // things like fields.  So we can't make assumptions about its
-    // hashcode calculations, save for one:
+    // Next, VariableElement, which is the class assigned to executable/method/constructor parameters, is also used for
+    // things like fields.  So we can't make assumptions about its hashcode calculations, save for one:
     //
     // Given that VariableElements are always enclosed
     // (https://docs.oracle.com/en/java/javase/19/docs/api/java.compiler/javax/lang/model/element/VariableElement.html#getEnclosingElement()),
-    // it is reasonable to assume that any given VariableElement
-    // implementation will likely include the return value of
-    // getEnclosingElement() in its hashcode calculations.  But the
-    // only enclosing "thing" that would "normally" include the
-    // hashcode calculations of its *enclosed* elements is an
-    // ExecutableElement (because its parameters make up its
+    // it is reasonable to assume that any given VariableElement implementation will likely include the return value of
+    // getEnclosingElement() in its hashcode calculations.  But the only enclosing "thing" that would "normally" include
+    // the hashcode calculations of its *enclosed* elements is an ExecutableElement (because its parameters make up its
     // identity).
     //
-    // So probably the best place to break that infinite loop is here,
-    // not there.
+    // So probably the best place to break that infinite loop is here, not there.
     //
-    // Now, these are hashcodes, not equality comparisons, so the
-    // worst that happens if we eliminate parameters from the mix is a
-    // collision for overridden methods. That's what the
-    // java.lang.reflect.* Executable/Parameter split does.
+    // Now, these are hashcodes, not equality comparisons, so the worst that happens if we eliminate parameters from the
+    // mix is a collision for overridden methods. That's what the java.lang.reflect.* Executable/Parameter split does.
     return
       hashCode(e.getKind().hashCode(),
                hashCode(e.getEnclosingElement(), ia), // this is OK
@@ -312,14 +285,7 @@ public class Equality {
       return 0;
     }
     final ElementKind k = e.getKind();
-    switch (k) {
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-      break;
-    default:
+    if (!k.isClass() && !k.isInterface()) {
       return System.identityHashCode(e); // illegal argument
     }
     return
@@ -346,16 +312,7 @@ public class Equality {
       return 0;
     }
     final ElementKind k = e.getKind();
-    switch (k) {
-    case BINDING_VARIABLE:
-    case ENUM_CONSTANT:
-    case EXCEPTION_PARAMETER:
-    case FIELD:
-    case LOCAL_VARIABLE:
-    case PARAMETER:
-    case RESOURCE_VARIABLE:
-      break;
-    default:
+    if (!k.isVariable()) {
       return System.identityHashCode(e); // illegal argument
     }
     return
@@ -366,51 +323,18 @@ public class Equality {
   }
 
   private static final int hashCode(final TypeMirror t, final boolean ia) {
-    if (t == null) {
-      return 0;
-    }
-    switch (t.getKind()) {
-
-    case ARRAY:
-      return hashCode((ArrayType)t, ia);
-
-    case DECLARED:
-      return hashCode((DeclaredType)t, ia);
-
-    case EXECUTABLE:
-      return hashCode((ExecutableType)t, ia);
-
-    case INTERSECTION:
-      return hashCode((IntersectionType)t, ia);
-
-    case MODULE:
-    case NONE:
-    case PACKAGE:
-    case VOID:
-      return hashCode((NoType)t, ia);
-
-    case NULL:
-      return hashCode((NullType)t, ia);
-
-    case BOOLEAN:
-    case BYTE:
-    case CHAR:
-    case DOUBLE:
-    case FLOAT:
-    case INT:
-    case LONG:
-    case SHORT:
-      return hashCode((PrimitiveType)t, ia);
-
-    case TYPEVAR:
-      return hashCode((TypeVariable)t, ia);
-
-    case WILDCARD:
-      return hashCode((WildcardType)t, ia);
-
-    default:
-      return System.identityHashCode(t); // basically illegal argument
-    }
+    return t == null ? 0 : switch (t.getKind()) {
+    case ARRAY -> hashCode((ArrayType)t, ia);
+    case DECLARED -> hashCode((DeclaredType)t, ia);
+    case EXECUTABLE -> hashCode((ExecutableType)t, ia);
+    case INTERSECTION -> hashCode((IntersectionType)t, ia);
+    case MODULE, NONE, PACKAGE, VOID -> hashCode((NoType)t, ia);
+    case NULL -> hashCode((NullType)t, ia);
+    case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> hashCode((PrimitiveType)t, ia);
+    case TYPEVAR -> hashCode((TypeVariable)t, ia);
+    case WILDCARD -> hashCode((WildcardType)t, ia);
+    case ERROR, OTHER, UNION -> System.identityHashCode(t); // basically illegal argument
+    };
   }
 
   private static final int hashCode(final ArrayType t, final boolean ia) {
@@ -471,16 +395,10 @@ public class Equality {
       return 0;
     }
     final TypeKind k = t.getKind();
-    switch (k) {
-    case MODULE:
-    case PACKAGE:
-    case NONE:
-    case VOID:
-      // No need to check ia because a NoType cannot have annotations.
-      return k.hashCode();
-    default:
-      return System.identityHashCode(t); // illegal argument
-    }
+    return switch (k) {
+    case MODULE, PACKAGE, NONE, VOID -> k.hashCode(); // No need to check ia; a NoType cannot have annotations
+    default -> System.identityHashCode(t); // illegal argument
+    };
   }
 
   private static final int hashCode(final NullType t, final boolean ia) {
@@ -497,19 +415,10 @@ public class Equality {
       return 0;
     }
     final TypeKind k = t.getKind();
-    switch (k) {
-    case BOOLEAN:
-    case BYTE:
-    case CHAR:
-    case DOUBLE:
-    case FLOAT:
-    case INT:
-    case LONG:
-    case SHORT:
-      return ia ? hashCode(k.hashCode(), hashCode(t.getAnnotationMirrors(), ia)) : k.hashCode();
-    default:
-      return System.identityHashCode(t); // illegal argument
+    if (!k.isPrimitive()) {
+      return System.identityHashCode(t); // illegal argument, actually
     }
+    return ia ? hashCode(k.hashCode(), hashCode(t.getAnnotationMirrors(), ia)) : k.hashCode();
   }
 
   private static final int hashCode(final TypeVariable t, final boolean ia) {
@@ -544,23 +453,13 @@ public class Equality {
   }
 
   private static final int hashCode(final Directive d, final boolean ia) {
-    if (d == null) {
-      return 0;
-    }
-    switch (d.getKind()) {
-    case EXPORTS:
-      return hashCode((ExportsDirective)d, ia);
-    case OPENS:
-      return hashCode((OpensDirective)d, ia);
-    case PROVIDES:
-      return hashCode((ProvidesDirective)d, ia);
-    case REQUIRES:
-      return hashCode((RequiresDirective)d, ia);
-    case USES:
-      return hashCode((UsesDirective)d, ia);
-    default:
-      return System.identityHashCode(d); // illegal argument
-    }
+    return d == null ? 0 : switch (d.getKind()) {
+    case EXPORTS -> hashCode((ExportsDirective)d, ia);
+    case OPENS -> hashCode((OpensDirective)d, ia);
+    case PROVIDES -> hashCode((ProvidesDirective)d, ia);
+    case REQUIRES -> hashCode((RequiresDirective)d, ia);
+    case USES -> hashCode((UsesDirective)d, ia);
+    };
   }
 
   private static final int hashCode(final ExportsDirective d, final boolean ia) {
@@ -647,25 +546,16 @@ public class Equality {
   }
 
   public static final boolean equals(final Object o1, final Object o2, final boolean ia) {
-    if (o1 == o2) {
-      return true;
-    } else if (o1 == null || o2 == null) {
-      return false;
-    } else if (o1 instanceof AnnotationMirror am1) {
-      return o2 instanceof AnnotationMirror am2 && equals(am1, am2, ia);
-    } else if (o1 instanceof AnnotationValue av1) {
-      return o2 instanceof AnnotationValue av2 && equals(av1, av2, ia);
-    } else if (o1 instanceof AnnotatedConstruct ac1) {
-      return o2 instanceof AnnotatedConstruct ac2 && equals(ac1, ac2, ia);
-    } else if (o1 instanceof CharSequence c1) {
-      return o2 instanceof CharSequence c2 && equals(c1, c2);
-    } else if (o1 instanceof List<?> list1) {
-      return o2 instanceof List<?> list2 && equals(list1, list2, ia);
-    } else if (o1 instanceof Directive d1) {
-      return o2 instanceof Directive d2 && equals(d1, d2, ia);
-    } else {
-      return o1.equals(o2);
-    }
+    return o1 == o2 || o2 != null && switch (o1) {
+    case null -> false;
+    case AnnotationMirror am1 -> o2 instanceof AnnotationMirror am2 && equals(am1, am2, ia);
+    case AnnotationValue av1 -> o2 instanceof AnnotationValue av2 && equals(av1, av2, ia);
+    case AnnotatedConstruct ac1 -> o2 instanceof AnnotatedConstruct ac2 && equals(ac1, ac2, ia);
+    case CharSequence c1 -> o2 instanceof CharSequence c2 && equals(c1, c2, ia);
+    case List<?> list1 -> o2 instanceof List<?> list2 && equals(list1, list2, ia);
+    case Directive d1 -> o2 instanceof Directive d2 && equals(d1, d2, ia);
+    default -> o1.equals(o2);
+    };
   }
 
   private static final boolean equals(final List<?> list1, final List<?> list2, final boolean ia) {
@@ -756,32 +646,23 @@ public class Equality {
       return false;
     }
     final Object v1 = av1.getValue(); // annotation elements cannot return null
-    if (v1 instanceof AnnotationMirror am1) {
-      return av2.getValue() instanceof AnnotationMirror am2 && equals(am1, am2, ia);
-    } else if (v1 instanceof List<?> list1) {
-      return av2.getValue() instanceof List<?> list2 && equals(list1, list2, ia);
-    } else if (v1 instanceof TypeMirror t1) {
-      return av2.getValue() instanceof TypeMirror t2 && equals(t1, t2, ia);
-    } else if (v1 instanceof VariableElement ve1) {
-      return av2.getValue() instanceof VariableElement ve2 && equals(ve1, ve2, ia);
-    } else {
-      return v1.equals(av2.getValue()); // illegal argument
-    }
+    return switch (v1) {
+    case AnnotationMirror am1 -> av2.getValue() instanceof AnnotationMirror am2 && equals(am1, am2, ia);
+    case List<?> list1 -> av2.getValue() instanceof List<?> list2 && equals(list1, list2, ia);
+    case TypeMirror t1 -> av2.getValue() instanceof TypeMirror t2 && equals(t1, t2, ia);
+    case VariableElement ve1 -> av2.getValue() instanceof VariableElement ve2 && equals(ve1, ve2, ia);
+    default -> v1.equals(av2.getValue()); // illegal argument
+    };
   }
 
   @SuppressWarnings("deprecation")
   private static final boolean equals(final AnnotatedConstruct ac1, final AnnotatedConstruct ac2, final boolean ia) {
-    if (ac1 == ac2) {
-      return true;
-    } else if (ac1 == null || ac2 == null) {
-      return false;
-    } else if (ac1 instanceof Element e1) {
-      return ac2 instanceof Element e2 && equals(e1, e2, ia);
-    } else if (ac1 instanceof TypeMirror t1) {
-      return ac2 instanceof TypeMirror t2 && equals(t1, t2, ia);
-    } else {
-      return false; // illegal state
-    }
+    return ac1 == ac2 || ac2 != null && switch (ac1) {
+    case null -> false;
+    case Element e1 -> ac2 instanceof Element e2 && equals(e1, e2, ia);
+    case TypeMirror t1 -> ac2 instanceof TypeMirror t2 && equals(t1, t2, ia);
+    default -> ac1.equals(ac2); // illegal argument
+    };
   }
 
   private static final boolean equals(final Element e1, final Element e2, final boolean ia) {
@@ -791,48 +672,16 @@ public class Equality {
       return false;
     }
     final ElementKind k = e1.getKind();
-    if (k != e2.getKind()) {
-      return false;
-    }
-    switch (k) {
-
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-      return equals((TypeElement)e1, (TypeElement)e2, ia);
-
-    case TYPE_PARAMETER:
-      return equals((TypeParameterElement)e1, (TypeParameterElement)e2, ia);
-
-    case BINDING_VARIABLE:
-    case ENUM_CONSTANT:
-    case EXCEPTION_PARAMETER:
-    case FIELD:
-    case LOCAL_VARIABLE:
-    case PARAMETER:
-    case RESOURCE_VARIABLE:
-      return equals((VariableElement)e1, (VariableElement)e2, ia);
-
-    case RECORD_COMPONENT:
-      return equals((RecordComponentElement)e1, (RecordComponentElement)e2, ia);
-
-    case CONSTRUCTOR:
-    case INSTANCE_INIT:
-    case METHOD:
-    case STATIC_INIT:
-      return equals((ExecutableElement)e1, (ExecutableElement)e2, ia);
-
-    case PACKAGE:
-      return equals((PackageElement)e1, (PackageElement)e2, ia);
-
-    case MODULE:
-      return equals((ModuleElement)e1, (ModuleElement)e2, ia);
-
-    default:
-      return false;
-    }
+    return k == e2.getKind() && switch (k) {
+    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> equals((TypeElement)e1, (TypeElement)e2, ia);
+    case TYPE_PARAMETER -> equals((TypeParameterElement)e1, (TypeParameterElement)e2, ia);
+    case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE -> equals((VariableElement)e1, (VariableElement)e2, ia);
+    case RECORD_COMPONENT -> equals((RecordComponentElement)e1, (RecordComponentElement)e2, ia);
+    case CONSTRUCTOR, INSTANCE_INIT, METHOD, STATIC_INIT -> equals((ExecutableElement)e1, (ExecutableElement)e2, ia);
+    case PACKAGE -> equals((PackageElement)e1, (PackageElement)e2, ia);
+    case MODULE -> equals((ModuleElement)e1, (ModuleElement)e2, ia);
+    case OTHER -> false;
+    };
   }
 
   private static final boolean equals(final ExecutableElement e1, final ExecutableElement e2, final boolean ia) {
@@ -842,22 +691,11 @@ public class Equality {
       return false;
     }
     final ElementKind k1 = e1.getKind();
-    switch (k1) {
-    case CONSTRUCTOR:
-    case INSTANCE_INIT:
-    case METHOD:
-    case STATIC_INIT:
-      if (k1 != e2.getKind()) {
-        return false;
-      }
-      break;
-    default:
-      return false; // illegal argument
-    }
-    // This is kind of the runtime equality contract of, say,
-    // java.lang.reflect.Method.  Note in particular that
+    // This is kind of the runtime equality contract of, say, java.lang.reflect.Method.  Note in particular that
     // TypeParameterElements are not evaluated.
     return
+      k1 == e2.getKind() &&
+      k1.isExecutable() &&
       equals(e1.getSimpleName(), e2.getSimpleName()) &&
       equals(e1.getParameters(), e2.getParameters(), ia) &&
       equals(e1.getReturnType(), e2.getReturnType(), ia) &&
@@ -905,20 +743,10 @@ public class Equality {
       return false;
     }
     final ElementKind k1 = e1.getKind();
-    switch (k1) {
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-      if (k1 != e2.getKind()) {
-        return false;
-      }
-      break;
-    default:
-      return false; // illegal argument
-    }
-    return equals(e1.getQualifiedName(), e2.getQualifiedName());
+    return
+      k1 == e2.getKind() &&
+      (k1.isClass() || k1.isInterface()) &&
+      equals(e1.getQualifiedName(), e2.getQualifiedName());
   }
 
   private static final boolean equals(final TypeParameterElement e1, final TypeParameterElement e2, final boolean ia) {
@@ -927,9 +755,7 @@ public class Equality {
     } else if (e1 == null || e2 == null || ia && !equals(e1.getAnnotationMirrors(), e2.getAnnotationMirrors(), ia)) {
       return false;
     }
-    // This is also the equality contract of
-    // sun.reflect.generics.reflectiveObjects.TypeVariableImpl,
-    // interestingly.
+    // This is also the equality contract of sun.reflect.generics.reflectiveObjects.TypeVariableImpl, interestingly.
     return
       e1.getKind() == ElementKind.TYPE_PARAMETER && e2.getKind() == ElementKind.TYPE_PARAMETER &&
       equals(e1.getSimpleName(), e2.getSimpleName()) &&
@@ -943,22 +769,9 @@ public class Equality {
       return false;
     }
     final ElementKind k1 = e1.getKind();
-    switch (k1) {
-    case BINDING_VARIABLE:
-    case ENUM_CONSTANT:
-    case EXCEPTION_PARAMETER:
-    case FIELD:
-    case LOCAL_VARIABLE:
-    case PARAMETER:
-    case RESOURCE_VARIABLE:
-      if (k1 != e2.getKind()) {
-        return false;
-      }
-      break;
-    default:
-      return false; // illegal argument
-    }
     return
+      k1 == e2.getKind() &&
+      k1.isVariable() &&
       equals(e1.getSimpleName(), e2.getSimpleName()) &&
       equals(e1.getEnclosingElement(), e2.getEnclosingElement(), ia);
   }
@@ -970,56 +783,18 @@ public class Equality {
       return false;
     }
     final TypeKind k = t1.getKind();
-    if (k != t2.getKind()) {
-      return false;
-    }
-    switch (k) {
-
-    case ARRAY:
-      return equals((ArrayType)t1, (ArrayType)t2, ia);
-
-    case DECLARED:
-      return equals((DeclaredType)t1, (DeclaredType)t2, ia);
-
-    case EXECUTABLE:
-      return equals((ExecutableType)t1, (ExecutableType)t2, ia);
-
-    case INTERSECTION:
-      return equals((IntersectionType)t1, (IntersectionType)t2, ia);
-
-    case MODULE:
-    case NONE:
-    case PACKAGE:
-    case VOID:
-      return equals((NoType)t1, (NoType)t2, ia);
-
-    case NULL:
-      return equals((NullType)t1, (NullType)t2, ia);
-
-    case BOOLEAN:
-    case BYTE:
-    case CHAR:
-    case DOUBLE:
-    case FLOAT:
-    case INT:
-    case LONG:
-    case SHORT:
-      return equals((PrimitiveType)t1, (PrimitiveType)t2, ia);
-
-    case TYPEVAR:
-      return equals((TypeVariable)t1, (TypeVariable)t2, ia);
-
-    case WILDCARD:
-      return equals((WildcardType)t1, (WildcardType)t2, ia);
-
-    case ERROR:
-    case UNION:
-      throw new IllegalArgumentException("t1: " + t1);
-
-    case OTHER:
-    default:
-      return false;
-    }
+    return k == t2.getKind() && switch (k) {
+    case ARRAY -> equals((ArrayType)t1, (ArrayType)t2, ia);
+    case DECLARED -> equals((DeclaredType)t1, (DeclaredType)t2, ia);
+    case EXECUTABLE -> equals((ExecutableType)t1, (ExecutableType)t2, ia);
+    case INTERSECTION -> equals((IntersectionType)t1, (IntersectionType)t2, ia);
+    case MODULE, NONE, PACKAGE, VOID -> equals((NoType)t1, (NoType)t2, ia);
+    case NULL -> equals((NullType)t1, (NullType)t2, ia);
+    case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> equals((PrimitiveType)t1, (PrimitiveType)t2, ia);
+    case TYPEVAR -> equals((TypeVariable)t1, (TypeVariable)t2, ia);
+    case WILDCARD -> equals((WildcardType)t1, (WildcardType)t2, ia);
+    case ERROR, OTHER, UNION -> t1.equals(t2); // unhandled argument
+    };
   }
 
   private static final boolean equals(final ArrayType t1, final ArrayType t2, final boolean ia) {
@@ -1077,18 +852,11 @@ public class Equality {
     } else if (t1 == null || t2 == null || ia && !equals(t1.getAnnotationMirrors(), t2.getAnnotationMirrors(), ia)) {
       return false;
     }
-    switch (t1.getKind()) {
-    case MODULE:
-      return t2.getKind() == TypeKind.MODULE;
-    case PACKAGE:
-      return t2.getKind() == TypeKind.PACKAGE;
-    case NONE:
-      return t2.getKind() == TypeKind.NONE;
-    case VOID:
-      return t2.getKind() == TypeKind.VOID;
-    default:
-      return false;
-    }
+    final TypeKind k = t1.getKind();
+    return switch (k) {
+    case MODULE, PACKAGE, NONE, VOID -> k == t2.getKind();
+    default -> false;
+    };
   }
 
   private static final boolean equals(final NullType t1, final NullType t2, final boolean ia) {
@@ -1106,26 +874,8 @@ public class Equality {
     } else if (t1 == null || t2 == null || ia && !equals(t1.getAnnotationMirrors(), t2.getAnnotationMirrors(), ia)) {
       return false;
     }
-    switch (t1.getKind()) {
-    case BOOLEAN:
-      return t2.getKind() == TypeKind.BOOLEAN;
-    case BYTE:
-      return t2.getKind() == TypeKind.BYTE;
-    case CHAR:
-      return t2.getKind() == TypeKind.CHAR;
-    case DOUBLE:
-      return t2.getKind() == TypeKind.DOUBLE;
-    case FLOAT:
-      return t2.getKind() == TypeKind.FLOAT;
-    case INT:
-      return t2.getKind() == TypeKind.INT;
-    case LONG:
-      return t2.getKind() == TypeKind.LONG;
-    case SHORT:
-      return t2.getKind() == TypeKind.SHORT;
-    default:
-      return false;
-    }
+    final TypeKind k = t1.getKind();
+    return k.isPrimitive() && k == t2.getKind();
   }
 
   private static final boolean equals(final TypeVariable t1, final TypeVariable t2, final boolean ia) {
@@ -1147,9 +897,8 @@ public class Equality {
     } else if (t1 == null || t2 == null) {
       return false;
     }
-    // The Java type system doesn't actually say that a wildcard type
-    // is a type.  It also says that "?" is "equivalent to" "? extends
-    // Object".  Let's start by simply comparing bounds exactly.
+    // The Java type system doesn't actually say that a wildcard type is a type.  It also says that "?" is "equivalent
+    // to" "? extends Object".  Let's start by simply comparing bounds exactly.
     return
       t1.getKind() == TypeKind.WILDCARD && t2.getKind() == TypeKind.WILDCARD &&
       equals(t1.getExtendsBound(), t2.getExtendsBound(), ia) &&
@@ -1161,20 +910,13 @@ public class Equality {
     if (d2.getKind() != k) {
       return false;
     }
-    switch (k) {
-    case EXPORTS:
-      return equals((ExportsDirective)d1, (ExportsDirective)d2, ia);
-    case OPENS:
-      return equals((OpensDirective)d1, (OpensDirective)d2, ia);
-    case PROVIDES:
-      return equals((ProvidesDirective)d1, (ProvidesDirective)d2, ia);
-    case REQUIRES:
-      return equals((RequiresDirective)d1, (RequiresDirective)d2, ia);
-    case USES:
-      return equals((UsesDirective)d1, (UsesDirective)d2, ia);
-    default:
-      return false; // illegal state
-    }
+    return k == d2.getKind() && switch (k) {
+    case EXPORTS -> equals((ExportsDirective)d1, (ExportsDirective)d2, ia);
+    case OPENS -> equals((OpensDirective)d1, (OpensDirective)d2, ia);
+    case PROVIDES -> equals((ProvidesDirective)d1, (ProvidesDirective)d2, ia);
+    case REQUIRES -> equals((RequiresDirective)d1, (RequiresDirective)d2, ia);
+    case USES -> equals((UsesDirective)d1, (UsesDirective)d2, ia);
+    };
   }
 
   private static final boolean equals(final ExportsDirective d1, final ExportsDirective d2, final boolean ia) {

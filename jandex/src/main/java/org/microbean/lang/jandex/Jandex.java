@@ -373,6 +373,11 @@ public final class Jandex extends Modeler {
     return ci == null ? null : this.element(ci);
   }
 
+  @Override // ElementSource
+  public final Element element(final String m, final String n) {
+    return this.element(n);
+  }
+
   @Override // Modeler
   public final Element element(final String n) {
     final ClassInfo ci = this.classInfoFor(n);

@@ -70,6 +70,11 @@ public final class ByteBuddy extends Modeler {
     return this.element(this.typePool.describe(n).resolve());
   }
 
+  @Override // ElementSource
+  public Element element(final String m, final String n) {
+    return this.element(n);
+  }
+
   public TypeMirror type(final Object k) {
     if (k == null) {
       return org.microbean.lang.type.NoType.NONE;

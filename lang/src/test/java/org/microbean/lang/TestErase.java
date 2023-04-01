@@ -105,7 +105,7 @@ final class TestErase {
 
     // Now do it with our stuff.
 
-    final ElementSource es = n -> elements.getTypeElement(n);
+    final ElementSource es = (m, n) -> elements.getTypeElement(elements.getModuleElement(m), n);
     final Types types = new Types(es);
 
     // Make sure our stuff thinks the javac erasure is raw.

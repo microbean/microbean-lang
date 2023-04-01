@@ -86,7 +86,7 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
     if (subtypeVisitor.asSuperVisitor() != this) {
       throw new IllegalArgumentException("subtypeVisitor");
     } else if (subtypeVisitor != this.subtypeVisitor) {
-      this.subtypeVisitor = subtypeVisitor;
+      this.subtypeVisitor = subtypeVisitor.withCapture(true);
     }
   }
 
@@ -111,7 +111,7 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
   public final TypeMirror visitArray(final ArrayType t, final Element element) {
     assert t.getKind() == TypeKind.ARRAY;
     final TypeMirror s = element.asType();
-    return this.subtypeVisitor.withCapture(true).visit(t, s) ? s : null;
+    return this.subtypeVisitor.visit(t, s) ? s : null;
   }
 
   @Override
@@ -129,6 +129,7 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
     } else if (this.equality.equals(te, element)) {
       return t;
     }
+    // TODO: may be able to get away with identity instead of DelegatingElement
     final DelegatingElement c = DelegatingElement.of(te, this.elementSource);
     if (!this.seenTypes.add(c)) { // javac calls it seenTypes but it stores Symbols/Elements
       return null;

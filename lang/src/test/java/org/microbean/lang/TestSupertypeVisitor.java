@@ -85,7 +85,7 @@ final class TestSupertypeVisitor {
     // Let's try it with our visitor.
 
     // Set up the fundamentals.
-    final ElementSource es = n -> elements.getTypeElement(n);
+    final ElementSource es = (m, n) -> elements.getTypeElement(elements.getModuleElement(m), n);
     final Types types = new Types(es);
     final EraseVisitor eraseVisitor = new EraseVisitor(es, types);
     final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(es, types, eraseVisitor);

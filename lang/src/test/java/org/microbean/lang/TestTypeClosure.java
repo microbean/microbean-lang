@@ -86,7 +86,7 @@ final class TestTypeClosure {
     assertSame(integerArrayType, integerArrayClosure.get(0));
 
     // Let's prove we don't support it.
-    final Visitors visitors = new Visitors(n -> elements.getTypeElement(n));
+    final Visitors visitors = new Visitors((m, n) -> elements.getTypeElement(elements.getModuleElement(m), n));
     try {
       visitors.typeClosureVisitor().visit(integerArrayType);
       fail();
@@ -129,7 +129,7 @@ final class TestTypeClosure {
     assertEquals(7, closure.size());
 
     // Let's try it with our visitor.
-    final Visitors visitors = new Visitors(n -> elements.getTypeElement(n));
+    final Visitors visitors = new Visitors((m, n) -> elements.getTypeElement(elements.getModuleElement(m), n));
     final List<? extends TypeMirror> list = visitors.typeClosureVisitor().visit(integerElementType).toList();
     assertEquals(7, list.size(), "Unexpected type closure list: " + list);
   }

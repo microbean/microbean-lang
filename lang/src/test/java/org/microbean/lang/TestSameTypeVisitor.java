@@ -88,7 +88,7 @@ final class TestSameTypeVisitor {
     assertNotNull(javacTypes);
 
     // Set up the fundamentals.
-    final Visitors visitors = new Visitors(n -> elements.getTypeElement(n));
+    final Visitors visitors = new Visitors((m, n) -> elements.getTypeElement(elements.getModuleElement(m), n));
 
     // Should be ready to go.
     

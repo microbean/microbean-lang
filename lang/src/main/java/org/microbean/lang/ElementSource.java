@@ -21,6 +21,15 @@ import javax.lang.model.element.Element;
 @FunctionalInterface
 public interface ElementSource {
 
-  public Element element(final String name);
+  public default Element element(final Class<?> c) {
+    final String canonicalName = c.getCanonicalName();
+    return canonicalName == null ? null : this.element(canonicalName);
+  }
+  
+  public default Element element(final String name) {
+    return this.element(null, name);
+  }
+
+  public Element element(final String moduleName, final String name);
 
 }
