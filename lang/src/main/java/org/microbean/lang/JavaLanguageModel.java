@@ -18,14 +18,25 @@ package org.microbean.lang;
 
 import java.io.Writer;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
+
+import java.lang.module.ModuleDescriptor;
+import java.lang.module.ModuleReference;
+import java.lang.module.ResolvedModule;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -52,6 +63,7 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.ModuleElement;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.Parameterizable;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
@@ -72,7 +84,13 @@ import javax.lang.model.util.Types;
 
 import org.microbean.lang.ElementSource;
 
+import static javax.lang.model.util.ElementFilter.constructorsIn;
+import static javax.lang.model.util.ElementFilter.fieldsIn;
+import static javax.lang.model.util.ElementFilter.methodsIn;
+
 public final class JavaLanguageModel implements AutoCloseable, ElementSource {
+
+  private static final TypeMirror[] EMPTY_TYPEMIRROR_ARRAY = new TypeMirror[0];
 
   private volatile ProcessingEnvironment pe;
 
@@ -149,16 +167,12 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
 
   @Override // ElementSource
   public final Element element(final String moduleName, final String n) {
-    final Elements elements = this.elements();
-    if (moduleName == null) {
-      return elements.getTypeElement(n);
-    }
-    return elements.getTypeElement(elements.getModuleElement(moduleName), n);
+    return this.typeElement(this.moduleElement(moduleName), n);
   }
 
   @Override // ElementSource
   public final Element element(final String n) {
-    return this.elements().getTypeElement(n);
+    return this.typeElement(n);
   }
 
   public final Elements elements() {
@@ -173,16 +187,80 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
     return this.pe().getTypeUtils();
   }
 
+  public final ModuleElement moduleElement(final CharSequence n) {
+    return this.elements().getModuleElement(n == null ? "" : n);
+  }
+
+  public final ModuleElement moduleElement(final Class<?> c) {
+    return c == null ? null : this.moduleElement(c.getModule());
+  }
+
+  public final ModuleElement moduleElement(final Module m) {
+    return this.moduleElement(m == null ? "" : m.getName());
+  }
+
+  public final ModuleElement moduleElement(final ModuleDescriptor m) {
+    return this.moduleElement(m == null ? "" : m.name());
+  }
+
+  public final ModuleElement moduleElement(final ModuleReference m) {
+    return this.moduleElement(m == null ? (ModuleDescriptor)null : m.descriptor());
+  }
+
+  public final ModuleElement moduleElement(final ResolvedModule m) {
+    return this.moduleElement(m == null ? "" : m.name());
+  }
+
+  public final PackageElement packageElement(final CharSequence n) {
+    return this.elements().getPackageElement(n == null ? "" : n);
+  }
+
+  public final PackageElement packageElement(final Package p) {
+    return this.packageElement(p == null ? "" : p.getName());
+  }
+
+  public final PackageElement packageElement(final Class<?> c) {
+    return c == null ? null : this.packageElement(c.getModule(), c.getPackage());
+  }
+
+  public final PackageElement packageElement(final ModuleElement m, final Package p) {
+    final String n = p == null ? "" : p.getName();
+    return this.elements().getPackageElement(m, n == null ? "" : n);
+  }
+
+  public final PackageElement packageElement(final Module m, final Package p) {
+    return this.packageElement(this.moduleElement(m), p);
+  }
+
+  public final TypeElement typeElement(final Module m, final CharSequence n) {
+    return this.typeElement(this.moduleElement(m), n);
+  }
+
+  public final TypeElement typeElement(final ModuleElement m, final CharSequence n) {
+    return this.elements().getTypeElement(m, n);
+  }
+
+  public final TypeElement typeElement(final CharSequence n) {
+    return this.elements().getTypeElement(n);
+  }
+
+  public final TypeElement typeElement(final Type t) {
+    return switch (t) {
+    case null -> null;
+    case Class<?> c -> this.typeElement(c);
+    default -> null;
+    };
+  }
+
   public final TypeElement typeElement(final Class<?> c) {
     if (c == null || c.isPrimitive() || c.isArray() || c.isLocalClass() || c.isAnonymousClass()) {
       return null;
     }
-    return this.elements().getTypeElement(c.getCanonicalName());
+    return this.typeElement(c.getModule(), c.getCanonicalName());
   }
 
   public final ExecutableElement executableElement(final Executable e) {
     return switch (e) {
-    case null -> null;
     case Constructor<?> c -> executableElement(c);
     case Method m -> executableElement(m);
     default -> null;
@@ -193,17 +271,14 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
     if (c == null) {
       return null;
     }
-    final TypeElement declaringTypeElement = (TypeElement)this.element(c.getDeclaringClass());
-    final Class<?>[] reflectionParameterTypes = c.getParameterTypes();
+    final Class<?>[] reflectionParameterTypes = c.getParameterTypes(); // deliberate erasure
     CONSTRUCTOR_LOOP:
-    for (final Element e : ElementFilter.constructorsIn(declaringTypeElement.getEnclosedElements())) {
-      final ExecutableElement ee = (ExecutableElement)e;
+    for (final ExecutableElement ee : (Iterable<? extends ExecutableElement>)constructorsIn(this.element(c.getDeclaringClass()).getEnclosedElements())) {
       final List<? extends VariableElement> parameterElements = ee.getParameters();
       if (reflectionParameterTypes.length == parameterElements.size()) {
         for (int i = 0; i < reflectionParameterTypes.length; i++) {
-          final TypeMirror parameterType = this.type(reflectionParameterTypes[i]);
-          final TypeMirror eeParameterType = parameterElements.get(i).asType();
-          if (!this.types().isSameType(parameterType, eeParameterType)) {
+          if (!this.types().isSameType(this.type(reflectionParameterTypes[i]),
+                                       this.types().erasure(parameterElements.get(i).asType()))) {
             continue CONSTRUCTOR_LOOP;
           }
         }
@@ -213,27 +288,90 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
     return null;
   }
 
-  public final ExecutableElement executableElement(final Method m) {
-    if (m == null) {
+  public final ExecutableElement executableElement(final Class<?> declaringClass, final CharSequence name, final MethodHandle mh) {
+    return this.executableElement(this.typeElement(declaringClass), name, mh);
+  }
+
+  public final ExecutableElement executableElement(final TypeElement declaringClass, final CharSequence name, final MethodHandle mh) {
+    return mh == null ? null : this.executableElement(declaringClass, name, mh.type());
+  }
+
+  public final ExecutableElement executableElement(final Class<?> declaringClass, final CharSequence name, final MethodType mt) {
+    return this.executableElement(this.typeElement(declaringClass), name, mt);
+  }
+
+  public final ExecutableElement executableElement(final TypeElement declaringClass, final CharSequence name, final MethodType mt) {
+    return mt == null ? null :
+      this.executableElement(declaringClass,
+                             name,
+                             this.type(mt.returnType()),
+                             mt.parameterCount() <= 0 ? List.of() : this.typeList(mt.parameterList()));
+  }
+
+  public final ExecutableElement executableElement(final TypeElement declaringClass, final CharSequence name, final TypeMirror returnType) {
+    return this.executableElement(declaringClass, name, returnType, List.of());
+  }
+
+  public final ExecutableElement executableElement(final TypeElement declaringClass,
+                                                   final CharSequence name,
+                                                   TypeMirror returnType,
+                                                   final List<? extends TypeMirror> parameterTypes) {
+    if (declaringClass == null || returnType == null || name == null) {
       return null;
     }
-    final TypeElement declaringTypeElement = (TypeElement)this.element(m.getDeclaringClass());
-    final Class<?>[] reflectionParameterTypes = m.getParameterTypes();
+    returnType = this.types().erasure(returnType);
+    final int parameterTypesSize = parameterTypes == null ? 0 : parameterTypes.size();
     METHOD_LOOP:
-    for (final Element e : ElementFilter.methodsIn(declaringTypeElement.getEnclosedElements())) {
-      final ExecutableElement ee = (ExecutableElement)e;
-      if (ee.getSimpleName().contentEquals(m.getName()) && this.types().isSameType(ee.getReturnType(), this.type(m.getReturnType()))) {
+    for (final ExecutableElement ee : (Iterable<? extends ExecutableElement>)methodsIn(declaringClass.getEnclosedElements())) {
+      if (ee.getSimpleName().contentEquals(name) &&
+          this.types().isSameType(this.types().erasure(ee.getReturnType()), returnType)) {
         final List<? extends VariableElement> parameterElements = ee.getParameters();
-        if (reflectionParameterTypes.length == parameterElements.size()) {
-          for (int i = 0; i < reflectionParameterTypes.length; i++) {
-            final TypeMirror parameterType = this.type(reflectionParameterTypes[i]);
-            final TypeMirror eeParameterType = parameterElements.get(i).asType();
-            if (!this.types().isSameType(parameterType, eeParameterType)) {
+        if (parameterTypesSize == parameterElements.size()) {
+          for (int i = 0; i < parameterTypesSize; i++) {
+            if (!this.types().isSameType(this.types().erasure(parameterTypes.get(i)),
+                                         this.types().erasure(parameterElements.get(i).asType()))) {
               continue METHOD_LOOP;
             }
           }
           return ee;
         }
+      }
+    }
+    return null;
+  }
+
+  public final ExecutableElement executableElement(final Method m) {
+    if (m == null) {
+      return null;
+    }
+    final Class<?>[] reflectionParameterTypes = m.getParameterTypes(); // deliberate erasure
+    METHOD_LOOP:
+    for (final ExecutableElement ee : (Iterable<? extends ExecutableElement>)methodsIn(this.element(m.getDeclaringClass()).getEnclosedElements())) {
+      if (ee.getSimpleName().contentEquals(m.getName()) &&
+          this.types().isSameType(this.types().erasure(ee.getReturnType()),
+                                  this.type(m.getReturnType()))) { // deliberate erasure
+        final List<? extends VariableElement> parameterElements = ee.getParameters();
+        if (reflectionParameterTypes.length == parameterElements.size()) {
+          for (int i = 0; i < reflectionParameterTypes.length; i++) {
+            if (!this.types().isSameType(this.type(reflectionParameterTypes[i]),
+                                         this.types().erasure(parameterElements.get(i).asType()))) {
+              continue METHOD_LOOP;
+            }
+          }
+          return ee;
+        }
+      }
+    }
+    return null;
+  }
+
+  public final VariableElement variableElement(final Field f) {
+    if (f == null) {
+      return null;
+    }
+    for (final VariableElement ve : (Iterable<? extends VariableElement>)fieldsIn(this.typeElement(f.getDeclaringClass()).getEnclosedElements())) {
+      if (ve.getSimpleName().contentEquals(f.getName())) {
+        return ve;
       }
     }
     return null;
@@ -253,18 +391,20 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
     };
   }
 
-  public final ArrayType arrayType(final Class<?> c) {
-    if (c == null || !c.isArray()) {
-      return null;
-    }
-    return this.types().getArrayType(this.type(c.getComponentType()));
+  public final TypeMirror type(final Field f) {
+    return f == null ? null : this.variableElement(f).asType();
+  }
+
+  public final ArrayType arrayType(final TypeMirror componentType) {
+    return componentType == null ? null : this.types().getArrayType(componentType);
+  }
+
+  public final ArrayType arrayType(final Class<?> arrayClass) {
+    return arrayClass == null || !arrayClass.isArray() ? null : this.arrayType(this.type(arrayClass.getComponentType()));
   }
 
   public final ArrayType arrayType(final GenericArrayType g) {
-    if (g == null) {
-      return null;
-    }
-    return this.types().getArrayType(this.type(g.getGenericComponentType()));
+    return g == null ? null : this.arrayType(this.type(g.getGenericComponentType()));
   }
 
   private final DeclaredType declaredType(final Type t) {
@@ -275,7 +415,7 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
     default -> null;
     };
   }
-  
+
   public final DeclaredType declaredType(final Class<?> c) {
     if (c == null || c.isPrimitive() || c.isArray() || c.isLocalClass() || c.isAnonymousClass()) {
       return null;
@@ -290,22 +430,16 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
     }
     return
       this.types().getDeclaredType(this.declaredType(pt.getOwnerType()),
-                                   this.typeElement((Class<?>)pt.getRawType()),
-                                   this.typeArguments(pt.getActualTypeArguments()));
+                                   this.typeElement(pt.getRawType()),
+                                   this.typeArray(pt.getActualTypeArguments()));
   }
 
   public final ExecutableType executableType(final Executable e) {
-    if (e == null) {
-      return null;
-    }
-    return (ExecutableType)this.executableElement(e).asType();
+    return e == null ? null : (ExecutableType)this.executableElement(e).asType();
   }
 
   public final PrimitiveType primitiveType(final Class<?> c) {
-    if (c == null || !c.isPrimitive()) {
-      return null;
-    }
-    return this.types().getPrimitiveType(TypeKind.valueOf(c.getName().toUpperCase()));
+    return c == null || !c.isPrimitive() ? null : this.types().getPrimitiveType(TypeKind.valueOf(c.getName().toUpperCase()));
   }
 
   public final TypeParameterElement typeParameterElement(final java.lang.reflect.TypeVariable<?> t) {
@@ -325,9 +459,8 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
     return null;
   }
 
-  private final Parameterizable parameterizable(final GenericDeclaration gd) {
+  public final Parameterizable parameterizable(final GenericDeclaration gd) {
     return switch (gd) {
-    case null -> null;
     case Executable e -> this.executableElement(e);
     case Class<?> c -> this.typeElement(c);
     default -> null;
@@ -348,15 +481,48 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
                                         this.type(lowerBounds.length <= 0 ? null : lowerBounds[0]));
   }
 
-  private final TypeMirror[] typeArguments(final Type[] ts) {
+  public final TypeMirror[] typeArray(final Type[] ts) {
     if (ts == null || ts.length <= 0) {
-      return new TypeMirror[0];
+      return EMPTY_TYPEMIRROR_ARRAY;
     }
     final TypeMirror[] rv = new TypeMirror[ts.length];
     for (int i = 0; i < ts.length; i++) {
       rv[i] = this.type(ts[i]);
     }
     return rv;
+  }
+
+  public final TypeMirror[] typeArray(final List<? extends Type> ts) {
+    if (ts == null || ts.isEmpty()) {
+      return EMPTY_TYPEMIRROR_ARRAY;
+    }
+    final TypeMirror[] rv = new TypeMirror[ts.size()];
+    for (int i = 0; i < ts.size(); i++) {
+      rv[i] = this.type(ts.get(i));
+    }
+    return rv;
+  }
+
+  public final List<? extends TypeMirror> typeList(final Type[] ts) {
+    if (ts == null || ts.length <= 0) {
+      return List.of();
+    }
+    final List<TypeMirror> rv = new ArrayList<>(ts.length);
+    for (final Type t : ts) {
+      rv.add(this.type(t));
+    }
+    return Collections.unmodifiableList(rv);
+  }
+
+  public final List<? extends TypeMirror> typeList(final Collection<? extends Type> ts) {
+    if (ts == null || ts.isEmpty()) {
+      return List.of();
+    }
+    final List<TypeMirror> rv = new ArrayList<>(ts.size());
+    for (final Type t : ts) {
+      rv.add(this.type(t));
+    }
+    return Collections.unmodifiableList(rv);
   }
 
 

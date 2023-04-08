@@ -862,7 +862,7 @@ public final class Jandex extends Modeler {
 
   private final void build(final TypeContext tc, final org.microbean.lang.type.ArrayType t) {
     final org.jboss.jandex.ArrayType a = tc.type().asArrayType();
-    final Type componentType = a.component();
+    final Type componentType = a.constituent();
     t.setComponentType(this.type(new TypeContext(tc.context(), componentType, 0, TypeContext.Kind.COMPONENT_TYPE)));
     for (final AnnotationInstance ai : a.annotations()) {
       t.addAnnotationMirror(this.annotation(ai));
@@ -938,7 +938,7 @@ public final class Jandex extends Modeler {
     final org.jboss.jandex.ArrayType ft = fi.type().asArrayType();
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(fi);
     e.setType(t);
-    t.setComponentType(this.type(new TypeContext(fi, ft.component(), 0, TypeContext.Kind.COMPONENT_TYPE)));
+    t.setComponentType(this.type(new TypeContext(fi, ft.constituent(), 0, TypeContext.Kind.COMPONENT_TYPE)));
     for (final AnnotationInstance ai : ft.annotations()) {
       t.addAnnotationMirror(this.annotation(ai));
     }
@@ -1001,7 +1001,7 @@ public final class Jandex extends Modeler {
     final org.jboss.jandex.ArrayType mpit = mpi.type().asArrayType();
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(mpi);
     e.setType(t);
-    t.setComponentType(this.type(new TypeContext(mpi, mpit.component(), 0, TypeContext.Kind.COMPONENT_TYPE)));
+    t.setComponentType(this.type(new TypeContext(mpi, mpit.constituent(), 0, TypeContext.Kind.COMPONENT_TYPE)));
     for (final AnnotationInstance ai : mpit.annotations()) {
       t.addAnnotationMirror(this.annotation(ai));
     }
@@ -1037,7 +1037,7 @@ public final class Jandex extends Modeler {
     final org.jboss.jandex.ArrayType rcit = rci.type().asArrayType();
     final org.microbean.lang.element.RecordComponentElement e = (org.microbean.lang.element.RecordComponentElement)this.element(rci);
     e.setType(t);
-    t.setComponentType(this.type(new TypeContext(rci, rcit.component(), 0, TypeContext.Kind.COMPONENT_TYPE)));
+    t.setComponentType(this.type(new TypeContext(rci, rcit.constituent(), 0, TypeContext.Kind.COMPONENT_TYPE)));
     for (final AnnotationInstance ai : rcit.annotations()) {
       t.addAnnotationMirror(this.annotation(ai));
     }

@@ -21,6 +21,9 @@ import java.lang.annotation.Target;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+import java.lang.reflect.Method;
+
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -47,6 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 final class TestJavaLanguageModel {
@@ -116,6 +120,25 @@ final class TestJavaLanguageModel {
       }
     }
     assertSame(TypeKind.VOID, ((ExecutableType)c.asType()).getReturnType().getKind());
+  }
+
+  @Test
+  final void testReflectionBridge() throws NoSuchMethodException {
+    final TypeElement e = this.jlm.typeElement(List.class);
+    assertTrue(e.getQualifiedName().contentEquals("java.util.List"));
+    final Method m = this.getClass().getDeclaredMethod("listString");
+    final ExecutableElement ee = this.jlm.executableElement(m);
+    assertTrue(ee.getSimpleName().contentEquals("listString"));
+    final java.lang.reflect.TypeVariable<?> tv = List.class.getTypeParameters()[0];
+    assertEquals("E", tv.getName());
+    assertSame(List.class, tv.getGenericDeclaration());
+    final TypeParameterElement tpe = this.jlm.typeParameterElement(tv);
+    assertTrue(tpe.getSimpleName().contentEquals("E"));
+    assertSame(tpe.asType(), this.jlm.typeVariable(tv));
+  }
+
+  private static List<String> listString() {
+    return List.of();
   }
 
   @Test
