@@ -48,7 +48,7 @@ final class TestOddsAndEnds {
 
   @AfterEach
   final void tearDown() {
-    this.jlm.close();
+
   }
 
   @Test

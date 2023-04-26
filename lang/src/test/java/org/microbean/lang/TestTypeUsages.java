@@ -64,7 +64,7 @@ final class TestTypeUsages {
 
   @AfterEach
   final void tearDown() {
-    this.jlm.close();
+
   }
 
   @Test

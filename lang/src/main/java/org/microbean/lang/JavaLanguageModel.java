@@ -88,81 +88,12 @@ import static javax.lang.model.util.ElementFilter.constructorsIn;
 import static javax.lang.model.util.ElementFilter.fieldsIn;
 import static javax.lang.model.util.ElementFilter.methodsIn;
 
-public final class JavaLanguageModel implements AutoCloseable, ElementSource {
+public final class JavaLanguageModel implements ElementSource {
 
   private static final TypeMirror[] EMPTY_TYPEMIRROR_ARRAY = new TypeMirror[0];
 
-  private volatile ProcessingEnvironment pe;
-
-  private final CountDownLatch initLatch;
-
-  private final CountDownLatch runningLatch;
-
   public JavaLanguageModel() {
-    this(null, null, null, false);
-  }
-
-  public JavaLanguageModel(final boolean verbose) {
-    this(null, null, null, verbose);
-  }
-
-  public JavaLanguageModel(final Writer additionalOutputWriter,
-                           final JavaFileManager fileManager,
-                           final DiagnosticListener<? super JavaFileObject> diagnosticListener,
-                           final boolean verbose) {
     super();
-    final JavaCompiler jc = ToolProvider.getSystemJavaCompiler();
-    if (jc == null) {
-      throw new IllegalStateException("ToolProvider.getSystemJavaCompiler() == null");
-    }
-    this.initLatch = new CountDownLatch(1);
-    this.runningLatch = new CountDownLatch(1);
-    final Thread t = new Thread(() -> {
-        try {
-          // (Any "loading" is actually performed by, e.g. com.sun.tools.javac.jvm.ClassReader.fillIn(), not reflective
-          // machinery.)
-          final CompilationTask task =
-            jc.getTask(additionalOutputWriter,
-                       fileManager,
-                       diagnosticListener,
-                       verbose ? List.of("-proc:only", "-sourcepath", "", "-verbose") : List.of("-proc:only", "-sourcepath", ""),
-                       List.of("java.lang.annotation.RetentionPolicy"), // loads the least amount of stuff up front
-                       null); // compilation units; null means we aren't actually compiling anything
-          task.setProcessors(List.of(new P()));
-          if (Boolean.FALSE.equals(task.call())) {
-            this.close();
-            this.initLatch.countDown();
-          }
-        } catch (final RuntimeException | Error e) {
-          e.printStackTrace();
-          this.close();
-          this.initLatch.countDown();
-          throw e;
-        }
-    }, "Elements");
-    t.setDaemon(true);
-    t.start();
-  }
-
-  private final ProcessingEnvironment pe() {
-    ProcessingEnvironment pe = this.pe;
-    if (pe == null) {
-      try {
-        initLatch.await();
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-      if ((pe = this.pe) == null) {
-        throw new IllegalStateException();
-      }
-    }
-    return pe;
-  }
-
-  @Override // AutoCloseable
-  public final void close() {
-    this.runningLatch.countDown();
-    this.pe = null;
   }
 
   @Override // ElementSource
@@ -176,15 +107,15 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
   }
 
   public final Elements elements() {
-    return this.pe().getElementUtils();
+    return Lang.elements();
   }
 
   public final Locale locale() {
-    return this.pe().getLocale();
+    return Lang.locale();
   }
 
   public final Types types() {
-    return this.pe().getTypeUtils();
+    return Lang.types();
   }
 
   public final ModuleElement moduleElement(final CharSequence n) {
@@ -523,51 +454,6 @@ public final class JavaLanguageModel implements AutoCloseable, ElementSource {
       rv.add(this.type(t));
     }
     return Collections.unmodifiableList(rv);
-  }
-
-
-  /*
-   * Inner and nested classes.
-   */
-
-
-  private final class P extends AbstractProcessor {
-
-    private P() {
-      super();
-    }
-
-    @Override
-    public final void init(final ProcessingEnvironment pe) {
-      JavaLanguageModel.this.pe = pe;
-      JavaLanguageModel.this.initLatch.countDown(); // all set initializing
-      try {
-        JavaLanguageModel.this.runningLatch.await();
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
-
-    @Override // AbstractProcessor
-    public final Set<String> getSupportedAnnotationTypes() {
-      return Set.of();
-    }
-
-    @Override // AbstractProcessor
-    public final Set<String> getSupportedOptions() {
-      return Set.of();
-    }
-
-    @Override // AbstractProcessor
-    public final SourceVersion getSupportedSourceVersion() {
-      return SourceVersion.latestSupported();
-    }
-
-    @Override // AbstractProcessor
-    public final boolean process(final Set<? extends TypeElement> annotations, final RoundEnvironment roundEnvironment) {
-      return false; // don't claim any annotations
-    }
-
   }
 
 }

@@ -108,11 +108,11 @@ final class TestTypeUsages {
           switch (ai.name().local()) {
           case "A":
             assertEquals(1, at.dimensions()); // surprising
-            assertEquals(1, at.component().asArrayType().dimensions());
+            assertEquals(1, at.constituent().asArrayType().dimensions());
             break;
           case "E":
             assertEquals(1, at.dimensions());
-            assertEquals("String", at.component().name().local());
+            assertEquals("String", at.constituent().name().local());
             break;
           default:
             fail();

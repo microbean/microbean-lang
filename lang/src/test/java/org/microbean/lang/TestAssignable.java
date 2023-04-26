@@ -66,7 +66,7 @@ final class TestAssignable {
 
   @AfterEach
   final void tearDown() {
-    this.jlm.close();
+
   }
 
   @Test

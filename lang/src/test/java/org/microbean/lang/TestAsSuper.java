@@ -89,7 +89,7 @@ final class TestAsSuper {
 
   @AfterEach
   final void tearDown() {
-    this.jlm.close();
+
   }
 
   @Test

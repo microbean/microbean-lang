@@ -58,20 +58,19 @@ final class TestMethodSymbolAndTypeUseAnnotations {
 
   @Test
   final void testJavac() {
-    try (final JavaLanguageModel jlm = new JavaLanguageModel()) {
-      final Elements elements = jlm.elements();
-      final Element e = elements.getTypeElement("org.microbean.lang.TestMethodSymbolAndTypeUseAnnotations.B");
-      final ExecutableElement c = (ExecutableElement)e.getEnclosedElements().get(1);
-      assertTrue(c.getSimpleName().contentEquals("c"));
-      final VariableElement s = (VariableElement)c.getParameters().get(0);
-      // final List<? extends AnnotationMirror> typeAttributes = ((MethodSymbol)c).getRawTypeAttributes();
-      final List<? extends AnnotationMirror> typeAttributes = ((VarSymbol)s).owner.getRawTypeAttributes();
-      assertEquals(1, typeAttributes.size());
-      final Attribute.TypeCompound a = (Attribute.TypeCompound)typeAttributes.get(0);
-      final TypeAnnotationPosition position = a.getPosition();
-      final TargetType targetType = position.type;
-      assertSame(TargetType.METHOD_FORMAL_PARAMETER, targetType);
-    }
+    final JavaLanguageModel jlm = new JavaLanguageModel();
+    final Elements elements = jlm.elements();
+    final Element e = elements.getTypeElement("org.microbean.lang.TestMethodSymbolAndTypeUseAnnotations.B");
+    final ExecutableElement c = (ExecutableElement)e.getEnclosedElements().get(1);
+    assertTrue(c.getSimpleName().contentEquals("c"));
+    final VariableElement s = (VariableElement)c.getParameters().get(0);
+    // final List<? extends AnnotationMirror> typeAttributes = ((MethodSymbol)c).getRawTypeAttributes();
+    final List<? extends AnnotationMirror> typeAttributes = ((VarSymbol)s).owner.getRawTypeAttributes();
+    assertEquals(1, typeAttributes.size());
+    final Attribute.TypeCompound a = (Attribute.TypeCompound)typeAttributes.get(0);
+    final TypeAnnotationPosition position = a.getPosition();
+    final TargetType targetType = position.type;
+    assertSame(TargetType.METHOD_FORMAL_PARAMETER, targetType);
   }
 
   @Test

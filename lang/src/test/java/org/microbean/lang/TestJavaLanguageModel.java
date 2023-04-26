@@ -68,7 +68,7 @@ final class TestJavaLanguageModel {
 
   @AfterEach
   final void tearDown() {
-    this.jlm.close();
+
   }
 
   @Test
