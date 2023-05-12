@@ -68,6 +68,9 @@
               --add-opens jdk.compiler/com.sun.tools.javac.model=org.microbean.lang
               --enable-preview
             </argLine>
+            <systemPropertyVariables>
+              <org.microbean.lang.Lang.verbose>${org.microbean.lang.Lang.verbose}</org.microbean.lang.Lang.verbose>
+            </systemPropertyVariables>
             <!-- See https://junit.org/junit5/docs/snapshot/user-guide/#running-tests-build-maven-config-params -->
             <!-- See https://github.com/apache/maven-surefire/blob/eb48f1b59ca5ccf6954ef33ecab03dbaf93214cd/surefire-providers/surefire-junit-platform/src/main/java/org/apache/maven/surefire/junitplatform/JUnitPlatformProvider.java#L242-L262 -->
           </configuration>
@@ -75,5 +78,9 @@
       </plugins>
     </pluginManagement>
   </build>
+
+  <properties>
+    <org.microbean.lang.Lang.verbose>false</org.microbean.lang.Lang.verbose>
+  </properties>
 
 </project>

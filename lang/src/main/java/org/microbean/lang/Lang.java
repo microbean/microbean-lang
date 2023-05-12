@@ -20,8 +20,10 @@ import java.lang.constant.DynamicConstantDesc;
 import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -31,6 +33,7 @@ import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.Name;
@@ -106,17 +109,25 @@ public final class Lang {
     super();
   }
 
-  public static final Elements elements() {
+  /*
+  private static final Elements elements() {
     return pe().getElementUtils();
   }
 
-  public static final Locale locale() {
+  private static final Locale locale() {
     return pe().getLocale();
   }
 
-  public static final Types types() {
+  private static final Types types() {
     return pe().getTypeUtils();
   }
+  */
+
+
+  /*
+   * Constable support methods.
+   */
+
 
   public static final Optional<? extends ConstantDesc> describeConstable(final Name n) {
     if (n == null) {
@@ -356,57 +367,160 @@ public final class Lang {
                                               superBoundDesc));
   }
 
+
+  /*
+   * Type and element support methods.
+   */
+
+  
+  public static final TypeElement boxedClass(final PrimitiveType t) {
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().boxedClass(t);
+    }
+  }
+
+  public static final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().directSupertypes(t);
+    }
+  }
+
   public static final ModuleElement moduleElement(final CharSequence moduleName) {
-    return elements().getModuleElement(moduleName);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getElementUtils().getModuleElement(moduleName);
+    }
   }
 
   public static final ModuleElement moduleOf(final Element e) {
-    return elements().getModuleOf(e);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getElementUtils().getModuleOf(e);
+    }
   }
 
   public static final Name name(final CharSequence name) {
-    return elements().getName(name);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getElementUtils().getName(name);
+    }
+  }
+
+  public static final PackageElement packageElement(final CharSequence fullyQualifiedName) {
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getElementUtils().getPackageElement(fullyQualifiedName == null ? "" : fullyQualifiedName);
+    }
   }
 
   public static final PackageElement packageElement(final ModuleElement moduleElement, final CharSequence fullyQualifiedName) {
-    return elements().getPackageElement(moduleElement, fullyQualifiedName);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getElementUtils().getPackageElement(moduleElement, fullyQualifiedName);
+    }
   }
 
   public static final PackageElement packageOf(final Element e) {
-    return elements().getPackageOf(e);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getElementUtils().getPackageOf(e);
+    }
   }
 
   // Called by describeConstable().
   public static final ArrayType arrayType(final TypeMirror t) {
-    return types().getArrayType(t);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().getArrayType(t);
+    }
+  }
+
+  public static final DeclaredType declaredType(final TypeElement typeElement,
+                                                final TypeMirror... typeArguments) {
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().getDeclaredType(typeElement, typeArguments);
+    }
   }
 
   public static final DeclaredType declaredType(final DeclaredType containingType,
                                                 final TypeElement typeElement,
                                                 final TypeMirror... typeArguments) {
-    return types().getDeclaredType(containingType, typeElement, typeArguments);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().getDeclaredType(containingType, typeElement, typeArguments);
+    }
   }
 
   public static final NoType noType(final TypeKind k) {
-    return types().getNoType(k);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().getNoType(k);
+    }
   }
 
   // Called by describeConstable
   public static final NullType nullType() {
-    return types().getNullType();
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().getNullType();
+    }
   }
 
   // Called by describeConstable().
   public static final PrimitiveType primitiveType(final TypeKind k) {
-    return types().getPrimitiveType(k);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().getPrimitiveType(k);
+    }
+  }
+
+  public static final boolean sameType(final TypeMirror t, final TypeMirror s) {
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().isSameType(t, s);
+    }
+  }
+
+  public static final TypeElement typeElement(final CharSequence fullyQualifiedName) {
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getElementUtils().getTypeElement(fullyQualifiedName);
+    }
   }
 
   public static final TypeElement typeElement(final ModuleElement moduleElement, final CharSequence fullyQualifiedName) {
-    return elements().getTypeElement(moduleElement, fullyQualifiedName);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getElementUtils().getTypeElement(moduleElement, fullyQualifiedName);
+    }
+  }
+
+  public static final WildcardType wildcardType() {
+    return wildcardType(null, null);
   }
 
   public static final WildcardType wildcardType(final TypeMirror extendsBound, final TypeMirror superBound) {
-    return types().getWildcardType(extendsBound, superBound);
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().getWildcardType(extendsBound, superBound);
+    }
+  }
+
+  public static final boolean assignable(final TypeMirror payload, final TypeMirror receiver) {
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().isAssignable(payload, receiver);
+    }
+  }
+
+  public static final boolean subtype(final TypeMirror payload, final TypeMirror receiver) {
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().isSubtype(payload, receiver);
+    }
   }
 
 
@@ -470,7 +584,7 @@ public final class Lang {
 
       @Override // AbstractProcessor
       public final boolean process(final Set<? extends TypeElement> annotations, final RoundEnvironment roundEnvironment) {
-        return false; // don't claim any annotations
+        return true; // we're the only annotation processor so claim everything
       }
 
     };
@@ -479,7 +593,27 @@ public final class Lang {
         try {
           final JavaCompiler jc = ToolProvider.getSystemJavaCompiler();
           if (jc == null) {
+            runningLatch.countDown();
+            initLatch.countDown();
             return;
+          }
+          final List<String> options = new ArrayList<>();
+          options.add("-proc:only");
+          options.add("-sourcepath");
+          options.add("");
+          options.add("-cp");
+          final String modulePath = System.getProperty("jdk.module.path");
+          if (modulePath == null) {
+            options.add(System.getProperty("java.class.path"));
+          } else {
+            options.add(System.getProperty("java.class.path") + java.io.File.pathSeparator + modulePath); // TODO: yuck?!
+            options.add("-p");
+            options.add(modulePath);
+          }
+          final List<String> classes = new ArrayList<>();
+          classes.add("java.lang.annotation.RetentionPolicy"); // loads the least amount of stuff up front
+          if (Boolean.getBoolean("org.microbean.lang.Lang.verbose")) {
+            options.add("-verbose");
           }
           // (Any "loading" is actually performed by, e.g. com.sun.tools.javac.jvm.ClassReader.fillIn(), not reflective
           // machinery.)
@@ -487,26 +621,25 @@ public final class Lang {
             jc.getTask(null, // additionalOutputWriter
                        null, // fileManager,
                        null, // diagnosticListener,
-                       Boolean.getBoolean("org.microbean.lang.Lang.verbose") ? List.of("-proc:only", "-sourcepath", "", "-verbose") : List.of("-proc:only", "-sourcepath", ""),
-                       List.of("java.lang.annotation.RetentionPolicy"), // loads the least amount of stuff up front
+                       options,
+                       classes,
                        null); // compilation units; null means we aren't actually compiling anything
           task.setProcessors(List.of(new P()));
           if (Boolean.FALSE.equals(task.call())) {
-            pe = null; // volatile write
             runningLatch.countDown();
             initLatch.countDown();
           }
         } catch (final RuntimeException | Error e) {
           e.printStackTrace();
-          pe = null; // volatile write
           runningLatch.countDown();
           initLatch.countDown();
           throw e;
+        } finally {
+          pe = null; // volatile write
         }
     }, "Lang");
     t.setDaemon(true); // critical
     t.start();
   }
-
 
 }

@@ -73,11 +73,11 @@ final class TestJavaLanguageModel {
 
   @Test
   final void testJavaLanguageModel() {
-    final TypeElement s = jlm.elements().getTypeElement("java.lang.String");
+    final TypeElement s = jlm.typeElement("java.lang.String");
     assertNotNull(s);
-    final TypeElement x = jlm.elements().getTypeElement("java.util.logging.Level");
+    final TypeElement x = jlm.typeElement("java.util.logging.Level");
     assertNotNull(x);
-    final TypeElement r = jlm.elements().getTypeElement("org.microbean.lang.TestJavaLanguageModel.Gloop");
+    final TypeElement r = jlm.typeElement("org.microbean.lang.TestJavaLanguageModel.Gloop");
     assertNotNull(r);
     assertSame(ElementKind.RECORD, r.getKind());
     assertSame(TypeKind.DECLARED, r.asType().getKind());
@@ -96,14 +96,14 @@ final class TestJavaLanguageModel {
 
   @Test
   final void testTypeParameters() {
-    final TypeElement flob = jlm.elements().getTypeElement("org.microbean.lang.TestJavaLanguageModel.Flob");
+    final TypeElement flob = jlm.typeElement("org.microbean.lang.TestJavaLanguageModel.Flob");
     final TypeParameterElement tp = (TypeParameterElement)flob.getTypeParameters().get(0);
     assertEquals("T", tp.getSimpleName().toString());
   }
 
   @Test
   final void testReturnTypeOfTopLevelClassConstructor() {
-    final TypeElement object = jlm.elements().getTypeElement("java.lang.Object");
+    final TypeElement object = jlm.typeElement("java.lang.Object");
     ExecutableElement c = null;
     ENCLOSED_ELEMENTS:
     for (final Element e : object.getEnclosedElements()) {
@@ -143,7 +143,7 @@ final class TestJavaLanguageModel {
 
   @Test
   final void testAnnotationsOnClassesInMethods() throws ClassNotFoundException {
-    final TypeElement e = jlm.elements().getTypeElement(this.getClass().getName());
+    final TypeElement e = jlm.typeElement(this.getClass().getName());
     assertNotNull(e);
     ExecutableElement baker = null;
     EES:
@@ -168,7 +168,7 @@ final class TestJavaLanguageModel {
     }
 
     // You can't get Charlie directly:
-    assertNull(jlm.elements().getTypeElement(this.getClass().getName() + "$1Charlie"));
+    assertNull(jlm.typeElement(this.getClass().getName() + "$1Charlie"));
 
     // But it does exist, and in the reflection model you can find out all sorts of things about it.
     final Class<?> c = Class.forName(this.getClass().getName() + "$1Charlie");

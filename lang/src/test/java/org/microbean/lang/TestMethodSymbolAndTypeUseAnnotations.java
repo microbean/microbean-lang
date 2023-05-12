@@ -58,8 +58,7 @@ final class TestMethodSymbolAndTypeUseAnnotations {
 
   @Test
   final void testJavac() {
-    final JavaLanguageModel jlm = new JavaLanguageModel();
-    final Elements elements = jlm.elements();
+    final Elements elements = Lang.pe().getElementUtils();
     final Element e = elements.getTypeElement("org.microbean.lang.TestMethodSymbolAndTypeUseAnnotations.B");
     final ExecutableElement c = (ExecutableElement)e.getEnclosedElements().get(1);
     assertTrue(c.getSimpleName().contentEquals("c"));

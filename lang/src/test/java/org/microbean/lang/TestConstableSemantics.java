@@ -46,7 +46,7 @@ final class TestConstableSemantics {
     assertNotNull(t);
     final Optional<? extends ConstantDesc> o = Lang.describeConstable(t);
     assertTrue(o.isPresent());
-    assertTrue(Lang.types().isSameType(t, (TypeMirror)o.orElseThrow(AssertionError::new).resolveConstantDesc(MethodHandles.lookup())));
+    assertTrue(Lang.sameType(t, (TypeMirror)o.orElseThrow(AssertionError::new).resolveConstantDesc(MethodHandles.lookup())));
   }
   
 }

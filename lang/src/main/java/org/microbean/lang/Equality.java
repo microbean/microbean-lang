@@ -16,11 +16,17 @@
  */
 package org.microbean.lang;
 
+import java.lang.constant.ClassDesc;
+import java.lang.constant.Constable;
+import java.lang.constant.DynamicConstantDesc;
+import java.lang.constant.MethodHandleDesc;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 
 import javax.lang.model.AnnotatedConstruct;
@@ -57,6 +63,11 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
+import static java.lang.constant.ConstantDescs.BSM_INVOKE;
+import static java.lang.constant.ConstantDescs.CD_boolean;
+import static java.lang.constant.ConstantDescs.FALSE;
+import static java.lang.constant.ConstantDescs.TRUE;
+
 /**
  * Provides determinate hashcode and equality calculations chiefly for {@code javax.lang.model} implementations.
  *
@@ -66,8 +77,10 @@ import javax.lang.model.type.WildcardType;
  *
  * @see #equals(Object, Object)
  */
-public class Equality {
+public class Equality implements Constable {
 
+  private static final ClassDesc CD_Equality = ClassDesc.of("org.microbean.lang.Equality");
+  
   private final boolean ia;
 
   /**
@@ -87,6 +100,13 @@ public class Equality {
     return this.ia;
   }
 
+  @Override // Constable
+  public Optional<DynamicConstantDesc<Equality>> describeConstable() {
+    return Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
+                                              MethodHandleDesc.ofConstructor(CD_Equality, CD_boolean),
+                                              this.ia ? TRUE : FALSE));
+  }
+  
   public int hashCode(final Object o1) {
     return hashCode(o1, this.ia);
   }

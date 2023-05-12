@@ -18,8 +18,15 @@ package org.microbean.lang.type;
 
 import java.lang.annotation.Annotation;
 
+import java.lang.constant.ClassDesc;
+import java.lang.constant.Constable;
+import java.lang.constant.ConstantDesc;
+import java.lang.constant.DynamicConstantDesc;
+import java.lang.constant.MethodHandleDesc;
+
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -38,14 +45,26 @@ import javax.lang.model.type.TypeVisitor;
 import javax.lang.model.type.UnionType;
 import javax.lang.model.type.WildcardType;
 
+import org.microbean.lang.Lang;
+
 import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.NoType;
 import org.microbean.lang.type.Types;
 
-public final class DelegatingTypeMirror implements ArrayType, ErrorType, ExecutableType, IntersectionType, javax.lang.model.type.NoType, NullType, PrimitiveType, TypeVariable, UnionType, WildcardType {
+import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 
+public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorType, ExecutableType, IntersectionType, javax.lang.model.type.NoType, NullType, PrimitiveType, TypeVariable, UnionType, WildcardType {
+
+  private static final ClassDesc CD_DelegatingTypeMirror = ClassDesc.of("org.microbean.lang.type.DelegatingTypeMirror");
+
+  private static final ClassDesc CD_ElementSource = ClassDesc.of("org.microbean.lang.ElementSource");
+  
+  private static final ClassDesc CD_Equality = ClassDesc.of("org.microbean.lang.Equality");
+
+  private static final ClassDesc CD_TypeMirror = ClassDesc.of("javax.lang.model.type.TypeMirror");
+  
   private final ElementSource elementSource;
 
   private final TypeMirror delegate;
@@ -224,7 +243,22 @@ public final class DelegatingTypeMirror implements ArrayType, ErrorType, Executa
     return this.delegate.toString();
   }
 
+  @Override // Constable
+  public final Optional<? extends ConstantDesc> describeConstable() {
+    return Lang.describeConstable(this.delegate)
+      .flatMap(delegateDesc -> (this.elementSource instanceof Constable c ? c.describeConstable() : Optional.<ConstantDesc>empty())
+               .flatMap(elementSourceDesc -> this.ehc.describeConstable()
+                        .map(equalityDesc -> DynamicConstantDesc.of(BSM_INVOKE,
+                                                                    MethodHandleDesc.ofConstructor(CD_DelegatingTypeMirror,
+                                                                                                   CD_TypeMirror,
+                                                                                                   CD_ElementSource,
+                                                                                                   CD_Equality),
+                                                                    delegateDesc,
+                                                                    elementSourceDesc,
+                                                                    equalityDesc))));
+  }
 
+                       
   /*
    * Static methods.
    */
@@ -239,6 +273,13 @@ public final class DelegatingTypeMirror implements ArrayType, ErrorType, Executa
       return d;
     }
     return new DelegatingTypeMirror(t, elementSource, ehc);
+  }
+
+  public static final TypeMirror unwrap(TypeMirror t) {
+    while (t instanceof DelegatingTypeMirror dt) {
+      t = dt.delegate();
+    }
+    return t;
   }
 
 }

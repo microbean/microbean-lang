@@ -70,7 +70,7 @@ final class TestAsSuper {
     this.jlm = new JavaLanguageModel();
     final Field f = JavacTypes.class.getDeclaredField("types");
     assertTrue(f.trySetAccessible());
-    this.javacCodeTypes = (com.sun.tools.javac.code.Types)f.get(this.jlm.types());
+    this.javacCodeTypes = (com.sun.tools.javac.code.Types)f.get(Lang.pe().getTypeUtils());
     this.visitors = new Visitors(this.jlm);
     /*
     final org.microbean.lang.type.Types types = new org.microbean.lang.type.Types(this.jlm);
@@ -94,9 +94,9 @@ final class TestAsSuper {
 
   @Test
   final void testAsSuperStringObject() {
-    final TypeElement stringElement = this.jlm.elements().getTypeElement("java.lang.String");
+    final TypeElement stringElement = this.jlm.typeElement("java.lang.String");
     final DeclaredType stringTypeDeclaration = (DeclaredType)stringElement.asType();
-    final Element objectElement = this.jlm.elements().getTypeElement("java.lang.Object");
+    final Element objectElement = this.jlm.typeElement("java.lang.Object");
     final DeclaredType objectTypeDeclaration = (DeclaredType)objectElement.asType();
     assertSame(objectElement, objectTypeDeclaration.asElement());
     assertSame(objectElement, org.microbean.lang.type.Types.asElement(objectTypeDeclaration, true));
@@ -113,13 +113,13 @@ final class TestAsSuper {
   @Test
   final void testGorp() {
     // The element denoted by java.util.List.  Its underlying type declaration is the type denoted by java.util.List<E>.
-    final TypeElement listElement = this.jlm.elements().getTypeElement("java.util.List");
+    final TypeElement listElement = this.jlm.typeElement("java.util.List");
 
     // The type denoted by java.util.List<E>
     final DeclaredType listTypeDeclaration = (DeclaredType)listElement.asType();
 
     // The type denoted by java.util.List, i.e. a raw type.
-    final DeclaredType rawListType = this.jlm.types().getDeclaredType(listElement); // note: no varargs type arguments supplied
+    final DeclaredType rawListType = this.jlm.declaredType(listElement); // note: no varargs type arguments supplied
     assertTrue(((Type)rawListType).isRaw());
 
     // The raw List type is not the same as the List<E> type declaration.
@@ -127,7 +127,7 @@ final class TestAsSuper {
 
     // The type denoted by java.util.List<?>.
     final DeclaredType listQuestionMarkType =
-      this.jlm.types().getDeclaredType(listElement, this.jlm.types().getWildcardType(null, null));
+      this.jlm.declaredType(listElement, this.jlm.wildcardType());
     assertFalse(((Type)listQuestionMarkType).isRaw());
     
     assertSame(listElement, listQuestionMarkType.asElement());

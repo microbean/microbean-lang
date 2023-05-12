@@ -53,7 +53,7 @@ final class TestOddsAndEnds {
 
   @Test
   final void testTypeUseAnnotationOnClass() {
-    final TypeElement b = jlm.elements().getTypeElement("org.microbean.lang.TestOddsAndEnds.B");
+    final TypeElement b = jlm.typeElement("org.microbean.lang.TestOddsAndEnds.B");
     // B is actually a declaration annotation per the rules of the JLS!
     assertEquals(1, b.getAnnotationMirrors().size());
   }
