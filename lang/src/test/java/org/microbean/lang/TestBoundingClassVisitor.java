@@ -31,6 +31,8 @@ import com.sun.tools.javac.model.JavacTypes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.microbean.lang.visitor.Visitors;
+
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -38,6 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class TestBoundingClassVisitor {
 
+  private Visitors visitors;
+  
   private com.sun.tools.javac.code.Types javacCodeTypes;
   
   private TestBoundingClassVisitor() {
@@ -46,6 +50,7 @@ final class TestBoundingClassVisitor {
 
   @BeforeEach
   final void setup() throws IllegalAccessException, NoSuchFieldException {
+    this.visitors = new Visitors((m, n) -> Lang.typeElement(Lang.moduleElement(m), n));
     final Field f = JavacTypes.class.getDeclaredField("types");
     assertTrue(f.trySetAccessible());
     this.javacCodeTypes = (com.sun.tools.javac.code.Types)f.get(Lang.pe().getTypeUtils());
@@ -54,9 +59,10 @@ final class TestBoundingClassVisitor {
   @Test
   final void testSimple() {
     final DeclaredType t = Lang.declaredType(String.class);
+    assertSame(Lang.noType(TypeKind.NONE), t.getEnclosingType());
     // classBound() doesn't do anything here, obviously:
     assertSame(t, this.javacCodeTypes.classBound((Type)t));
-    assertSame(Lang.noType(TypeKind.NONE), t.getEnclosingType());
+    assertSame(t, this.visitors.boundingClassVisitor().visit(t));
   }
   
   @Test
@@ -65,9 +71,12 @@ final class TestBoundingClassVisitor {
     final DeclaredType outerDeclaredType = Lang.declaredType(Lang.typeElement(DataHolder.class), Lang.declaredType(String.class));
     final DeclaredType innerDeclaredType = Lang.declaredType(outerDeclaredType, Lang.typeElement(inner.getClass()));
     assertSame(outerDeclaredType, innerDeclaredType.getEnclosingType());
+    // classBound() doesn't do anything here:
     assertSame(outerDeclaredType, this.javacCodeTypes.classBound((Type)outerDeclaredType));
+    assertSame(outerDeclaredType, this.visitors.boundingClassVisitor().visit(outerDeclaredType));
     // classBound() doesn't do anything here either:
     assertSame(innerDeclaredType, this.javacCodeTypes.classBound((Type)innerDeclaredType));
+    assertSame(innerDeclaredType, this.visitors.boundingClassVisitor().visit(innerDeclaredType));
   }
 
   @Test
@@ -82,6 +91,7 @@ final class TestBoundingClassVisitor {
     final DeclaredType innerDeclaredType = Lang.declaredType(outerDeclaredType, Lang.typeElement(inner.getClass()));
     // classBound() doesn't do anything here either:
     assertSame(innerDeclaredType, this.javacCodeTypes.classBound((Type)innerDeclaredType));
+    assertSame(innerDeclaredType, this.visitors.boundingClassVisitor().visit(innerDeclaredType));
 
     final Method thisMethod = TestBoundingClassVisitor.class.getDeclaredMethod("testReallyComplicated0", DataHolder.class);
     java.lang.reflect.TypeVariable<Method> xx = null;
@@ -94,6 +104,7 @@ final class TestBoundingClassVisitor {
     final TypeVariable xxx = Lang.typeVariable(xx);
     // Here's where classBound() does something:
     assertNotSame(xxx, this.javacCodeTypes.classBound((Type)xxx));
+    assertNotSame(xxx, this.visitors.boundingClassVisitor().visit(xxx));
   }
 
   private static class DataHolder<T> {
