@@ -60,7 +60,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
 
   SubstituteVisitor(final ElementSource elementSource,
                     final Equality equality,
-                    final SupertypeVisitor supertypeVisitor,
+                    final SupertypeVisitor supertypeVisitor, // used only for intersection types
                     List<? extends TypeMirror> from,
                     List<? extends TypeMirror> to) {
     super(elementSource);
@@ -139,7 +139,8 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
   @Override
   public final IntersectionType visitIntersection(final IntersectionType t, final Void x) {
     assert t.getKind() == TypeKind.INTERSECTION;
-    final TypeMirror supertype = this.supertypeVisitor.visit(t, x);
+    // final TypeMirror supertype = this.supertypeVisitor.visit(t, x); // (Returns t.getBounds().get(0).)
+    final TypeMirror supertype = t.getBounds().get(0);
     final TypeMirror visitedSupertype = this.visit(supertype, x);
     final List<? extends TypeMirror> interfaces = this.supertypeVisitor.interfacesVisitor().visit(t, x);
     final List<? extends TypeMirror> visitedInterfaces = this.visit(interfaces, x);

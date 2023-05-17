@@ -2,17 +2,14 @@
  *
  * Copyright © 2023 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang;
 
@@ -72,19 +69,6 @@ final class TestAsSuper {
     assertTrue(f.trySetAccessible());
     this.javacCodeTypes = (com.sun.tools.javac.code.Types)f.get(Lang.pe().getTypeUtils());
     this.visitors = new Visitors(this.jlm);
-    /*
-    final org.microbean.lang.type.Types types = new org.microbean.lang.type.Types(this.jlm);
-    final EraseVisitor eraseVisitor = new EraseVisitor(this.jlm, types);
-    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(this.jlm, types, eraseVisitor);
-
-    // These have cycles.
-    final ContainsTypeVisitor containsTypeVisitor = new ContainsTypeVisitor(this.jlm, types);
-    this.sameTypeVisitor = new SameTypeVisitor(this.jlm, containsTypeVisitor, supertypeVisitor, true);
-    final SubtypeVisitor subtypeVisitor = new SubtypeVisitor(this.jlm, types, supertypeVisitor, this.sameTypeVisitor);
-    this.asSuperVisitor = new AsSuperVisitor(this.jlm, null, types, supertypeVisitor, subtypeVisitor);
-    containsTypeVisitor.setSubtypeVisitor(subtypeVisitor);
-    subtypeVisitor.setContainsTypeVisitor(containsTypeVisitor);
-    */
   }
 
   @AfterEach
@@ -160,5 +144,4 @@ final class TestAsSuper {
     assertTrue(this.visitors.sameTypeVisitor().visit(t, s));
   }
 
-  
 }

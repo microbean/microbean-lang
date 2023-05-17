@@ -64,7 +64,7 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
   public CaptureVisitor(final ElementSource elementSource,
                         final Equality equality,
                         final Types types,
-                        final SupertypeVisitor supertypeVisitor,
+                        final SupertypeVisitor supertypeVisitor, // used by internal SubstituteVisitor
                         final MemberTypeVisitor memberTypeVisitor) {
     super();
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");

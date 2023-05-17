@@ -16,11 +16,8 @@
  */
 package org.microbean.lang;
 
-import java.io.Writer;
-
 import java.lang.constant.ClassDesc;
 import java.lang.constant.Constable;
-import java.lang.constant.ConstantDesc;
 import java.lang.constant.DynamicConstantDesc;
 import java.lang.constant.MethodHandleDesc;
 
@@ -40,32 +37,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-
-import java.util.concurrent.CountDownLatch;
-
-import java.util.function.Consumer;
-
-import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.annotation.processing.RoundEnvironment;
-
-import javax.tools.JavaCompiler;
-import javax.tools.JavaCompiler.CompilationTask;
-import javax.tools.JavaFileManager;
-
-import javax.tools.DiagnosticListener;
-import javax.tools.JavaFileObject;
-import javax.tools.ToolProvider;
-
-import javax.lang.model.SourceVersion;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -85,23 +58,13 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
-import javax.lang.model.util.ElementFilter;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
-
 import org.microbean.lang.ElementSource;
 
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 
-import static javax.lang.model.util.ElementFilter.constructorsIn;
-import static javax.lang.model.util.ElementFilter.fieldsIn;
-import static javax.lang.model.util.ElementFilter.methodsIn;
-
 public final class JavaLanguageModel implements Constable, ElementSource {
 
   private static final ClassDesc CD_JavaLanguageModel = ClassDesc.of("org.microbean.lang.JavaLanguageModel");
-
-  private static final TypeMirror[] EMPTY_TYPEMIRROR_ARRAY = new TypeMirror[0];
 
   public JavaLanguageModel() {
     super();
@@ -128,15 +91,15 @@ public final class JavaLanguageModel implements Constable, ElementSource {
   }
 
   public final ModuleElement moduleElement(final Class<?> c) {
-    return c == null ? null : this.moduleElement(c.getModule());
+    return Lang.moduleElement(c);
   }
 
   public final ModuleElement moduleElement(final Module m) {
-    return this.moduleElement(m == null ? "" : m.getName());
+    return Lang.moduleElement(m);
   }
 
   public final ModuleElement moduleElement(final ModuleDescriptor m) {
-    return this.moduleElement(m == null ? "" : m.name());
+    return m == null ? null : this.moduleElement(m.name());
   }
 
   public final ModuleElement moduleElement(final ModuleReference m) {
@@ -144,7 +107,7 @@ public final class JavaLanguageModel implements Constable, ElementSource {
   }
 
   public final ModuleElement moduleElement(final ResolvedModule m) {
-    return this.moduleElement(m == null ? "" : m.name());
+    return m == null ? null : this.moduleElement(m.name());
   }
 
   public final PackageElement packageElement(final CharSequence n) {
@@ -152,11 +115,11 @@ public final class JavaLanguageModel implements Constable, ElementSource {
   }
 
   public final PackageElement packageElement(final Package p) {
-    return this.packageElement(p == null ? "" : p.getName());
+    return Lang.packageElement(p);
   }
 
   public final PackageElement packageElement(final Class<?> c) {
-    return c == null ? null : this.packageElement(c.getModule(), c.getPackage());
+    return Lang.packageElement(c);
   }
 
   public final PackageElement packageElement(final ModuleElement m, final Package p) {
@@ -164,17 +127,14 @@ public final class JavaLanguageModel implements Constable, ElementSource {
   }
 
   public final PackageElement packageElement(final Module m, final Package p) {
-    return this.packageElement(this.moduleElement(m), p);
+    return Lang.packageElement(m, p);
   }
 
   public final TypeElement typeElement(final Module m, final CharSequence n) {
-    return this.typeElement(this.moduleElement(m), n);
+    return Lang.typeElement(m, n);
   }
 
   public final TypeElement typeElement(final ModuleElement m, final CharSequence n) {
-    if (m == null) {
-      return this.typeElement(n);
-    }
     return Lang.typeElement(m, n);
   }
 
@@ -183,51 +143,19 @@ public final class JavaLanguageModel implements Constable, ElementSource {
   }
 
   public final TypeElement typeElement(final Type t) {
-    return switch (t) {
-    case null -> null;
-    case Class<?> c -> this.typeElement(c);
-    default -> null;
-    };
+    return Lang.typeElement(t);
   }
 
   public final TypeElement typeElement(final Class<?> c) {
-    if (c == null || c.isPrimitive() || c.isArray() || c.isLocalClass() || c.isAnonymousClass()) {
-      return null;
-    }
-    return this.typeElement(c.getModule(), c.getCanonicalName());
+    return Lang.typeElement(c);
   }
 
   public final ExecutableElement executableElement(final Executable e) {
-    return switch (e) {
-    case Constructor<?> c -> executableElement(c);
-    case Method m -> executableElement(m);
-    default -> null;
-    };
+    return Lang.executableElement(e);
   }
 
   public final ExecutableElement executableElement(final Constructor<?> c) {
-    if (c == null) {
-      return null;
-    }
-    final Class<?>[] reflectionParameterTypes = c.getParameterTypes(); // deliberate erasure
-    final ProcessingEnvironment pe = this.pe();
-    synchronized (pe) {
-      final Types types = pe.getTypeUtils();
-      CONSTRUCTOR_LOOP:
-      for (final ExecutableElement ee : (Iterable<? extends ExecutableElement>)constructorsIn(this.element(c.getDeclaringClass()).getEnclosedElements())) {
-        final List<? extends VariableElement> parameterElements = ee.getParameters();
-        if (reflectionParameterTypes.length == parameterElements.size()) {
-          for (int i = 0; i < reflectionParameterTypes.length; i++) {
-            if (!types.isSameType(this.type(reflectionParameterTypes[i]),
-                                  types.erasure(parameterElements.get(i).asType()))) {
-              continue CONSTRUCTOR_LOOP;
-            }
-          }
-          return ee;
-        }
-      }
-    }
-    return null;
+    return Lang.executableElement(c);
   }
 
   public final ExecutableElement executableElement(final Class<?> declaringClass, final CharSequence name, final MethodHandle mh) {
@@ -247,7 +175,7 @@ public final class JavaLanguageModel implements Constable, ElementSource {
       this.executableElement(declaringClass,
                              name,
                              this.type(mt.returnType()),
-                             mt.parameterCount() <= 0 ? List.of() : this.typeList(mt.parameterList()));
+                             mt.parameterCount() <= 0 ? List.of() : Lang.typeList(mt.parameterList()));
   }
 
   public final ExecutableElement executableElement(final TypeElement declaringClass, final CharSequence name, final TypeMirror returnType) {
@@ -258,162 +186,61 @@ public final class JavaLanguageModel implements Constable, ElementSource {
                                                    final CharSequence name,
                                                    TypeMirror returnType,
                                                    final List<? extends TypeMirror> parameterTypes) {
-    if (declaringClass == null || returnType == null || name == null) {
-      return null;
-    }
-    final int parameterTypesSize = parameterTypes == null ? 0 : parameterTypes.size();
-    final ProcessingEnvironment pe = this.pe();
-    synchronized (pe) {
-      final Types types = pe.getTypeUtils();
-      returnType = types.erasure(returnType);
-      METHOD_LOOP:
-      for (final ExecutableElement ee : (Iterable<? extends ExecutableElement>)methodsIn(declaringClass.getEnclosedElements())) {
-        if (ee.getSimpleName().contentEquals(name) &&
-            types.isSameType(types.erasure(ee.getReturnType()), returnType)) {
-          final List<? extends VariableElement> parameterElements = ee.getParameters();
-          if (parameterTypesSize == parameterElements.size()) {
-            for (int i = 0; i < parameterTypesSize; i++) {
-              if (!types.isSameType(types.erasure(parameterTypes.get(i)),
-                                    types.erasure(parameterElements.get(i).asType()))) {
-                continue METHOD_LOOP;
-              }
-            }
-            return ee;
-          }
-        }
-      }
-    }
-    return null;
+    return Lang.executableElement(declaringClass, name, returnType, parameterTypes);
   }
 
   public final ExecutableElement executableElement(final Method m) {
-    if (m == null) {
-      return null;
-    }
-    final Class<?>[] reflectionParameterTypes = m.getParameterTypes(); // deliberate erasure
-    final ProcessingEnvironment pe = this.pe();
-    synchronized (pe) {
-      final Types types = pe.getTypeUtils();
-      METHOD_LOOP:
-      for (final ExecutableElement ee : (Iterable<? extends ExecutableElement>)methodsIn(this.element(m.getDeclaringClass()).getEnclosedElements())) {
-        if (ee.getSimpleName().contentEquals(m.getName()) &&
-            types.isSameType(types.erasure(ee.getReturnType()),
-                             this.type(m.getReturnType()))) { // deliberate erasure
-          final List<? extends VariableElement> parameterElements = ee.getParameters();
-          if (reflectionParameterTypes.length == parameterElements.size()) {
-            for (int i = 0; i < reflectionParameterTypes.length; i++) {
-              if (!types.isSameType(this.type(reflectionParameterTypes[i]),
-                                    types.erasure(parameterElements.get(i).asType()))) {
-                continue METHOD_LOOP;
-              }
-            }
-            return ee;
-          }
-        }
-      }
-    }
-    return null;
+    return Lang.executableElement(m);
   }
 
   public final VariableElement variableElement(final Field f) {
-    if (f == null) {
-      return null;
-    }
-    for (final VariableElement ve : (Iterable<? extends VariableElement>)fieldsIn(this.typeElement(f.getDeclaringClass()).getEnclosedElements())) {
-      if (ve.getSimpleName().contentEquals(f.getName())) {
-        return ve;
-      }
-    }
-    return null;
+    return Lang.variableElement(f);
   }
 
   public final TypeMirror type(final Type t) {
-    return switch (t) {
-    case null -> null;
-    case Class<?> c when c.isArray() -> this.arrayType(c);
-    case Class<?> c when c.isPrimitive() -> this.primitiveType(c);
-    case Class<?> c -> this.declaredType(c);
-    case ParameterizedType pt -> this.declaredType(pt);
-    case GenericArrayType g -> this.arrayType(g);
-    case java.lang.reflect.TypeVariable<?> tv -> this.typeVariable(tv);
-    case java.lang.reflect.WildcardType w -> this.wildcardType(w);
-    default -> null;
-    };
+    return Lang.type(t);
   }
 
-  public final DeclaredType type(final Type ownerType,
-                                 final Type rawType,
-                                 final Type... typeArguments) {
-    final ProcessingEnvironment pe = this.pe();
-    synchronized (pe) {
-      final Types types = pe.getTypeUtils();
-      return types.getDeclaredType(this.declaredType(ownerType),
-                                   this.typeElement(rawType),
-                                   this.typeArray(typeArguments));
-    }
+  public final DeclaredType declaredType(final Type ownerType,
+                                         final Type rawType,
+                                         final Type... typeArguments) {
+    return Lang.declaredType(ownerType, rawType, typeArguments);
   }
 
   public final TypeMirror type(final Field f) {
-    return f == null ? null : this.variableElement(f).asType();
+    return Lang.type(f);
   }
 
-  public final ArrayType arrayType(final TypeMirror componentType) {
-    if (componentType == null) {
-      return null;
-    }
-    return Lang.arrayType(componentType);
+  public final ArrayType arrayTypeOf(final TypeMirror componentType) {
+    return Lang.arrayTypeOf(componentType);
   }
 
   public final ArrayType arrayType(final Class<?> arrayClass) {
-    return arrayClass == null || !arrayClass.isArray() ? null : this.arrayType(this.type(arrayClass.getComponentType()));
+    return Lang.arrayType(arrayClass);
   }
 
   public final ArrayType arrayType(final GenericArrayType g) {
-    return g == null ? null : this.arrayType(this.type(g.getGenericComponentType()));
+    return Lang.arrayType(g);
   }
 
   public final DeclaredType declaredType(final TypeElement e, final TypeMirror... ta) {
     return Lang.declaredType(e, ta);
   }
 
-  private final DeclaredType declaredType(final Type t) {
-    return switch (t) {
-    case null -> null;
-    case Class<?> c -> this.declaredType(c);
-    case ParameterizedType p -> this.declaredType(p);
-    default -> null;
-    };
+  public final DeclaredType declaredType(final Type t) {
+    return Lang.declaredType(t);
   }
 
   public final DeclaredType declaredType(final Class<?> c) {
-    if (c == null || c.isPrimitive() || c.isArray() || c.isLocalClass() || c.isAnonymousClass()) {
-      return null;
-    }
-    final ProcessingEnvironment pe = this.pe();
-    synchronized (pe) {
-      final DeclaredType dt = this.declaredType(c.getEnclosingClass());
-      final TypeElement te = this.typeElement(c);
-      final Types types = pe.getTypeUtils();
-      return types.getDeclaredType(dt, te);
-    }
+    return Lang.declaredType(c);
   }
 
   public final DeclaredType declaredType(final ParameterizedType pt) {
-    if (pt == null) {
-      return null;
-    }
-    final ProcessingEnvironment pe = this.pe();
-    synchronized (pe) {
-      final Types types = pe.getTypeUtils();
-      return
-        types.getDeclaredType(this.declaredType(pt.getOwnerType()),
-                              this.typeElement(pt.getRawType()),
-                              this.typeArray(pt.getActualTypeArguments()));
-    }
+    return Lang.declaredType(pt);
   }
 
   public final ExecutableType executableType(final Executable e) {
-    return e == null ? null : (ExecutableType)this.executableElement(e).asType();
+    return Lang.executableType(e);
   }
 
   public final PrimitiveType primitiveType(final TypeKind k) {
@@ -421,55 +248,23 @@ public final class JavaLanguageModel implements Constable, ElementSource {
   }
 
   public final PrimitiveType primitiveType(final Class<?> c) {
-    if (c == null || !c.isPrimitive()) {
-      return null;
-    }
-    return Lang.primitiveType(TypeKind.valueOf(c.getName().toUpperCase()));
+    return Lang.primitiveType(c);
   }
 
   public final TypeParameterElement typeParameterElement(final java.lang.reflect.TypeVariable<?> t) {
-    if (t == null) {
-      return null;
-    }
-    GenericDeclaration gd = t.getGenericDeclaration();
-    while (gd != null) {
-      java.lang.reflect.TypeVariable<?>[] typeParameters = gd.getTypeParameters();
-      for (int i = 0; i < typeParameters.length; i++) {
-        if (typeParameters[i].getName().equals(t.getName())) {
-          return this.parameterizable(gd).getTypeParameters().get(i);
-        }
-      }
-      gd = gd instanceof Executable e ? e.getDeclaringClass() : ((Class<?>)gd).getEnclosingClass();
-    }
-    return null;
+    return Lang.typeParameterElement(t);
   }
 
   public final Parameterizable parameterizable(final GenericDeclaration gd) {
-    return switch (gd) {
-    case Executable e -> this.executableElement(e);
-    case Class<?> c -> this.typeElement(c);
-    default -> null;
-    };
+    return Lang.parameterizable(gd);
   }
 
   public final TypeVariable typeVariable(final java.lang.reflect.TypeVariable<?> t) {
-    final TypeParameterElement e = this.typeParameterElement(t);
-    return e == null ? null : (TypeVariable)e.asType();
+    return Lang.typeVariable(t);
   }
 
   public final WildcardType wildcardType(final java.lang.reflect.WildcardType t) {
-    if (t == null) {
-      return null;
-    }
-    final Type[] lowerBounds = t.getLowerBounds();
-    final Type lowerBound = lowerBounds.length <= 0 ? null : lowerBounds[0];
-    final Type upperBound = t.getUpperBounds()[0];
-    final ProcessingEnvironment pe = this.pe();
-    synchronized (pe) {
-      final Types types = pe.getTypeUtils();
-      return types.getWildcardType(this.type(upperBound),
-                                   this.type(lowerBound));
-    }
+    return Lang.wildcardType(t);
   }
 
   public final WildcardType wildcardType() {
@@ -482,54 +277,6 @@ public final class JavaLanguageModel implements Constable, ElementSource {
 
   public final boolean subtype(final TypeMirror payload, final TypeMirror receiver) {
     return Lang.subtype(payload, receiver);
-  }
-
-  public final TypeMirror[] typeArray(final Type[] ts) {
-    if (ts == null || ts.length <= 0) {
-      return EMPTY_TYPEMIRROR_ARRAY;
-    }
-    final TypeMirror[] rv = new TypeMirror[ts.length];
-    for (int i = 0; i < ts.length; i++) {
-      rv[i] = this.type(ts[i]);
-    }
-    return rv;
-  }
-
-  public final TypeMirror[] typeArray(final List<? extends Type> ts) {
-    if (ts == null || ts.isEmpty()) {
-      return EMPTY_TYPEMIRROR_ARRAY;
-    }
-    final TypeMirror[] rv = new TypeMirror[ts.size()];
-    for (int i = 0; i < ts.size(); i++) {
-      rv[i] = this.type(ts.get(i));
-    }
-    return rv;
-  }
-
-  public final List<? extends TypeMirror> typeList(final Type[] ts) {
-    if (ts == null || ts.length <= 0) {
-      return List.of();
-    }
-    final List<TypeMirror> rv = new ArrayList<>(ts.length);
-    for (final Type t : ts) {
-      rv.add(this.type(t));
-    }
-    return Collections.unmodifiableList(rv);
-  }
-
-  public final List<? extends TypeMirror> typeList(final Collection<? extends Type> ts) {
-    if (ts == null || ts.isEmpty()) {
-      return List.of();
-    }
-    final List<TypeMirror> rv = new ArrayList<>(ts.size());
-    for (final Type t : ts) {
-      rv.add(this.type(t));
-    }
-    return Collections.unmodifiableList(rv);
-  }
-
-  private final ProcessingEnvironment pe() {
-    return Lang.pe();
   }
 
 }

@@ -31,6 +31,10 @@ import org.microbean.lang.type.Types;
 
 import static org.microbean.lang.type.Types.asElement;
 
+// The compiler has a couple of methods that test whether some type t is an "unchecked subtype" of some other type
+// s. See
+// https://github.com/openjdk/jdk/blob/jdk-21%2B22/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1005-L1067.
+//
 // Deliberately not thread safe.
 public final class SubtypeUncheckedVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
@@ -80,7 +84,7 @@ public final class SubtypeUncheckedVisitor extends SimpleTypeVisitor14<Boolean, 
 
   @Override
   protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
-    if (this.subtypeVisitor.withCapture(capture).visit(t, s)) {
+    if (this.subtypeVisitor.withCapture(this.capture).visit(t, s)) {
       return Boolean.TRUE;
     }
 

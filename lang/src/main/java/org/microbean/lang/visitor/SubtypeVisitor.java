@@ -82,7 +82,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
                         final Equality equality,
                         final Types types,
                         final AsSuperVisitor asSuperVisitor,
-                        final SupertypeVisitor supertypeVisitor,
+                        final SupertypeVisitor supertypeVisitor, // used only for intersection type cases; passed to substitute visitor
                         final SameTypeVisitor sameTypeVisitor,
                         final ContainsTypeVisitor containsTypeVisitor,
                         final CaptureVisitor captureVisitor,

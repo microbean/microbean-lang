@@ -66,10 +66,10 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
   }
 
   public SameTypeVisitor(final ElementSource elementSource,
-                           final Equality equality,
-                           final ContainsTypeVisitor containsTypeVisitor,
-                           final SupertypeVisitor supertypeVisitor,
-                           final boolean wildcardsComparable) {
+                         final Equality equality,
+                         final ContainsTypeVisitor containsTypeVisitor,
+                         final SupertypeVisitor supertypeVisitor, // used in visitExecutable, visitIntersection, hasSameBounds (only called from visitExecutable)
+                         final boolean wildcardsComparable) {
     super(Boolean.FALSE);
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(false) : equality;

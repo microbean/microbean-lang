@@ -2,22 +2,21 @@
  *
  * Copyright © 2023 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
 import java.util.List;
 import java.util.Objects;
+
+import java.util.function.Predicate;
 
 import javax.lang.model.element.QualifiedNameable;
 import javax.lang.model.element.TypeElement;
@@ -55,6 +54,8 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
 
   private final EraseVisitor eraseVisitor;
 
+  private final Predicate<? super TypeMirror> filter;
+
   private final InterfacesVisitor interfacesVisitor; // (created by this class)
 
   private final BoundingClassVisitor boundingClassVisitor; // (inner class)
@@ -68,19 +69,28 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
   public SupertypeVisitor(final ElementSource elementSource,
                           final Types types,
                           final EraseVisitor eraseVisitor) {
-    this(elementSource, null, types, eraseVisitor);
+    this(elementSource, null, types, eraseVisitor, null);
+  }
+
+  public SupertypeVisitor(final ElementSource elementSource,
+                          final Types types,
+                          final EraseVisitor eraseVisitor,
+                          final Predicate<? super TypeMirror> filter) {
+    this(elementSource, null, types, eraseVisitor, filter);
   }
 
   public SupertypeVisitor(final ElementSource elementSource,
                           final Equality equality,
                           final Types types,
-                          final EraseVisitor eraseVisitor) {
-    super();
+                          final EraseVisitor eraseVisitor,
+                          final Predicate<? super TypeMirror> filter) {
+    super(NoType.NONE); // default return value from the visit*() methods
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.eraseVisitor = Objects.requireNonNull(eraseVisitor, "eraseVisitor");
-    this.boundingClassVisitor = new BoundingClassVisitor(); // (inner class)
+    this.boundingClassVisitor = new BoundingClassVisitor(this);
+    this.filter = filter == null ? t -> true : filter;
     this.interfacesVisitor = new InterfacesVisitor(elementSource, this.equality, types, eraseVisitor, this);
   }
 
@@ -98,7 +108,7 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
   public final TypeMirror visitArray(final ArrayType t, final Void x) {
     assert t.getKind() == TypeKind.ARRAY;
     final TypeMirror componentType = t.getComponentType();
-    if (componentType.getKind().isPrimitive() || isObjectType(componentType)) {
+    if (componentType.getKind().isPrimitive() || isJavaLangObjectType(componentType)) {
       // e.g. int[] or Object[]
       return this.topLevelArraySupertype();
     }
@@ -147,14 +157,8 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
                             this.equality,
                             this,
                             formals,
-                            (List<? extends TypeVariable>)Types.allTypeArguments(this.boundingClassVisitor.visitDeclared(t, x)))
+                            (List<? extends TypeVariable>)Types.allTypeArguments(this.boundingClassVisitor.visit(t))) // TODO: is this cast really and truly OK?
       .visit(supertype);
-  }
-
-  @Override // SimpleTypeVisitor14
-  public final TypeMirror visitError(final ErrorType t, final Void x) {
-    assert t.getKind() == TypeKind.ERROR;
-    return NoType.NONE;
   }
 
   @Override // SimpleTypeVisitor14
@@ -167,14 +171,11 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
   public final TypeMirror visitTypeVariable(final TypeVariable t, final Void x) {
     assert t.getKind() == TypeKind.TYPEVAR;
     final TypeMirror upperBound = t.getUpperBound();
-    switch (upperBound.getKind()) {
-    case TYPEVAR:
-      return upperBound;
-    case INTERSECTION:
-      return this.visit(upperBound);
-    default:
-      return Types.isInterface(upperBound) ? this.visit(upperBound) : upperBound;
-    }
+    return switch (upperBound.getKind()) {
+    case TYPEVAR -> upperBound;
+    case INTERSECTION -> this.visit(upperBound);
+    default -> Types.isInterface(upperBound) ? this.visit(upperBound) : upperBound;
+    };
   }
 
 
@@ -183,51 +184,11 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
    */
 
 
-  private static final boolean isObjectType(final TypeMirror t) {
+  private static final boolean isJavaLangObjectType(final TypeMirror t) {
     return
       t.getKind() == TypeKind.DECLARED &&
       ((DeclaredType)t).asElement() instanceof QualifiedNameable qn &&
       qn.getQualifiedName().contentEquals("java.lang.Object");
-  }
-
-
-  /*
-   * Inner and nested classes.
-   */
-
-
-  private final class BoundingClassVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
-
-    private BoundingClassVisitor() {
-      super();
-    }
-
-    @Override // SimpleTypeVisitor14
-    protected final TypeMirror defaultAction(final TypeMirror t, final Void x) {
-      return t;
-    }
-
-    @Override
-    public final DeclaredType visitDeclared(final DeclaredType t, final Void x) {
-      assert t.getKind() == TypeKind.DECLARED;
-      final TypeMirror enclosingType = t.getEnclosingType();
-      final TypeMirror visitedEnclosingType = this.visit(enclosingType);
-      if (enclosingType == visitedEnclosingType) {
-        return t;
-      }
-      final org.microbean.lang.type.DeclaredType dt = new org.microbean.lang.type.DeclaredType();
-      dt.addTypeArguments(t.getTypeArguments());
-      dt.addAnnotationMirrors(t.getAnnotationMirrors());
-      dt.setDefiningElement((TypeElement)t.asElement());
-      dt.setEnclosingType(visitedEnclosingType);
-      return dt;
-    }
-
-    @Override
-    public final TypeMirror visitTypeVariable(final TypeVariable t, final Void x) {
-      assert t.getKind() == TypeKind.TYPEVAR;
-      return this.visit(SupertypeVisitor.this.visitTypeVariable(t, x));
-    }
   }
 
 }

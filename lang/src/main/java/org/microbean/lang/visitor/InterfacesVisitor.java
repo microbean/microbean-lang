@@ -55,7 +55,7 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
                            final Equality equality,
                            final Types types,
                            final EraseVisitor eraseVisitor,
-                           final SupertypeVisitor supertypeVisitor) {
+                           final SupertypeVisitor supertypeVisitor) { // used only for substitute visitor implementations
     super(List.of());
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;
@@ -101,35 +101,26 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
     assert t.getKind() == TypeKind.INTERSECTION;
     // Here the porting is a little trickier.  It turns out that an intersection type caches its supertype and its
     // interfaces at construction time, and there's only one place where intersection types are created.  In the lang
-    // model, that means that an IntersectionType's bounds are its supertype followed by its interfaces.  So we will
-    // hand-tool this.
+    // model, that means that an IntersectionType's bounds are its single non-interface supertype, if any, followed by
+    // its interfaces.  So we will hand-tool this.
     final List<? extends TypeMirror> bounds = t.getBounds();
     final int size = bounds.size();
-    switch (size) {
-    case 0:
-      // (Technically an illegal state.)
-      return List.of();
-    case 1:
-      return isInterface(bounds.get(0)) ? bounds : List.of();
-    default:
-      // TODO: if we want to get fancy and permit multiple classes in here we have to not presume that everything from
-      // position 1 on is a non-interface
-      return isInterface(bounds.get(0)) ? bounds : bounds.subList(1, size);
-    }
+    return switch (size) {
+    case 0 -> List.of();
+    case 1 -> isInterface(bounds.get(0)) ? bounds : List.of();
+    default -> isInterface(bounds.get(0)) ? bounds : bounds.subList(1, size);
+    };
   }
 
   @Override
   public final List<? extends TypeMirror> visitTypeVariable(final TypeVariable t, final Void x) {
     assert t.getKind() == TypeKind.TYPEVAR;
     final TypeMirror upperBound = t.getUpperBound();
-    switch (upperBound.getKind()) {
-    case DECLARED:
-      return ((DeclaredType)upperBound).asElement().getKind().isInterface() ? List.of(upperBound) : List.of();
-    case INTERSECTION:
-      return this.visitIntersection((IntersectionType)upperBound, x);
-    default:
-      return List.of();
-    }
+    return switch (upperBound.getKind()) {
+    case DECLARED -> ((DeclaredType)upperBound).asElement().getKind().isInterface() ? List.of(upperBound) : List.of();
+    case INTERSECTION -> this.visit(upperBound);
+    default -> List.of();
+    };
   }
 
 }

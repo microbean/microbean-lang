@@ -2,17 +2,14 @@
  *
  * Copyright © 2023 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -27,6 +24,8 @@ public final class Visitors {
   private final EraseVisitor eraseVisitor;
 
   private final SupertypeVisitor supertypeVisitor;
+
+  private final BoundingClassVisitor boundingClassVisitor;
 
   private final AsSuperVisitor asSuperVisitor;
 
@@ -59,6 +58,7 @@ public final class Visitors {
     final Types types = new Types(es);
     this.eraseVisitor = new EraseVisitor(es, types);
     this.supertypeVisitor = new SupertypeVisitor(es, types, this.eraseVisitor);
+    this.boundingClassVisitor = new BoundingClassVisitor(this.supertypeVisitor);
     this.asSuperVisitor = new AsSuperVisitor(es, null, types, this.supertypeVisitor);
     this.memberTypeVisitor =
       new MemberTypeVisitor(es, null, types, this.asSuperVisitor, this.eraseVisitor, this.supertypeVisitor);
@@ -98,6 +98,10 @@ public final class Visitors {
 
   public final SupertypeVisitor supertypeVisitor() {
     return this.supertypeVisitor;
+  }
+
+  public final BoundingClassVisitor boundingClassVisitor() {
+    return this.boundingClassVisitor;
   }
 
   public final AsSuperVisitor asSuperVisitor() {

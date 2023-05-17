@@ -61,7 +61,7 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
                            final Types types,
                            final AsSuperVisitor asSuperVisitor,
                            final EraseVisitor eraseVisitor,
-                           final SupertypeVisitor supertypeVisitor) {
+                           final SupertypeVisitor supertypeVisitor) { // used only by substitute visitor implementations
     super();
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.equality = equality == null ? new Equality(true) : equality;

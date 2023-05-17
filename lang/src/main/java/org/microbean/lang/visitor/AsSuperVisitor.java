@@ -52,6 +52,19 @@ import static org.microbean.lang.type.Types.asElement;
  * <p>{@code javac} does odd things with this and arrays and it is not clear that its documentation matches its
  * code. Consequently I don't have a lot of faith in the {@link visitArray(ArrayType, Element)} method as of this
  * writing.</p>
+ *
+ * <p>The compiler's {@code asSuper} method documentation says, in part:</p>
+ *
+ * <blockquote>Return the (most specific) base type of {@code t} that starts with the given symbol.  If none exists,
+ * return null.</blockquote>
+ */
+/* <pre>Some examples:
+ *
+ * (Enum<E>, Comparable) => Comparable<E>
+ * (c.s.s.d.AttributeTree.ValueKind, Enum) => Enum<c.s.s.d.AttributeTree.ValueKind>
+ * (c.s.s.t.ExpressionTree, c.s.s.t.Tree) => c.s.s.t.Tree
+ * (j.u.List<capture#160 of ? extends c.s.s.d.DocTree>, Iterable) =>
+ *     Iterable<capture#160 of ? extends c.s.s.d.DocTree>
  */
 // Basically done
 //
@@ -93,7 +106,7 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
   // This is extraordinarily weird. In javac, all (non-generic? all?) array types have, as their synthetic element, one
   // synthetic element that is a ClassSymbol named "Array". So the type denoted by, say, byte[] and the type denoted by
   // Object[] both return exactly the same ClassSymbol reference from their asElement() method/sym field. See
-  // Symtab.java line 483ish.
+  // Symtab.java line 483ish. (I guess that ClassSymbol corresponds in some way to "[]".)
   //
   // Now, what type does that ClassSymbol have?  It is built like this:
   //
