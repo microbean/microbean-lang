@@ -13,6 +13,9 @@
  */
 package org.microbean.lang.visitor;
 
+import java.util.function.Predicate;
+
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVisitor;
 
 import org.microbean.lang.ElementSource;
@@ -46,18 +49,25 @@ public final class Visitors {
   private final TypeClosureVisitor typeClosureVisitor;
 
   private final AssignableVisitor assignableVisitor;
-  
+
   public Visitors(final ElementSource es) {
-    this(es, false, true);
+    this(es, false, true, t -> true);
   }
 
   public Visitors(final ElementSource es,
                   final boolean subtypeCapture /* false by default */,
                   final boolean wildcardsCompatible /* true by default */) {
+    this(es, subtypeCapture, wildcardsCompatible, t -> true);
+  }
+
+  public Visitors(final ElementSource es,
+                  final boolean subtypeCapture /* false by default */,
+                  final boolean wildcardsCompatible /* true by default */,
+                  final Predicate<? super TypeMirror> supertypeFilter) {
     super();
     final Types types = new Types(es);
     this.eraseVisitor = new EraseVisitor(es, types);
-    this.supertypeVisitor = new SupertypeVisitor(es, types, this.eraseVisitor);
+    this.supertypeVisitor = new SupertypeVisitor(es, types, this.eraseVisitor, supertypeFilter);
     this.boundingClassVisitor = new BoundingClassVisitor(this.supertypeVisitor);
     this.asSuperVisitor = new AsSuperVisitor(es, null, types, this.supertypeVisitor);
     this.memberTypeVisitor =
@@ -84,7 +94,7 @@ public final class Visitors {
 
     this.convertibleVisitor = new ConvertibleVisitor(types, this.subtypeUncheckedVisitor, subtypeVisitor);
     this.assignableVisitor = new AssignableVisitor(types, this.convertibleVisitor);
-    
+
     final PrecedesPredicate precedesPredicate = new PrecedesPredicate(null, this.supertypeVisitor, this.subtypeVisitor);
     this.typeClosureVisitor = new TypeClosureVisitor(es, this.supertypeVisitor, precedesPredicate);
     this.captureVisitor.setTypeClosureVisitor(this.typeClosureVisitor);
@@ -98,6 +108,10 @@ public final class Visitors {
 
   public final SupertypeVisitor supertypeVisitor() {
     return this.supertypeVisitor;
+  }
+
+  public final InterfacesVisitor interfacesVisitor() {
+    return this.supertypeVisitor.interfacesVisitor();
   }
 
   public final BoundingClassVisitor boundingClassVisitor() {
@@ -139,7 +153,7 @@ public final class Visitors {
   public final AssignableVisitor assignableVisitor() {
     return this.assignableVisitor;
   }
-  
+
   public final TypeClosureVisitor typeClosureVisitor() {
     return this.typeClosureVisitor;
   }

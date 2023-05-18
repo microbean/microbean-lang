@@ -91,6 +91,24 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
       this.subtypeVisitor = v;
     }
   }
+
+  public final ContainsTypeVisitor withSameTypeVisitor(final SameTypeVisitor sameTypeVisitor) {
+    if (sameTypeVisitor == this.sameTypeVisitor) {
+      return this;
+    }
+    final ContainsTypeVisitor v = new ContainsTypeVisitor(this.elementSource, this.types);
+    v.setSameTypeVisitor(sameTypeVisitor);
+    return v;    
+  }
+  
+  public final ContainsTypeVisitor withSubtypeVisitor(final SubtypeVisitor subtypeVisitor) {
+    if (subtypeVisitor == this.subtypeVisitor) {
+      return this;
+    }
+    final ContainsTypeVisitor v = new ContainsTypeVisitor(this.elementSource, this.types);
+    v.setSubtypeVisitor(this.subtypeVisitor);
+    return v;    
+  }
   
   // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1524-L1531
   final boolean visit(final List<? extends TypeMirror> t, final List<? extends TypeMirror> s) {    

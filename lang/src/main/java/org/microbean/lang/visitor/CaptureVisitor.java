@@ -48,7 +48,7 @@ import static org.microbean.lang.type.Types.isInterface;
 public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
 
   private final ElementSource elementSource;
-  
+
   private final Equality equality;
 
   private final Types types;
@@ -173,57 +173,6 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
     return t;
   }
 
-  private static final TypeMirror capturedTypeVariableLowerBound(final TypeMirror capture) {
-    if (capture.getKind() == TypeKind.TYPEVAR && capture instanceof Capture c) {
-      final TypeMirror lowerBound = c.getLowerBound();
-      if (lowerBound == null) {
-        return org.microbean.lang.type.NullType.INSTANCE;
-      } else {
-        return lowerBound.getKind() == TypeKind.NULL ? lowerBound : capturedTypeVariableLowerBound(lowerBound); // RECURSIVE
-      }
-    }
-    return capture;
-  }
-
-  private static final List<? extends TypeMirror> withFreshCapturedTypeVariables(final List<? extends TypeMirror> typeArguments) {
-    if (typeArguments.isEmpty()) {
-      return List.of();
-    }
-    final List<TypeMirror> list = new ArrayList<>(typeArguments.size());
-    for (final TypeMirror typeArgument : typeArguments) {
-      switch (typeArgument.getKind()) {
-      case WILDCARD:
-        list.add(new Capture((WildcardType)typeArgument));
-        break;
-      default:
-        list.add(typeArgument);
-        break;
-      }
-    }
-    return Collections.unmodifiableList(list);
-  }
-
-  private static final DeclaredType syntheticDeclaredType(final DeclaredType canonicalType,
-                                                          final List<? extends TypeMirror> typeArguments) {
-    final org.microbean.lang.type.DeclaredType t = new org.microbean.lang.type.DeclaredType();
-    t.setEnclosingType(canonicalType.getEnclosingType());
-    t.addTypeArguments(typeArguments);
-    t.setDefiningElement((TypeElement)canonicalType.asElement());
-    return t;
-  }
-
-  // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4092-L4100
-  private final TypeMirror glb(final List<? extends TypeMirror> ts) {
-    if (ts.isEmpty()) {
-      return null;
-    }
-    TypeMirror t1 = ts.get(0);
-    for (int i = 1; i < ts.size(); i++) {
-      t1 = this.glb(t1, ts.get(i)); // RECURSIVE, in a way
-    }
-    return t1;
-  }
-
   // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4102-L4156
   private final TypeMirror glb(final TypeMirror t, final TypeMirror s) {
     // TODO: technically I think t and s can only be either DECLARED, INTERSECTION or TYPEVAR, since that's all closures
@@ -279,6 +228,57 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
       return this.glb(bounds); // RECURSIVE, in a way
     }
     return org.microbean.lang.type.IntersectionType.of(minimumTypes);
+  }
+
+  // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4092-L4100
+  private final TypeMirror glb(final List<? extends TypeMirror> ts) {
+    if (ts.isEmpty()) {
+      return null;
+    }
+    TypeMirror t1 = ts.get(0);
+    for (int i = 1; i < ts.size(); i++) {
+      t1 = this.glb(t1, ts.get(i)); // RECURSIVE, in a way
+    }
+    return t1;
+  }
+
+  private static final TypeMirror capturedTypeVariableLowerBound(final TypeMirror capture) {
+    if (capture.getKind() == TypeKind.TYPEVAR && capture instanceof Capture c) {
+      final TypeMirror lowerBound = c.getLowerBound();
+      if (lowerBound == null) {
+        return org.microbean.lang.type.NullType.INSTANCE;
+      } else {
+        return lowerBound.getKind() == TypeKind.NULL ? lowerBound : capturedTypeVariableLowerBound(lowerBound); // RECURSIVE
+      }
+    }
+    return capture;
+  }
+
+  private static final List<? extends TypeMirror> withFreshCapturedTypeVariables(final List<? extends TypeMirror> typeArguments) {
+    if (typeArguments.isEmpty()) {
+      return List.of();
+    }
+    final List<TypeMirror> list = new ArrayList<>(typeArguments.size());
+    for (final TypeMirror typeArgument : typeArguments) {
+      switch (typeArgument.getKind()) {
+      case WILDCARD:
+        list.add(new Capture((WildcardType)typeArgument));
+        break;
+      default:
+        list.add(typeArgument);
+        break;
+      }
+    }
+    return Collections.unmodifiableList(list);
+  }
+
+  private static final DeclaredType syntheticDeclaredType(final DeclaredType canonicalType,
+                                                          final List<? extends TypeMirror> typeArguments) {
+    final org.microbean.lang.type.DeclaredType t = new org.microbean.lang.type.DeclaredType();
+    t.setEnclosingType(canonicalType.getEnclosingType());
+    t.addTypeArguments(typeArguments);
+    t.setDefiningElement((TypeElement)canonicalType.asElement());
+    return t;
   }
 
 }

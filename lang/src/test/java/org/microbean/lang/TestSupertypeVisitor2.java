@@ -37,6 +37,7 @@ import org.microbean.lang.type.Types;
 
 import org.microbean.lang.visitor.EraseVisitor;
 import org.microbean.lang.visitor.SupertypeVisitor;
+import org.microbean.lang.visitor.Visitors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -49,12 +50,15 @@ final class TestSupertypeVisitor2 {
 
   private com.sun.tools.javac.code.Types javacCodeTypes;
 
+  private Visitors visitors;
+
   private TestSupertypeVisitor2() {
     super();
   }
 
   @BeforeEach
   final void setup() throws IllegalAccessException, NoSuchFieldException {
+    this.visitors = new Visitors((m, n) -> Lang.typeElement(Lang.moduleElement(m), n));
     final Field f = JavacTypes.class.getDeclaredField("types");
     assertTrue(f.trySetAccessible());
     this.javacCodeTypes = (com.sun.tools.javac.code.Types)f.get(Lang.pe().getTypeUtils());
@@ -62,44 +66,55 @@ final class TestSupertypeVisitor2 {
 
   @Test
   final void testInteger() {
-    final TypeElement integerElement = Lang.typeElement("java.lang.Integer");
-    final DeclaredType integerElementType = (DeclaredType)integerElement.asType();
+    final DeclaredType integerElementType = Lang.declaredType("java.lang.Integer");
     assertSame(TypeKind.DECLARED, integerElementType.getKind());
 
-    final Type javacSupertype = this.javacCodeTypes.supertype((Type)integerElementType);
-
-    // Let's try it with our visitor.
-
-    // Set up the fundamentals.
-    final ElementSource es = (m, n) -> Lang.typeElement(Lang.moduleElement(m), n);
-    final Types types = new Types(es);
-    final EraseVisitor eraseVisitor = new EraseVisitor(es, types);
-    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(es, types, eraseVisitor);
-
-    final TypeMirror supertype = supertypeVisitor.visit(integerElementType);
-
-    assertSame(javacSupertype, supertype);
+    final SupertypeVisitor supertypeVisitor = this.visitors.supertypeVisitor();
+    
+    assertSame(this.javacCodeTypes.supertype((Type)integerElementType),
+               supertypeVisitor.visit(integerElementType));
 
     // How about superinterfaces?
 
     final List<Type> javacInterfaces = this.javacCodeTypes.interfaces((Type)integerElementType);
     final List<? extends TypeMirror> interfaces = supertypeVisitor.interfacesVisitor().visit(integerElementType);
-    assertSame(javacInterfaces, interfaces);
+    assertEquals(javacInterfaces, interfaces);
 
   }
 
   @Test
   final void testSupertypeOfInterface() {
-    final TypeElement serializableElement = Lang.typeElement("java.io.Serializable");
-    final DeclaredType serializableElementType = (DeclaredType)serializableElement.asType();
+    final DeclaredType serializableElementType = (DeclaredType)Lang.typeElement("java.io.Serializable").asType();
     assertSame(TypeKind.DECLARED, serializableElementType.getKind());
-    final Type javacSerializableSupertype = this.javacCodeTypes.supertype((Type)serializableElementType);
-    assertSame(Lang.declaredType("java.lang.Object"), javacSerializableSupertype);
+    assertSame(Lang.declaredType("java.lang.Object"), this.javacCodeTypes.supertype((Type)serializableElementType));
   }
 
   @Test
   final void testSupertypeOfObject() {
     assertSame(Lang.noType(TypeKind.NONE), this.javacCodeTypes.supertype((Type)Lang.declaredType("java.lang.Object")));
+  }
+
+  @Test
+  final void testFilter() {
+    final SupertypeVisitor supertypeVisitor = this.visitors.supertypeVisitor().withFilter(t -> {
+        if (t.getKind() == TypeKind.DECLARED && ((TypeElement)((DeclaredType)t).asElement()).getQualifiedName().contentEquals("java.lang.Object")) {
+          return false;
+        }
+        return true;
+      });
+    assertSame(Lang.noType(TypeKind.NONE), supertypeVisitor.visit(Lang.declaredType("java.io.Serializable")));
+  }
+
+  @Test
+  final void testFilter2() {
+    assertSame(Lang.declaredType("java.lang.Number"), this.javacCodeTypes.supertype((Type)Lang.declaredType("java.lang.Integer")));
+    final SupertypeVisitor supertypeVisitor = this.visitors.supertypeVisitor().withFilter(t -> {
+        if (t.getKind() == TypeKind.DECLARED && ((TypeElement)((DeclaredType)t).asElement()).getQualifiedName().contentEquals("java.lang.Number")) {
+          return false;
+        }
+        return true;
+      });
+    assertSame(Lang.declaredType("java.lang.Object"), supertypeVisitor.visit(Lang.declaredType("java.lang.Integer")));
   }
 
 }

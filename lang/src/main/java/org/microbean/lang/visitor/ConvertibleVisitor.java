@@ -42,6 +42,20 @@ public final class ConvertibleVisitor extends SimpleTypeVisitor14<Boolean, TypeM
     this.subtypeVisitor = Objects.requireNonNull(subtypeVisitor, "subtypeVisitor");
   }
 
+  public final ConvertibleVisitor withSubtypeUncheckedVisitor(final SubtypeUncheckedVisitor subtypeUncheckedVisitor) {
+    if (subtypeUncheckedVisitor == this.subtypeUncheckedVisitor) {
+      return this;
+    }
+    return new ConvertibleVisitor(this.types, subtypeUncheckedVisitor, this.subtypeVisitor);
+  }
+
+  public final ConvertibleVisitor withSubtypeVisitor(final SubtypeVisitor subtypeVisitor) {
+    if (subtypeVisitor == this.subtypeVisitor) {
+      return this;
+    }
+    return new ConvertibleVisitor(this.types, this.subtypeUncheckedVisitor, subtypeVisitor);
+  }
+
   @Override
   protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
     assert !t.getKind().isPrimitive();

@@ -71,6 +71,21 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
   }
 
+  public final MemberTypeVisitor withAsSuperVisitor(final AsSuperVisitor asSuperVisitor) {
+    if (asSuperVisitor == this.asSuperVisitor) {
+      return this;
+    }
+    return new MemberTypeVisitor(this.elementSource, this.equality, this.types, asSuperVisitor, this.eraseVisitor, this.supertypeVisitor);
+  }
+  
+  // Only affects substitution
+  public final MemberTypeVisitor withSupertypeVisitor(final SupertypeVisitor supertypeVisitor) {
+    if (supertypeVisitor == this.supertypeVisitor) {
+      return this;
+    }
+    return new MemberTypeVisitor(this.elementSource, this.equality, this.types, this.asSuperVisitor, this.eraseVisitor, supertypeVisitor);
+  }
+  
   @Override
   protected final TypeMirror defaultAction(final TypeMirror t, final Element e) {
     return e.asType();

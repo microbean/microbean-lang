@@ -19,6 +19,8 @@ package org.microbean.lang.visitor;
 import java.util.List;
 import java.util.Objects;
 
+import java.util.function.Predicate;
+
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 
@@ -51,49 +53,62 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
 
   private final SupertypeVisitor supertypeVisitor;
 
+  private final Predicate<? super TypeMirror> filter;
+
   public InterfacesVisitor(final ElementSource elementSource,
                            final Equality equality,
                            final Types types,
                            final EraseVisitor eraseVisitor,
-                           final SupertypeVisitor supertypeVisitor) { // used only for substitute visitor implementations
+                           final SupertypeVisitor supertypeVisitor, // used only for substitute visitor implementations
+                           final Predicate<? super TypeMirror> filter) {
     super(List.of());
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.filter = filter == null ? t -> true : filter;
     this.equality = equality == null ? new Equality(true) : equality;
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.types = Objects.requireNonNull(types, "types");
     this.eraseVisitor = Objects.requireNonNull(eraseVisitor, "eraseVisitor");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
+  }
+
+  public final InterfacesVisitor withFilter(final Predicate<? super TypeMirror> filter) {
+    return
+      filter == this.filter ? this :
+      new InterfacesVisitor(this.elementSource, this.equality, this.types, this.eraseVisitor, this.supertypeVisitor, filter);
   }
 
   // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2599-L2633
   @Override
   public final List<? extends TypeMirror> visitDeclared(final DeclaredType t, final Void x) {
     assert t.getKind() == TypeKind.DECLARED;
+    final List<? extends TypeMirror> returnValue;
     final Element e = t.asElement();
     if (e == null) {
-      return List.of();
-    }
-    switch (e.getKind()) {
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-      final List<? extends TypeMirror> interfaces = ((TypeElement)e).getInterfaces();
-      if (this.types.raw(t)) {
-        return this.eraseVisitor.visit(interfaces, true);
-      }
-      @SuppressWarnings("unchecked")
-      final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)allTypeArguments(e.asType());
-      if (formals.isEmpty()) {
-        return interfaces;
-      }
-      assert this.supertypeVisitor.interfacesVisitor() == this;
-      return
-        new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, formals, allTypeArguments(t))
+      returnValue = List.of();
+    } else {
+      returnValue = switch (e.getKind()) {
+      case ANNOTATION_TYPE:
+      case CLASS:
+      case ENUM:
+      case INTERFACE:
+      case RECORD:
+        final List<? extends TypeMirror> interfaces = ((TypeElement)e).getInterfaces();
+        if (this.types.raw(t)) {
+          yield this.eraseVisitor.visit(interfaces, true);
+        }
+        @SuppressWarnings("unchecked")
+        final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)allTypeArguments(e.asType());
+        if (formals.isEmpty()) {
+          yield interfaces;
+        }
+        assert this.supertypeVisitor.interfacesVisitor() == this;
+        yield
+          new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, formals, allTypeArguments(t))
         .visit(interfaces, x);
-    default:
-      return List.of();
+      default:
+        yield List.of();
+      };
     }
+    return returnValue.isEmpty() ? returnValue : returnValue.stream().filter(this.filter).toList();
   }
 
   @Override
@@ -105,22 +120,24 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
     // its interfaces.  So we will hand-tool this.
     final List<? extends TypeMirror> bounds = t.getBounds();
     final int size = bounds.size();
-    return switch (size) {
+    final List<? extends TypeMirror> returnValue = switch (size) {
     case 0 -> List.of();
     case 1 -> isInterface(bounds.get(0)) ? bounds : List.of();
     default -> isInterface(bounds.get(0)) ? bounds : bounds.subList(1, size);
     };
+    return returnValue.isEmpty() ? returnValue : returnValue.stream().filter(this.filter).toList();
   }
 
   @Override
   public final List<? extends TypeMirror> visitTypeVariable(final TypeVariable t, final Void x) {
     assert t.getKind() == TypeKind.TYPEVAR;
     final TypeMirror upperBound = t.getUpperBound();
-    return switch (upperBound.getKind()) {
+    final List<? extends TypeMirror> returnValue = switch (upperBound.getKind()) {
     case DECLARED -> ((DeclaredType)upperBound).asElement().getKind().isInterface() ? List.of(upperBound) : List.of();
     case INTERSECTION -> this.visit(upperBound);
     default -> List.of();
     };
+    return returnValue.isEmpty() ? returnValue : returnValue.stream().filter(this.filter).toList();
   }
 
 }

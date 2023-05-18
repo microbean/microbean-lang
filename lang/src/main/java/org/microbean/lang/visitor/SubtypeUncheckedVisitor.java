@@ -70,6 +70,30 @@ public final class SubtypeUncheckedVisitor extends SimpleTypeVisitor14<Boolean, 
     }
   }
 
+  public final SubtypeUncheckedVisitor withAsSuperVisitor(final AsSuperVisitor asSuperVisitor) {
+    if (asSuperVisitor == this.asSuperVisitor) {
+      return this;
+    }
+    return
+      new SubtypeUncheckedVisitor(this.types,
+                                  this.subtypeVisitor,
+                                  asSuperVisitor,
+                                  this.sameTypeVisitor,
+                                  this.capture);
+  }
+
+  public final SubtypeUncheckedVisitor withSubtypeVisitor(final SubtypeVisitor subtypeVisitor) {
+    if (subtypeVisitor == this.subtypeVisitor) {
+      return this;
+    }
+    return
+      new SubtypeUncheckedVisitor(this.types,
+                                  subtypeVisitor,
+                                  this.asSuperVisitor,
+                                  this.sameTypeVisitor,
+                                  this.capture);
+  }
+  
   final SubtypeUncheckedVisitor withCapture(final boolean capture) {
     if (capture) {
       if (this.withCaptureVariant == null) {

@@ -2,23 +2,22 @@
  *
  * Copyright © 2023 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+
+import java.util.function.Predicate;
 
 import javax.lang.model.element.Element;
 
@@ -95,7 +94,23 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
   }
 
-  public final void setSubtypeVisitor(final SubtypeVisitor subtypeVisitor) {
+  public final AsSuperVisitor withSupertypeVisitor(final SupertypeVisitor supertypeVisitor) {
+    if (supertypeVisitor == this.supertypeVisitor) {
+      return this;
+    }
+    return new AsSuperVisitor(this.elementSource, this.equality, this.types, supertypeVisitor);
+  }
+
+  public final AsSuperVisitor withSubtypeVisitor(final SubtypeVisitor subtypeVisitor) {
+    if (subtypeVisitor == this.subtypeVisitor) {
+      return this;
+    }
+    final AsSuperVisitor v = new AsSuperVisitor(this.elementSource, this.equality, this.types, this.supertypeVisitor);
+    v.setSubtypeVisitor(subtypeVisitor);
+    return v;
+  }
+  
+  final void setSubtypeVisitor(final SubtypeVisitor subtypeVisitor) {
     if (subtypeVisitor.asSuperVisitor() != this) {
       throw new IllegalArgumentException("subtypeVisitor");
     } else if (subtypeVisitor != this.subtypeVisitor) {

@@ -98,7 +98,7 @@ final class TestSupertypeVisitor {
 
     final List<Type> javacInterfaces = javacTypes.interfaces((Type)integerElementType);
     final List<? extends TypeMirror> interfaces = supertypeVisitor.interfacesVisitor().visit(integerElementType);
-    assertSame(javacInterfaces, interfaces);
+    assertEquals(javacInterfaces, interfaces);
     
   }
 

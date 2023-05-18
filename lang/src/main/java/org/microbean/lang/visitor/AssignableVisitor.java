@@ -38,6 +38,13 @@ public final class AssignableVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     this.convertibleVisitor = Objects.requireNonNull(convertibleVisitor, "convertibleVisitor");
   }
 
+  public final AssignableVisitor withConvertibleVisitor(final ConvertibleVisitor convertibleVisitor) {
+    if (convertibleVisitor == this.convertibleVisitor) {
+      return this;
+    }
+    return new AssignableVisitor(this.types, convertibleVisitor);
+  }
+
   @Override
   protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
     return this.convertibleVisitor.visit(t, s);

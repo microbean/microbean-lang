@@ -59,10 +59,10 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
   private final boolean wildcardsComparable;
 
   public SameTypeVisitor(final ElementSource elementSource,
-                           final ContainsTypeVisitor containsTypeVisitor,
-                           final SupertypeVisitor supertypVisitor,
-                           final boolean wildcardsCompatible) {
-    this(elementSource, null, containsTypeVisitor, supertypVisitor, wildcardsCompatible);
+                         final ContainsTypeVisitor containsTypeVisitor,
+                         final SupertypeVisitor supertypeVisitor,
+                         final boolean wildcardsCompatible) {
+    this(elementSource, new Equality(false), containsTypeVisitor, supertypeVisitor, wildcardsCompatible);
   }
 
   public SameTypeVisitor(final ElementSource elementSource,
@@ -79,10 +79,19 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
     containsTypeVisitor.setSameTypeVisitor(this);
   }
 
+  public final SameTypeVisitor withSupertypeVisitor(final SupertypeVisitor supertypeVisitor) {
+    if (supertypeVisitor == this.supertypeVisitor) {
+      return this;
+    }
+    return
+      new SameTypeVisitor(this.elementSource, this.equality, this.containsTypeVisitor(), supertypeVisitor, this.wildcardsComparable);
+      
+  }
+
   final ContainsTypeVisitor containsTypeVisitor() {
     return this.containsTypeVisitor;
   }
-  
+
   @Override
   protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
     return t == s || this.equality.equals(t, s);

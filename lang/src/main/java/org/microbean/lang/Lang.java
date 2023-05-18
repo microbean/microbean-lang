@@ -88,6 +88,12 @@ import static javax.lang.model.util.ElementFilter.methodsIn;
 
 public final class Lang {
 
+
+  /*
+   * Static fields.
+   */
+
+
   private static final ClassDesc CD_ArrayType = ClassDesc.of("javax.lang.model.type.ArrayType");
 
   private static final ClassDesc CD_CharSequence = ClassDesc.of("java.lang.CharSequence");
@@ -124,9 +130,21 @@ public final class Lang {
 
   private static volatile ProcessingEnvironment pe;
 
+
+  /*
+   * Static initializer.
+   */
+
+
   static {
     initialize();
   }
+
+
+  /*
+   * Constructors.
+   */
+
 
   private Lang() {
     super();
@@ -385,10 +403,25 @@ public final class Lang {
    */
 
 
+  public static final TypeMirror box(final TypeMirror t) {
+    return t.getKind().isPrimitive() ? boxedClass((PrimitiveType)t).asType() : t;
+  }
+
+  public static final TypeMirror unbox(final TypeMirror t) {
+    return unboxedType(t);
+  }
+
   public static final TypeElement boxedClass(final PrimitiveType t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
       return pe.getTypeUtils().boxedClass(t);
+    }
+  }
+
+  public static final PrimitiveType unboxedType(final TypeMirror t) {
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return pe.getTypeUtils().unboxedType(t);
     }
   }
 
@@ -593,7 +626,7 @@ public final class Lang {
       return executableElement(typeElement(m.getDeclaringClass()),
                                m.getName(),
                                type(m.getReturnType()), // deliberate erasure
-                               typeArray(m.getParameterTypes()));
+                               typeArray(m.getParameterTypes())); // deliberate erasure
     }
   }
 
@@ -794,15 +827,17 @@ public final class Lang {
   }
 
   public static final TypeParameterElement typeParameterElement(final java.lang.reflect.TypeVariable<?> t) {
-    if (t == null) {
-      return null;
-    }
-    GenericDeclaration gd = t.getGenericDeclaration();
+    return typeParameterElement(t.getGenericDeclaration(), t.getName());
+  }
+
+  public static final TypeParameterElement typeParameterElement(GenericDeclaration gd, final String name) {
     while (gd != null) {
       java.lang.reflect.TypeVariable<?>[] typeParameters = gd.getTypeParameters();
       for (int i = 0; i < typeParameters.length; i++) {
-        if (typeParameters[i].getName().equals(t.getName())) {
-          return parameterizable(gd).getTypeParameters().get(i);
+        if (typeParameters[i].getName().equals(name)) {
+          synchronized (pe()) {
+            return parameterizable(gd).getTypeParameters().get(i);
+          }
         }
       }
       gd = gd instanceof Executable e ? e.getDeclaringClass() : ((Class<?>)gd).getEnclosingClass();
@@ -811,8 +846,17 @@ public final class Lang {
   }
 
   public static final TypeVariable typeVariable(java.lang.reflect.TypeVariable<?> t) {
-    final TypeParameterElement e = typeParameterElement(t);
-    return e == null ? null : (TypeVariable)e.asType();
+    synchronized (pe()) {
+      final TypeParameterElement e = typeParameterElement(t);
+      return e == null ? null : (TypeVariable)e.asType();
+    }
+  }
+
+  public static final TypeVariable typeVariable(GenericDeclaration gd, final String name) {
+    synchronized (pe()) {
+      final TypeParameterElement e = typeParameterElement(gd, name);
+      return e == null ? null : (TypeVariable)e.asType();
+    }
   }
 
   public static final VariableElement variableElement(final Field f) {
@@ -886,7 +930,6 @@ public final class Lang {
   }
 
 
-
   /*
    * Private static methods.
    */
@@ -943,7 +986,6 @@ public final class Lang {
     }
     return Collections.unmodifiableList(rv);
   }
-
 
   static final ProcessingEnvironment pe() {
     ProcessingEnvironment pe = Lang.pe; // volatile read

@@ -110,6 +110,22 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     captureVisitor.setSubtypeVisitor(this);
   }
 
+  public final SubtypeVisitor withAsSuperVisitor(final AsSuperVisitor asSuperVisitor) {
+    if (asSuperVisitor == this.asSuperVisitor) {
+      return this;
+    }
+    return
+      new SubtypeVisitor(this.elementSource,
+                         this.equality,
+                         this.types,
+                         asSuperVisitor,
+                         this.supertypeVisitor,
+                         this.sameTypeVisitor,
+                         this.containsTypeVisitor(),
+                         this.captureVisitor(),
+                         this.capture);
+  }
+
   final SubtypeVisitor withCapture(final boolean capture) {
     if (capture) {
       if (this.withCaptureVariant == null) {
@@ -185,13 +201,14 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     final TypeKind sKind = s.getKind();
     switch (sKind) {
     case ARRAY:
+      // https://github.com/openjdk/jdk/blob/jdk-21%2B22/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1199C29-L1204
       final TypeMirror tct = t.getComponentType();
       final TypeMirror sct = ((ArrayType)s).getComponentType();
+      // If both are primitive arrays, then see if their component types are "the same". Otherwise return the visitation
+      // of the component types.
       return tct.getKind().isPrimitive() ? this.sameTypeVisitor.visit(tct, sct) : this.withCapture(false).visit(tct, sct);
     case DECLARED:
-      // See
-      // https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1211-L1213
-      // for better or for worse
+      // https://github.com/openjdk/jdk/blob/jdk-21%2B22/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1206-L1211
       final Name sName = ((QualifiedNameable)((DeclaredType)s).asElement()).getQualifiedName();
       return
         sName.contentEquals("java.lang.Object") ||
@@ -222,9 +239,12 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     // https://github.com/openjdk/jdk/blob/jdk-21%2B15/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1085-L1091
     if (s.getKind() == TypeKind.INTERSECTION) {
       if (!this.visit(t, this.supertypeVisitor.visit(s))) {
+        // Visiting the supertype of an intersection type is exactly visiting its first bound. Bounds of an intersection
+        // type, it turns out, must be (partially) ordered from most specialized to least specialized, with classes preceding
+        // interfaces. So we visit its first bound, which may be an interface or a non-interface type.
         return Boolean.FALSE;
       }
-      for (final TypeMirror i : this.supertypeVisitor.interfacesVisitor().visit(s)) {
+      for (final TypeMirror i : this.supertypeVisitor.interfacesVisitor().visit(s)) { // TODO: really we should start with its second bound
         if (!this.visit(t, i)) {
           return Boolean.FALSE;
         }
@@ -238,7 +258,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
       // Generally, if 's' is a lower-bounded type variable, recur on lower bound; but
       // for inference variables and intersections, we need to keep 's'
       // (see JLS 4.10.2 for intersections and 18.2.3 for inference vars)
-      if (!t.hasTag(UNDETVAR) && !t.isCompound()) {
+      if (!t.hasTag(UNDETVAR) && !t.isCompound()) { // [ljnelson] we handled this above
           // TODO: JDK-8039198, bounds checking sometimes passes in a wildcard as s
           Type lower = cvarLowerBound(wildLowerBound(s));
           if (s != lower && !lower.hasTag(BOT))
@@ -269,6 +289,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
       // i.e. if s is anything other than a DeclaredType.  Handle that case early here.
       return Boolean.FALSE;
     }
+
     final DeclaredType tsupDt = (DeclaredType)tsup;
     final DeclaredType sDt = (DeclaredType)s;
 
@@ -287,13 +308,6 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     } else {
       return Boolean.FALSE;
     }
-
-    /*
-    return
-      tsupDt.asElement() == sDt.asElement() &&
-      (allTypeArguments(sDt).isEmpty() || this.containsTypeRecursive(sDt, tsupDt)) &&
-      this.withCapture(false).visit(tsupDt.getEnclosingType(), sDt.getEnclosingType());
-    */
   }
 
   @Override

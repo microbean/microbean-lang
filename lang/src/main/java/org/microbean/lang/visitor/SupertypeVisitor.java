@@ -37,6 +37,9 @@ import org.microbean.lang.Equality;
 import org.microbean.lang.type.NoType;
 import org.microbean.lang.type.Types;
 
+// Returns the superclass (or parameterized superclass) of a type, if applicable. See #interfacesVisitor() for returning
+// superinterfaces.
+//
 // Basically done
 public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
 
@@ -85,13 +88,13 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
                           final EraseVisitor eraseVisitor,
                           final Predicate<? super TypeMirror> filter) {
     super(NoType.NONE); // default return value from the visit*() methods
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.filter = filter == null ? t -> true : filter;
     this.equality = equality == null ? new Equality(true) : equality;
+    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.types = Objects.requireNonNull(types, "types");
     this.eraseVisitor = Objects.requireNonNull(eraseVisitor, "eraseVisitor");
+    this.interfacesVisitor = new InterfacesVisitor(elementSource, this.equality, types, eraseVisitor, this, filter);
     this.boundingClassVisitor = new BoundingClassVisitor(this);
-    this.filter = filter == null ? t -> true : filter;
-    this.interfacesVisitor = new InterfacesVisitor(elementSource, this.equality, types, eraseVisitor, this);
   }
 
 
@@ -99,6 +102,10 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
    * Instance methods.
    */
 
+  public final SupertypeVisitor withFilter(final Predicate<? super TypeMirror> filter) {
+    return filter == this.filter ? this :
+      new SupertypeVisitor(this.elementSource, this.equality, this.types, this.eraseVisitor, filter);
+  }
 
   public final InterfacesVisitor interfacesVisitor() {
     return this.interfacesVisitor;
@@ -108,13 +115,19 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
   public final TypeMirror visitArray(final ArrayType t, final Void x) {
     assert t.getKind() == TypeKind.ARRAY;
     final TypeMirror componentType = t.getComponentType();
+    final TypeMirror returnValue;
     if (componentType.getKind().isPrimitive() || isJavaLangObjectType(componentType)) {
       // e.g. int[] or Object[]
-      return this.topLevelArraySupertype();
+      returnValue = this.topLevelArraySupertype();
+    } else {
+      final org.microbean.lang.type.ArrayType a = new org.microbean.lang.type.ArrayType(this.visit(componentType));
+      a.addAnnotationMirrors(t.getAnnotationMirrors());
+      returnValue = a;
     }
-    final org.microbean.lang.type.ArrayType a = new org.microbean.lang.type.ArrayType(this.visit(componentType));
-    a.addAnnotationMirrors(t.getAnnotationMirrors());
-    return a;
+    if (this.filter.test(returnValue)) {
+      return returnValue;
+    }
+    return this.visit(returnValue);
   }
 
   private final IntersectionType topLevelArraySupertype() {
@@ -130,6 +143,7 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
   @SuppressWarnings("unchecked")
   public final TypeMirror visitDeclared(final DeclaredType t, final Void x) {
     assert t.getKind() == TypeKind.DECLARED;
+    final TypeMirror returnValue;
     final TypeElement element = (TypeElement)t.asElement();
     final TypeMirror supertype = element.getSuperclass();
     // TODO: if supertype is DefaultNoType.NONE...? as would happen when element is an interface?  The compiler
@@ -137,45 +151,59 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
     // https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2536-L2537
     // I wonder: does it sneakily set this field to Object.class?  Or does it let it be TypeKind.NONE?
     if (this.types.raw(t)) {
-      return this.eraseVisitor.visit(supertype, true);
-    }
+      returnValue = this.eraseVisitor.visit(supertype, true);
+    } else {
 
-    // Get the actual declared type.  If, for example, t represents the type denoted by "List<String>", then get the
-    // type denoted by "List<E>".
-    final DeclaredType typeDeclaration = (DeclaredType)element.asType();
+      // Get the actual declared type.  If, for example, t represents the type denoted by "List<String>", then get the
+      // type denoted by "List<E>".
+      final DeclaredType typeDeclaration = (DeclaredType)element.asType();
 
-    // The type arguments of such a declared type are always type variables (declared by type parameters).  In the type
-    // denoted by "List<E>", the sole type *argument* is the type denoted by (the type parameter element) "E", and the
-    // sole type parameter element that declares that type is the element "E" itself.
-    @SuppressWarnings("unchecked")
-    final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)Types.allTypeArguments(typeDeclaration);
-    if (formals.isEmpty()) {
-      return supertype;
+      // The type arguments of such a declared type are always type variables (declared by type parameters).  In the
+      // type denoted by "List<E>", the sole type *argument* is the type denoted by (the type parameter element) "E",
+      // and the sole type parameter element that declares that type is the element "E" itself.
+      @SuppressWarnings("unchecked")
+        final List<? extends TypeVariable> formals = (List<? extends TypeVariable>)Types.allTypeArguments(typeDeclaration);
+      if (formals.isEmpty()) {
+        returnValue = supertype;
+      } else {
+        returnValue =
+          new SubstituteVisitor(this.elementSource,
+                                this.equality,
+                                this,
+                                formals,
+                                (List<? extends TypeVariable>)Types.allTypeArguments(this.boundingClassVisitor.visit(t))) // TODO: is this cast really and truly OK?
+          .visit(supertype);
+      }
     }
-    return
-      new SubstituteVisitor(this.elementSource,
-                            this.equality,
-                            this,
-                            formals,
-                            (List<? extends TypeVariable>)Types.allTypeArguments(this.boundingClassVisitor.visit(t))) // TODO: is this cast really and truly OK?
-      .visit(supertype);
+    if (this.filter.test(returnValue)) {
+      return returnValue;
+    }
+    return this.visit(returnValue);
   }
 
   @Override // SimpleTypeVisitor14
   public final TypeMirror visitIntersection(final IntersectionType t, final Void x) {
     assert t.getKind() == TypeKind.INTERSECTION;
-    return t.getBounds().get(0); // TODO: presumes first bound will be the supertype; see https://github.com/openjdk/jdk/blob/jdk-19+25/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L1268
+    final TypeMirror returnValue = t.getBounds().get(0); // TODO: presumes first bound will be the supertype; see https://github.com/openjdk/jdk/blob/jdk-19+25/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L1268
+    if (this.filter.test(returnValue)) {
+      return returnValue;
+    }
+    return this.visit(returnValue);
   }
 
   @Override // SimpleTypeVisitor14
   public final TypeMirror visitTypeVariable(final TypeVariable t, final Void x) {
     assert t.getKind() == TypeKind.TYPEVAR;
     final TypeMirror upperBound = t.getUpperBound();
-    return switch (upperBound.getKind()) {
+    final TypeMirror returnValue = switch (upperBound.getKind()) {
     case TYPEVAR -> upperBound;
     case INTERSECTION -> this.visit(upperBound);
     default -> Types.isInterface(upperBound) ? this.visit(upperBound) : upperBound;
     };
+    if (this.filter.test(returnValue)) {
+      return returnValue;
+    }
+    return this.visit(returnValue);
   }
 
 
