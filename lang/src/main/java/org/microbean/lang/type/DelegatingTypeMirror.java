@@ -2,17 +2,14 @@
  *
  * Copyright © 2023 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.type;
 
@@ -23,7 +20,11 @@ import java.lang.constant.Constable;
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.DynamicConstantDesc;
 import java.lang.constant.MethodHandleDesc;
+import java.lang.constant.MethodTypeDesc;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -50,10 +51,13 @@ import org.microbean.lang.Lang;
 import org.microbean.lang.ElementSource;
 import org.microbean.lang.Equality;
 
+import org.microbean.lang.element.DelegatingElement;
+
 import org.microbean.lang.type.NoType;
 import org.microbean.lang.type.Types;
 
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
+import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
 
 public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorType, ExecutableType, IntersectionType, javax.lang.model.type.NoType, NullType, PrimitiveType, TypeVariable, UnionType, WildcardType {
 
@@ -85,7 +89,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // Various
   public final Element asElement() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case DECLARED -> ((DeclaredType)this.delegate).asElement();
     case TYPEVAR -> ((TypeVariable)this.delegate).asElement();
     default -> null;
@@ -98,7 +102,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // UnionType
   public final List<? extends TypeMirror> getAlternatives() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case UNION -> ((UnionType)this.delegate).getAlternatives();
     default -> List.of();
     };
@@ -121,7 +125,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // IntersectionType
   public final List<? extends TypeMirror> getBounds() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case INTERSECTION -> ((IntersectionType)this.delegate).getBounds();
     default -> List.of();
     };
@@ -129,7 +133,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // ArrayType
   public final TypeMirror getComponentType() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case ARRAY -> ((ArrayType)this.delegate).getComponentType();
     default -> NoType.NONE;
     };
@@ -137,7 +141,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // DeclaredType
   public final TypeMirror getEnclosingType() {
-    return switch(this.delegate.getKind()) {
+    return switch(this.kind()) {
     case DECLARED -> ((DeclaredType)this.delegate).getEnclosingType();
     default -> NoType.NONE;
     };
@@ -145,7 +149,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // WildcardType
   public final TypeMirror getExtendsBound() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case WILDCARD -> ((WildcardType)this.delegate).getExtendsBound();
     default -> null;
     };
@@ -153,12 +157,18 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // TypeMirror
   public final TypeKind getKind() {
-    return this.delegate.getKind();
+    return kind();
+  }
+
+  private final TypeKind kind() {
+    synchronized (this.delegate) {
+      return this.delegate.getKind();
+    }
   }
 
   @Override // TypeVariable
   public final TypeMirror getLowerBound() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case TYPEVAR -> ((TypeVariable)this.delegate).getLowerBound();
     default -> org.microbean.lang.type.NullType.INSTANCE; // bottom type, not NONE type
     };
@@ -166,7 +176,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // TypeVariable
   public final TypeMirror getUpperBound() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case TYPEVAR -> ((TypeVariable)this.delegate).getUpperBound();
     default -> this.elementSource.element("java.lang.Object").asType();
     };
@@ -174,7 +184,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // ExecutableType
   public final List<? extends TypeMirror> getParameterTypes() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case EXECUTABLE -> ((ExecutableType)this.delegate).getParameterTypes();
     default -> List.of();
     };
@@ -182,7 +192,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // ExecutableType
   public final TypeMirror getReceiverType() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case EXECUTABLE -> ((ExecutableType)this.delegate).getReceiverType();
     default -> null;
     };
@@ -190,7 +200,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // ExecutableType
   public final TypeMirror getReturnType() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case EXECUTABLE -> ((ExecutableType)this.delegate).getReturnType();
     default -> null;
     };
@@ -198,7 +208,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // WildcardType
   public final TypeMirror getSuperBound() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case WILDCARD -> ((WildcardType)this.delegate).getSuperBound();
     default -> null;
     };
@@ -206,15 +216,15 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // ExecutableType
   public final List<? extends TypeMirror> getThrownTypes() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case EXECUTABLE -> ((ExecutableType)this.delegate).getThrownTypes();
     default -> List.of();
     };
   }
 
   @Override // DeclaredType
-  public final List<? extends TypeMirror> getTypeArguments() {
-    return switch (this.delegate.getKind()) {
+  public final List<? extends TypeMirror> getTypeArguments() {    
+    return switch (this.kind()) {
     case DECLARED -> ((DeclaredType)this.delegate).getTypeArguments();
     default -> List.of();
     };
@@ -222,7 +232,7 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // ExecutableType
   public final List<? extends TypeVariable> getTypeVariables() {
-    return switch (this.delegate.getKind()) {
+    return switch (this.kind()) {
     case EXECUTABLE -> ((ExecutableType)this.delegate).getTypeVariables();
     default -> List.of();
     };
@@ -230,12 +240,12 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
 
   @Override // TypeMirror
   public final int hashCode() {
-    return this.ehc.hashCode(this.delegate);
+    return this.ehc.hashCode(this.delegate); // TODO: or just this?
   }
 
   @Override // TypeMirror
   public final boolean equals(final Object other) {
-    return this.ehc.equals(this.delegate, other);
+    return this.ehc.equals(this.delegate, other); // TODO: or just this?
   }
 
   @Override // TypeMirror
@@ -249,10 +259,13 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
       .flatMap(delegateDesc -> (this.elementSource instanceof Constable c ? c.describeConstable() : Optional.<ConstantDesc>empty())
                .flatMap(elementSourceDesc -> this.ehc.describeConstable()
                         .map(equalityDesc -> DynamicConstantDesc.of(BSM_INVOKE,
-                                                                    MethodHandleDesc.ofConstructor(CD_DelegatingTypeMirror,
-                                                                                                   CD_TypeMirror,
-                                                                                                   CD_ElementSource,
-                                                                                                   CD_Equality),
+                                                                    MethodHandleDesc.ofMethod(STATIC,
+                                                                                              CD_DelegatingTypeMirror,
+                                                                                              "of",
+                                                                                              MethodTypeDesc.of(CD_DelegatingTypeMirror,
+                                                                                                                CD_TypeMirror,
+                                                                                                                CD_ElementSource,
+                                                                                                                CD_Equality)),
                                                                     delegateDesc,
                                                                     elementSourceDesc,
                                                                     equalityDesc))));
@@ -264,10 +277,19 @@ public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorTy
    */
 
 
+  public static final List<DelegatingTypeMirror> of(final Collection<? extends TypeMirror> ts, final ElementSource elementSource) {
+    final List<DelegatingTypeMirror> newTs = new ArrayList<>(ts.size());
+    for (final TypeMirror t : ts) {
+      newTs.add(of(t, elementSource));
+    }
+    return Collections.unmodifiableList(newTs);
+  }
+  
   public static final DelegatingTypeMirror of(final TypeMirror t, final ElementSource elementSource) {
     return of(t, elementSource, null);
   }
 
+  // Called by describeConstable
   public static final DelegatingTypeMirror of(final TypeMirror t, final ElementSource elementSource, final Equality ehc) {
     if (t instanceof DelegatingTypeMirror d) {
       return d;

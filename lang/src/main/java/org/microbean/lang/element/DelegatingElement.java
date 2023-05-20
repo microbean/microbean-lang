@@ -2,22 +2,22 @@
  *
  * Copyright © 2022–2023 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.element;
 
 import java.lang.annotation.Annotation;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -97,7 +97,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // RecordComponentElement
   public final ExecutableElement getAccessor() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case RECORD_COMPONENT:
       return ((RecordComponentElement)this.delegate).getAccessor();
     default:
@@ -122,7 +122,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // TypeParameterElement
   public final List<? extends TypeMirror> getBounds() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case TYPE_PARAMETER:
       return ((TypeParameterElement)this.delegate).getBounds();
     default:
@@ -132,7 +132,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // VariableElement
   public final Object getConstantValue() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case BINDING_VARIABLE:
     case ENUM_CONSTANT:
     case EXCEPTION_PARAMETER:
@@ -148,7 +148,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ExecutableElement
   public final AnnotationValue getDefaultValue() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case ANNOTATION_TYPE:
       return ((ExecutableElement)this.delegate).getDefaultValue();
     default:
@@ -158,7 +158,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ModuleElement
   public final List<? extends Directive> getDirectives() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case MODULE:
       return ((ModuleElement)this.delegate).getDirectives();
     default:
@@ -178,7 +178,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // TypeParameterElement
   public final Element getGenericElement() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case TYPE_PARAMETER:
       return ((TypeParameterElement)this.delegate).getGenericElement();
     default:
@@ -188,7 +188,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // TypeElement
   public final List<? extends TypeMirror> getInterfaces() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case ANNOTATION_TYPE:
     case CLASS:
     case ENUM:
@@ -202,7 +202,13 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // Element
   public final ElementKind getKind() {
-    return this.delegate.getKind();
+    return this.kind();
+  }
+
+  private final ElementKind kind() {
+    synchronized (this.delegate) {
+      return this.delegate.getKind();
+    }
   }
 
   @Override // Element
@@ -212,7 +218,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // TypeElement
   public final NestingKind getNestingKind() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case ANNOTATION_TYPE:
     case CLASS:
     case ENUM:
@@ -226,7 +232,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ExecutableElement
   public final List<? extends VariableElement> getParameters() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case CONSTRUCTOR:
     case METHOD:
       return ((ExecutableElement)this.delegate).getParameters();
@@ -237,7 +243,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ModuleElement, PackageElement, TypeElement
   public final Name getQualifiedName() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case ANNOTATION_TYPE:
     case CLASS:
     case ENUM:
@@ -268,7 +274,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // TypeElement
   public final TypeMirror getSuperclass() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case ANNOTATION_TYPE:
     case CLASS:
     case ENUM:
@@ -287,7 +293,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ExecutableElement
   public final List<? extends TypeParameterElement> getTypeParameters() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case CONSTRUCTOR:
     case METHOD:
       return ((ExecutableElement)this.delegate).getTypeParameters();
@@ -298,7 +304,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ExecutableElement
   public final boolean isDefault() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case METHOD:
       return ((ExecutableElement)this.delegate).isDefault();
     default:
@@ -308,7 +314,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ModuleElement
   public final boolean isOpen() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case MODULE:
       return ((ModuleElement)this.delegate).isOpen();
     default:
@@ -318,7 +324,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ModuleElement, PackageElement
   public final boolean isUnnamed() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case MODULE:
       return ((ModuleElement)this.delegate).isUnnamed();
     case PACKAGE:
@@ -330,7 +336,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ExecutableElement
   public final boolean isVarArgs() {
-    switch (this.delegate.getKind()) {
+    switch (this.kind()) {
     case CONSTRUCTOR:
     case METHOD:
       return ((ExecutableElement)this.delegate).isVarArgs();
@@ -341,7 +347,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // Element
   public final int hashCode() {
-    return this.ehc.hashCode(this.delegate);
+    return this.ehc.hashCode(this.delegate); // TODO: or just this?
   }
 
   @Override // Element
@@ -349,7 +355,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
     if (this == other) {
       return true;
     } else if (other instanceof Element e) { // instanceof on purpose
-      return this.ehc.equals(this.delegate, e);
+      return this.ehc.equals(this.delegate, e); // TODO: or just this?
     } else {
       return false;
     }
@@ -365,6 +371,14 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
    * Static methods.
    */
 
+
+  public static final List<DelegatingElement> of(final Collection<? extends Element> es, final ElementSource elementSource) {
+    final List<DelegatingElement> newEs = new ArrayList<>(es.size());
+    for (final Element e : es) {
+      newEs.add(of(e, elementSource));
+    }
+    return Collections.unmodifiableList(newEs);
+  }
 
   public static final DelegatingElement of(final Element e, final ElementSource elementSource) {
     return of(e, elementSource, null);

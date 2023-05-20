@@ -46,6 +46,7 @@ import javax.annotation.processing.RoundEnvironment;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.Name;
@@ -81,6 +82,7 @@ import javax.lang.model.SourceVersion;
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 import static java.lang.constant.ConstantDescs.NULL;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
+import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC_GETTER;
 
 import static javax.lang.model.util.ElementFilter.constructorsIn;
 import static javax.lang.model.util.ElementFilter.fieldsIn;
@@ -241,7 +243,7 @@ public final class Lang {
     if (t == null) {
       return Optional.of(NULL);
     }
-    return switch (t.getKind()) {
+    return switch (kind(t)) {
     case ARRAY -> describeConstable((ArrayType)t);
     case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> describeConstable((PrimitiveType)t);
     case DECLARED, ERROR -> describeConstable((DeclaredType)t);
@@ -279,13 +281,13 @@ public final class Lang {
     } else if (t instanceof ConstantDesc cd) {
       // Future proofing?
       return Optional.of(cd);
-    } else if (t.getKind() == TypeKind.ERROR) {
+    } else if (kind(t) == TypeKind.ERROR) {
       return Optional.empty();
     }
     // Ugh; this is tricky thanks to varargs. We'll do it imperatively for clarity.
     final TypeMirror enclosingType = t.getEnclosingType();
     final ConstantDesc enclosingTypeDesc =
-      enclosingType.getKind() == TypeKind.NONE ? NULL : describeConstable(enclosingType).orElse(null);
+      kind(enclosingType) == TypeKind.NONE ? NULL : describeConstable(enclosingType).orElse(null);
     if (enclosingTypeDesc == null) {
       return Optional.empty();
     }
@@ -329,7 +331,7 @@ public final class Lang {
                                                                         "noType",
                                                                         MethodTypeDesc.of(CD_NoType,
                                                                                           CD_TypeKind)),
-                                              t.getKind().describeConstable().orElseThrow()));
+                                              kind(t).describeConstable().orElseThrow()));
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final NullType t) {
@@ -363,7 +365,7 @@ public final class Lang {
                                                                         "primitiveType",
                                                                         MethodTypeDesc.of(CD_PrimitiveType,
                                                                                           CD_TypeKind)),
-                                              t.getKind().describeConstable().orElseThrow()));
+                                              kind(t).describeConstable().orElseThrow()));
 
   }
 
@@ -403,8 +405,116 @@ public final class Lang {
    */
 
 
+  /*
+   * Completion methods.
+   */
+
+  // These methods exist because "completion" in the compiler is lazy and is not thread safe. So to ensure a TypeMirror
+  // or an Element is completed, call one of these methods.
+  //
+  // In general this class tries to complete everything before returning a TypeMirror or an Element.
+  //
+  // Sample stack trace:
+  /*
+    java.lang.AssertionError: Filling jrt:/java.base/java/io/Serializable.class during DirectoryFileObject[/modules/java.base:java/lang/CharSequence.class]
+        at jdk.compiler/com.sun.tools.javac.util.Assert.error(Assert.java:162)
+        at jdk.compiler/com.sun.tools.javac.code.ClassFinder.fillIn(ClassFinder.java:365)
+        at jdk.compiler/com.sun.tools.javac.code.ClassFinder.complete(ClassFinder.java:301)
+        at jdk.compiler/com.sun.tools.javac.code.Symtab$1.complete(Symtab.java:326)
+        at jdk.compiler/com.sun.tools.javac.code.Symbol.complete(Symbol.java:682)
+        at jdk.compiler/com.sun.tools.javac.code.Symbol$ClassSymbol.complete(Symbol.java:1410)
+        at jdk.compiler/com.sun.tools.javac.code.Symbol.apiComplete(Symbol.java:688)
+        at jdk.compiler/com.sun.tools.javac.code.Type$ClassType.getKind(Type.java:1181)
+  */
+  
+  private static final <E extends Element> E complete(final E e) {
+    if (e == null) {
+      return null;
+    }
+    synchronized (completionLock(e)) {
+      final ElementKind k = e.getKind(); // side effect: completes TypeElements and some others
+      if (k.isExecutable()) {
+        final ExecutableElement ee = (ExecutableElement)e;
+        complete(e.asType());
+        completeElements(((ExecutableElement)e).getParameters());
+      } else if (k.isDeclaredType()) {
+        final TypeElement te = (TypeElement)e;
+        complete(te.getSuperclass());
+        completeTypes(te.getInterfaces());
+        completeElements(te.getTypeParameters());
+        completeElements(e.getEnclosedElements());
+      }
+    }
+    return e;
+  }
+
+  private static <L extends Iterable<? extends E>, E extends Element> L completeElements(final L es) {
+    for (final E e : es) {
+      complete(e);
+    }
+    return es;
+  }
+  
+  private static final Object completionLock(final Element e) {
+    return e;
+  }
+  
+  private static final <T extends TypeMirror> T complete(final T t) {
+    if (t == null) {
+      return null;
+    }
+    synchronized (completionLock(t)) {
+      switch (t.getKind()) { // if t is a declared type this will trigger Element completion
+      case ARRAY:
+        complete(((ArrayType)t).getComponentType());
+        break;
+      case EXECUTABLE:
+        final ExecutableType et = (ExecutableType)t;
+        completeTypes(et.getParameterTypes());
+        complete(et.getReceiverType());
+        complete(et.getReturnType());
+        completeTypes(et.getThrownTypes());
+        completeTypes(et.getTypeVariables());
+        break;
+      default:
+        break;
+      }
+    }
+    return t;
+  }
+
+  private static <L extends Iterable<? extends T>, T extends TypeMirror> L completeTypes(final L ts) {
+    for (final T t : ts) {
+      complete(t);
+    }
+    return ts;
+  }
+
+  private static final Object completionLock(final TypeMirror t) {
+    return t;
+  }
+
+  public static final ElementKind kind(final Element e) {
+    synchronized (completionLock(e)) {
+      return e.getKind();
+    }
+  }
+
+  public static final TypeKind kind(final TypeMirror t) {
+    synchronized (completionLock(t)) {
+      return t.getKind();
+    }
+  }
+  
+  public static final Element element(final TypeMirror t) {
+    final ProcessingEnvironment pe = pe();
+    synchronized (pe) {
+      return complete(pe.getTypeUtils().asElement(t));
+    }
+  }
+  
   public static final TypeMirror box(final TypeMirror t) {
-    return t.getKind().isPrimitive() ? boxedClass((PrimitiveType)t).asType() : t;
+    return kind(t).isPrimitive() ? boxedClass((PrimitiveType)t).asType() : t;
   }
 
   public static final TypeMirror unbox(final TypeMirror t) {
@@ -414,13 +524,14 @@ public final class Lang {
   public static final TypeElement boxedClass(final PrimitiveType t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getTypeUtils().boxedClass(t);
+      return complete(pe.getTypeUtils().boxedClass(t));
     }
   }
 
   public static final PrimitiveType unboxedType(final TypeMirror t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
+      // No need to complete().
       return pe.getTypeUtils().unboxedType(t);
     }
   }
@@ -428,15 +539,19 @@ public final class Lang {
   public static final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getTypeUtils().directSupertypes(t);
+      return completeTypes(pe.getTypeUtils().directSupertypes(t));
     }
   }
 
   public static final TypeMirror erasure(final TypeMirror typeMirror) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getTypeUtils().erasure(typeMirror);
+      return complete(pe.getTypeUtils().erasure(typeMirror));
     }
+  }
+
+  public static final ElementSource elementSource() {
+    return ConstableElementSource.INSTANCE;
   }
 
   public static final ModuleElement moduleElement(final Class<?> c) {
@@ -450,14 +565,14 @@ public final class Lang {
   public static final ModuleElement moduleElement(final CharSequence moduleName) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getElementUtils().getModuleElement(moduleName);
+      return complete(pe.getElementUtils().getModuleElement(moduleName));
     }
   }
 
   public static final ModuleElement moduleOf(final Element e) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getElementUtils().getModuleOf(e);
+      return complete(pe.getElementUtils().getModuleOf(e));
     }
   }
 
@@ -479,29 +594,33 @@ public final class Lang {
   public static final PackageElement packageElement(final CharSequence fullyQualifiedName) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getElementUtils().getPackageElement(fullyQualifiedName == null ? "" : fullyQualifiedName);
+      return complete(pe.getElementUtils().getPackageElement(fullyQualifiedName == null ? "" : fullyQualifiedName));
     }
   }
 
   public static final PackageElement packageElement(final Module module, final Package pkg) {
-    return packageElement(moduleElement(module), pkg);
+    synchronized (pe()) {
+      return packageElement(moduleElement(module), pkg);
+    }
   }
 
   public static final PackageElement packageElement(final ModuleElement moduleElement, final Package pkg) {
-    return packageElement(moduleElement, pkg == null ? null : pkg.getName());
+    synchronized (pe()) {
+      return packageElement(moduleElement, pkg == null ? null : pkg.getName());
+    }
   }
 
   public static final PackageElement packageElement(final ModuleElement moduleElement, final CharSequence fullyQualifiedName) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getElementUtils().getPackageElement(moduleElement, fullyQualifiedName);
+      return complete(pe.getElementUtils().getPackageElement(moduleElement, fullyQualifiedName));
     }
   }
 
   public static final PackageElement packageOf(final Element e) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getElementUtils().getPackageOf(e);
+      return complete(pe.getElementUtils().getPackageOf(e));
     }
   }
 
@@ -527,7 +646,7 @@ public final class Lang {
   public static final ArrayType arrayTypeOf(final TypeMirror componentType) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getTypeUtils().getArrayType(componentType);
+      return complete(pe.getTypeUtils().getArrayType(componentType));
     }
   }
 
@@ -578,7 +697,7 @@ public final class Lang {
                                                 final TypeMirror... typeArguments) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getTypeUtils().getDeclaredType(typeElement, typeArguments);
+      return complete(pe.getTypeUtils().getDeclaredType(typeElement, typeArguments));
     }
   }
 
@@ -596,7 +715,7 @@ public final class Lang {
                                                 final TypeMirror... typeArguments) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getTypeUtils().getDeclaredType(containingType, typeElement, typeArguments);
+      return complete(pe.getTypeUtils().getDeclaredType(containingType, typeElement, typeArguments));
     }
   }
 
@@ -739,6 +858,7 @@ public final class Lang {
   public static final NoType noType(final TypeKind k) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
+      // No need to complete.
       return pe.getTypeUtils().getNoType(k);
     }
   }
@@ -747,6 +867,7 @@ public final class Lang {
   public static final NullType nullType() {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
+      // No need to complete.
       return pe.getTypeUtils().getNullType();
     }
   }
@@ -762,6 +883,7 @@ public final class Lang {
   public static final PrimitiveType primitiveType(final TypeKind k) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
+      // No Need to complete.
       return pe.getTypeUtils().getPrimitiveType(k);
     }
   }
@@ -794,7 +916,7 @@ public final class Lang {
   public static final TypeElement typeElement(final CharSequence canonicalName) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getElementUtils().getTypeElement(canonicalName);
+      return complete(pe.getElementUtils().getTypeElement(canonicalName));
     }
   }
 
@@ -813,7 +935,7 @@ public final class Lang {
     }
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getElementUtils().getTypeElement(moduleElement, canonicalName);
+      return complete(pe.getElementUtils().getTypeElement(moduleElement, canonicalName));
     }
   }
 
@@ -892,6 +1014,7 @@ public final class Lang {
   public static final WildcardType wildcardType(final TypeMirror extendsBound, final TypeMirror superBound) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
+      // No need to complete.
       return pe.getTypeUtils().getWildcardType(extendsBound, superBound);
     }
   }
@@ -1103,5 +1226,41 @@ public final class Lang {
     t.setDaemon(true); // critical; runningLatch is never counted down except in error cases
     t.start();
   }
+
+
+  /*
+   * Inner and nested classes.
+   */
+
+
+  public static final class ConstableElementSource implements Constable, ElementSource {
+
+    private static final ClassDesc CD_ConstableElementSource = ClassDesc.of(ConstableElementSource.class.getName());
+    
+    public static final ConstableElementSource INSTANCE = new ConstableElementSource();
+
+    private ConstableElementSource() {
+      super();
+    }
+
+    @Override
+    public final Element element(final String moduleName, final String name) {
+      synchronized (pe()) {
+        return typeElement(moduleElement(moduleName), name);
+      }
+    }
+
+    @Override
+    public final Optional<DynamicConstantDesc<ConstableElementSource>> describeConstable() {
+      return
+        Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
+                                           MethodHandleDesc.ofField(STATIC_GETTER,
+                                                                    CD_ConstableElementSource,
+                                                                    "INSTANCE",
+                                                                    CD_ConstableElementSource)));
+    }
+
+  }
+
 
 }
