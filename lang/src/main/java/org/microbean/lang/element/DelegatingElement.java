@@ -70,7 +70,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   private DelegatingElement(final Element delegate, final ElementSource elementSource, final Equality ehc) {
     super();
-    this.delegate = Objects.requireNonNull(delegate, "delegate");
+    this.delegate = unwrap(Objects.requireNonNull(delegate, "delegate"));
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.ehc = ehc == null ? new Equality(true) : ehc;
   }
@@ -83,12 +83,13 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // Element
   public final <R, P> R accept(final ElementVisitor<R, P> v, final P p) {
+    // TODO: delegating element visitor?
     return this.delegate.accept(v, p);
   }
 
   @Override // Element
   public final TypeMirror asType() {
-    return this.delegate.asType(); // TODO: maybe wrap with DelegatingTypeMirror?
+    return DelegatingTypeMirror.of(this.delegate.asType(), this.elementSource, this.ehc);
   }
 
   public final Element delegate() {
@@ -99,7 +100,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
   public final ExecutableElement getAccessor() {
     switch (this.kind()) {
     case RECORD_COMPONENT:
-      return ((RecordComponentElement)this.delegate).getAccessor();
+      return of(((RecordComponentElement)this.delegate).getAccessor(), this.elementSource, this.ehc);
     default:
       return null;
     }
@@ -112,6 +113,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // Element
   public final List<? extends AnnotationMirror> getAnnotationMirrors() {
+    // TODO: delegating annotation mirror?
     return this.delegate.getAnnotationMirrors();
   }
 
@@ -124,7 +126,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
   public final List<? extends TypeMirror> getBounds() {
     switch (this.kind()) {
     case TYPE_PARAMETER:
-      return ((TypeParameterElement)this.delegate).getBounds();
+      return DelegatingTypeMirror.of(((TypeParameterElement)this.delegate).getBounds(), this.elementSource, this.ehc);
     default:
       return List.of();
     }
@@ -150,6 +152,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
   public final AnnotationValue getDefaultValue() {
     switch (this.kind()) {
     case ANNOTATION_TYPE:
+      // TODO: delegating annotation value? could be a type mirror after all
       return ((ExecutableElement)this.delegate).getDefaultValue();
     default:
       return null;
@@ -168,19 +171,19 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // Element
   public final List<? extends Element> getEnclosedElements() {
-    return this.delegate.getEnclosedElements();
+    return of(this.delegate.getEnclosedElements(), this.elementSource, this.ehc);
   }
 
   @Override // Element
   public final Element getEnclosingElement() {
-    return this.delegate.getEnclosingElement();
+    return of(this.delegate.getEnclosingElement(), this.elementSource, this.ehc);
   }
 
   @Override // TypeParameterElement
   public final Element getGenericElement() {
     switch (this.kind()) {
     case TYPE_PARAMETER:
-      return ((TypeParameterElement)this.delegate).getGenericElement();
+      return of(((TypeParameterElement)this.delegate).getGenericElement(), this.elementSource, this.ehc);
     default:
       return null; // illegal state
     }
@@ -194,7 +197,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
     case ENUM:
     case INTERFACE:
     case RECORD:
-      return ((TypeElement)this.delegate).getInterfaces();
+      return DelegatingTypeMirror.of(((TypeElement)this.delegate).getInterfaces(), this.elementSource, this.ehc);
     default:
       return List.of();
     }
@@ -213,7 +216,9 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // Element
   public final Set<Modifier> getModifiers() {
-    return this.delegate.getModifiers();
+    synchronized (this.delegate) {
+      return this.delegate.getModifiers();
+    }
   }
 
   @Override // TypeElement
@@ -235,7 +240,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
     switch (this.kind()) {
     case CONSTRUCTOR:
     case METHOD:
-      return ((ExecutableElement)this.delegate).getParameters();
+      return of(((ExecutableElement)this.delegate).getParameters(), this.elementSource, this.ehc);
     default:
       return List.of();
     }
@@ -259,12 +264,12 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ExecutableElement
   public final TypeMirror getReceiverType() {
-    return DelegatingTypeMirror.of(this.asType(), this.elementSource).getReceiverType();
+    return DelegatingTypeMirror.of(this.asType(), this.elementSource, this.ehc).getReceiverType();
   }
 
   @Override // ExecutableElement
   public final TypeMirror getReturnType() {
-    return DelegatingTypeMirror.of(this.asType(), this.elementSource).getReturnType();
+    return DelegatingTypeMirror.of(this.asType(), this.elementSource, this.ehc).getReturnType();
   }
 
   @Override // Element
@@ -280,7 +285,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
     case ENUM:
     case INTERFACE:
     case RECORD:
-      return ((TypeElement)this.delegate).getSuperclass();
+      return DelegatingTypeMirror.of(((TypeElement)this.delegate).getSuperclass(), this.elementSource, this.ehc);
     default:
       return NoType.NONE;
     }
@@ -288,7 +293,10 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // ExecutableElement
   public final List<? extends TypeMirror> getThrownTypes() {
-    return DelegatingTypeMirror.of(this.asType(), this.elementSource).getThrownTypes();
+    if (this.kind().isExecutable()) {
+      return DelegatingTypeMirror.of(((ExecutableElement)this.delegate).getThrownTypes(), this.elementSource, this.ehc);
+    }
+    return List.of();
   }
 
   @Override // ExecutableElement
@@ -296,7 +304,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
     switch (this.kind()) {
     case CONSTRUCTOR:
     case METHOD:
-      return ((ExecutableElement)this.delegate).getTypeParameters();
+      return of(((ExecutableElement)this.delegate).getTypeParameters(), this.elementSource, this.ehc);
     default:
       return List.of();
     }
@@ -347,7 +355,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
   @Override // Element
   public final int hashCode() {
-    return this.ehc.hashCode(this.delegate); // TODO: or just this?
+    return this.ehc.hashCode(this);
   }
 
   @Override // Element
@@ -355,7 +363,7 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
     if (this == other) {
       return true;
     } else if (other instanceof Element e) { // instanceof on purpose
-      return this.ehc.equals(this.delegate, e); // TODO: or just this?
+      return this.ehc.equals(this, e);
     } else {
       return false;
     }
@@ -373,9 +381,13 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
 
 
   public static final List<DelegatingElement> of(final Collection<? extends Element> es, final ElementSource elementSource) {
+    return of(es, elementSource, null);
+  }
+
+  public static final List<DelegatingElement> of(final Collection<? extends Element> es, final ElementSource elementSource, final Equality ehc) {
     final List<DelegatingElement> newEs = new ArrayList<>(es.size());
     for (final Element e : es) {
-      newEs.add(of(e, elementSource));
+      newEs.add(of(e, elementSource, ehc));
     }
     return Collections.unmodifiableList(newEs);
   }
@@ -385,7 +397,17 @@ public final class DelegatingElement implements ExecutableElement, ModuleElement
   }
 
   public static final DelegatingElement of(final Element e, final ElementSource elementSource, final Equality ehc) {
-    return e instanceof DelegatingElement d ? d : new DelegatingElement(e, elementSource, ehc);
+    return
+      e == null ? null :
+      e instanceof DelegatingElement d ? d :
+      new DelegatingElement(e, elementSource, ehc);
+  }
+
+  public static final Element unwrap(Element e) {
+    while (e instanceof DelegatingElement de) {
+      e = de.delegate();
+    }
+    return e;
   }
 
 }
