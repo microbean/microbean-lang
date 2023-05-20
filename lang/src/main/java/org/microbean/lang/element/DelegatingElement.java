@@ -48,7 +48,14 @@ import org.microbean.lang.Equality;
 import org.microbean.lang.type.DelegatingTypeMirror;
 import org.microbean.lang.type.NoType;
 
-public final class DelegatingElement implements ExecutableElement, ModuleElement, PackageElement, RecordComponentElement, TypeElement, TypeParameterElement, VariableElement {
+public final class DelegatingElement
+  implements ExecutableElement,
+             ModuleElement,
+             PackageElement,
+             RecordComponentElement,
+             TypeElement,
+             TypeParameterElement,
+             VariableElement {
 
 
   /*

@@ -176,6 +176,20 @@ public final class Lang {
                                               n.toString()));
   }
 
+  public static final Optional<? extends ConstantDesc> describeConstable(final Element e) {
+    if (e == null) {
+      return Optional.of(NULL);
+    }
+    final ElementKind k = kind(e);
+    return switch (k) {
+    case MODULE -> describeConstable((ModuleElement)e);
+    case PACKAGE -> describeConstable((PackageElement)e);
+    // TODO: others probably need to be handled but not as urgently
+    case ElementKind ek when ek.isDeclaredType() -> describeConstable((TypeElement)e);
+    default -> Optional.empty();
+    };
+  }
+
   public static final Optional<? extends ConstantDesc> describeConstable(final ModuleElement e) {
     if (e == null) {
       return Optional.of(NULL);
@@ -426,7 +440,7 @@ public final class Lang {
         at jdk.compiler/com.sun.tools.javac.code.Symbol.apiComplete(Symbol.java:688)
         at jdk.compiler/com.sun.tools.javac.code.Type$ClassType.getKind(Type.java:1181)
   */
-  
+
   private static final <E extends Element> E complete(final E e) {
     if (e == null) {
       return null;
@@ -454,11 +468,11 @@ public final class Lang {
     }
     return es;
   }
-  
+
   private static final Object completionLock(final Element e) {
     return e;
   }
-  
+
   private static final <T extends TypeMirror> T complete(final T t) {
     if (t == null) {
       return null;
@@ -505,14 +519,14 @@ public final class Lang {
       return t.getKind();
     }
   }
-  
+
   public static final Element element(final TypeMirror t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
       return complete(pe.getTypeUtils().asElement(t));
     }
   }
-  
+
   public static final TypeMirror box(final TypeMirror t) {
     return kind(t).isPrimitive() ? boxedClass((PrimitiveType)t).asType() : t;
   }
@@ -1236,7 +1250,7 @@ public final class Lang {
   public static final class ConstableElementSource implements Constable, ElementSource {
 
     private static final ClassDesc CD_ConstableElementSource = ClassDesc.of(ConstableElementSource.class.getName());
-    
+
     public static final ConstableElementSource INSTANCE = new ConstableElementSource();
 
     private ConstableElementSource() {

@@ -59,7 +59,18 @@ import org.microbean.lang.type.Types;
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
 
-public final class DelegatingTypeMirror implements ArrayType, Constable, ErrorType, ExecutableType, IntersectionType, javax.lang.model.type.NoType, NullType, PrimitiveType, TypeVariable, UnionType, WildcardType {
+public final class DelegatingTypeMirror
+  implements ArrayType,
+             Constable,
+             ErrorType,
+             ExecutableType,
+             IntersectionType,
+             javax.lang.model.type.NoType,
+             NullType,
+             PrimitiveType,
+             TypeVariable,
+             UnionType,
+             WildcardType {
 
   private static final ClassDesc CD_DelegatingTypeMirror = ClassDesc.of("org.microbean.lang.type.DelegatingTypeMirror");
 
