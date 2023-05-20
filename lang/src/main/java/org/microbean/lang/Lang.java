@@ -79,6 +79,8 @@ import javax.tools.ToolProvider;
 
 import javax.lang.model.SourceVersion;
 
+import org.microbean.lang.type.DelegatingTypeMirror;
+
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 import static java.lang.constant.ConstantDescs.NULL;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
@@ -523,7 +525,7 @@ public final class Lang {
   public static final Element element(final TypeMirror t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getTypeUtils().asElement(t));
+      return complete(pe.getTypeUtils().asElement(unwrap(t)));
     }
   }
 
@@ -538,7 +540,7 @@ public final class Lang {
   public static final TypeElement boxedClass(final PrimitiveType t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getTypeUtils().boxedClass(t));
+      return complete(pe.getTypeUtils().boxedClass((PrimitiveType)unwrap(t)));
     }
   }
 
@@ -546,21 +548,21 @@ public final class Lang {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
       // No need to complete().
-      return pe.getTypeUtils().unboxedType(t);
+      return pe.getTypeUtils().unboxedType(unwrap(t));
     }
   }
 
   public static final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return completeTypes(pe.getTypeUtils().directSupertypes(t));
+      return completeTypes(pe.getTypeUtils().directSupertypes(unwrap(t)));
     }
   }
 
-  public static final TypeMirror erasure(final TypeMirror typeMirror) {
+  public static final TypeMirror erasure(final TypeMirror t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getTypeUtils().erasure(typeMirror));
+      return complete(pe.getTypeUtils().erasure(unwrap(t)));
     }
   }
 
@@ -660,7 +662,7 @@ public final class Lang {
   public static final ArrayType arrayTypeOf(final TypeMirror componentType) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getTypeUtils().getArrayType(componentType));
+      return complete(pe.getTypeUtils().getArrayType(unwrap(componentType)));
     }
   }
 
@@ -711,6 +713,7 @@ public final class Lang {
                                                 final TypeMirror... typeArguments) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
+      // TODO: unwrap array
       return complete(pe.getTypeUtils().getDeclaredType(typeElement, typeArguments));
     }
   }
@@ -729,6 +732,7 @@ public final class Lang {
                                                 final TypeMirror... typeArguments) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
+      // TODO: unwrap array
       return complete(pe.getTypeUtils().getDeclaredType(containingType, typeElement, typeArguments));
     }
   }
@@ -897,7 +901,7 @@ public final class Lang {
   public static final PrimitiveType primitiveType(final TypeKind k) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      // No Need to complete.
+      // No need to complete.
       return pe.getTypeUtils().getPrimitiveType(k);
     }
   }
@@ -905,7 +909,7 @@ public final class Lang {
   public static final boolean sameType(final TypeMirror t, final TypeMirror s) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getTypeUtils().isSameType(t, s);
+      return pe.getTypeUtils().isSameType(unwrap(t), unwrap(s));
     }
   }
 
@@ -1029,21 +1033,21 @@ public final class Lang {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
       // No need to complete.
-      return pe.getTypeUtils().getWildcardType(extendsBound, superBound);
+      return pe.getTypeUtils().getWildcardType(unwrap(extendsBound), unwrap(superBound));
     }
   }
 
   public static final boolean assignable(final TypeMirror payload, final TypeMirror receiver) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getTypeUtils().isAssignable(payload, receiver);
+      return pe.getTypeUtils().isAssignable(unwrap(payload), unwrap(receiver));
     }
   }
 
   public static final boolean subtype(final TypeMirror payload, final TypeMirror receiver) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return pe.getTypeUtils().isSubtype(payload, receiver);
+      return pe.getTypeUtils().isSubtype(unwrap(payload), unwrap(receiver));
     }
   }
 
@@ -1239,6 +1243,10 @@ public final class Lang {
     }, "Lang");
     t.setDaemon(true); // critical; runningLatch is never counted down except in error cases
     t.start();
+  }
+
+  private static final TypeMirror unwrap(final TypeMirror t) {
+    return DelegatingTypeMirror.unwrap(t);
   }
 
 
