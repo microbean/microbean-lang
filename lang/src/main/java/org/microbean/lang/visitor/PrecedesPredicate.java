@@ -29,7 +29,7 @@ import javax.lang.model.type.TypeMirror;
 import org.microbean.lang.Equality;
 
 // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Symbol.java#L829-L849
-public final class PrecedesPredicate implements BiPredicate<Element, Element> {
+public class PrecedesPredicate implements BiPredicate<Element, Element> {
 
   private final SupertypeVisitor supertypeVisitor;
 
@@ -70,10 +70,8 @@ public final class PrecedesPredicate implements BiPredicate<Element, Element> {
         }
         final int rt = this.rank(t);
         final int rs = this.rank(s);
-        return
-          rs < rt ||
-          rs == rt && CharSequence.compare(((TypeElement)f).getQualifiedName(),
-                                           ((TypeElement)e).getQualifiedName()) < 0;
+        // Use JDK 21+ semantics; see https://github.com/openjdk/jdk/commit/426025aab42d485541a899844b96c06570088771
+        return rs < rt || (rs == rt && this.disambiguate((TypeElement)e, (TypeElement)f) < 0);
       default:
         return false;
       }
@@ -97,9 +95,13 @@ public final class PrecedesPredicate implements BiPredicate<Element, Element> {
     }
   }
 
+  protected int disambiguate(final TypeElement e, final TypeElement f) {
+    return CharSequence.compare(e.getQualifiedName(), f.getQualifiedName());
+  }
+  
   // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3576-L3621
   @SuppressWarnings("fallthrough")
-  private final int rank(final TypeMirror t) {
+  final int rank(final TypeMirror t) {
     switch (t.getKind()) {
     case DECLARED:
       if (((TypeElement)((DeclaredType)t).asElement()).getQualifiedName().contentEquals("java.lang.Object")) {

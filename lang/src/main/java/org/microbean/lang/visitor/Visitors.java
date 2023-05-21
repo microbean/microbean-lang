@@ -46,6 +46,8 @@ public final class Visitors {
 
   private final ConvertibleVisitor convertibleVisitor;
 
+  private final PrecedesPredicate precedesPredicate;
+
   private final TypeClosureVisitor typeClosureVisitor;
 
   private final AssignableVisitor assignableVisitor;
@@ -96,6 +98,7 @@ public final class Visitors {
     this.assignableVisitor = new AssignableVisitor(types, this.convertibleVisitor);
 
     final PrecedesPredicate precedesPredicate = new PrecedesPredicate(null, this.supertypeVisitor, this.subtypeVisitor);
+    this.precedesPredicate = precedesPredicate;
     this.typeClosureVisitor = new TypeClosureVisitor(es, this.supertypeVisitor, precedesPredicate);
     this.captureVisitor.setTypeClosureVisitor(this.typeClosureVisitor);
 
@@ -152,6 +155,10 @@ public final class Visitors {
 
   public final AssignableVisitor assignableVisitor() {
     return this.assignableVisitor;
+  }
+
+  public final PrecedesPredicate precedesPredicate() {
+    return this.precedesPredicate;
   }
 
   public final TypeClosureVisitor typeClosureVisitor() {

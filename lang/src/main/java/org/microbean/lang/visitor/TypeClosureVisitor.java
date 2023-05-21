@@ -82,10 +82,13 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
     if (closure == null) {
       switch (t.getKind()) {
       case INTERSECTION:
+        // (Vetted.)
+
         // The closure does not include the intersection type itself.  Note that this little nugget effectively removes
         // intersection types from the possible types that will ever be passed to TypeClosure#union(TypeMirror).
         closure = this.visit(this.supertypeVisitor.visit(t));
         break;
+        
       case DECLARED:
       case TYPEVAR:
         final TypeMirror st = this.supertypeVisitor.visit(t);
@@ -96,6 +99,7 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
           closure = this.visit(st);
           closure.union(t); // reflexive
           break;
+
         case TYPEVAR:
           closure = this.visit(st);
           // javac does this
@@ -111,11 +115,13 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
           assert t.getKind() == TypeKind.TYPEVAR : "Expected " + TypeKind.TYPEVAR + "; got DECLARED; t: " + t + "; st: " + st;
           closure.prepend((TypeVariable)t); // reflexive
           break;
+
         case NONE:
           closure = new TypeClosure(this.elementSource, this.precedesPredicate);
           assert t.getKind() == TypeKind.DECLARED; // ...i.e. not TYPEVAR
           closure.union(t); // reflexive
           break;
+
         default:
           throw new IllegalArgumentException("t: " + t);
         }

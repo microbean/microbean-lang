@@ -13,6 +13,7 @@
  */
 package org.microbean.lang;
 
+import java.lang.constant.Constable;
 import java.lang.constant.ConstantDesc;
 
 import java.lang.invoke.MethodHandles;
@@ -27,7 +28,9 @@ import javax.lang.model.type.TypeMirror;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class TestConstableSemantics {
@@ -47,6 +50,12 @@ final class TestConstableSemantics {
     final Optional<? extends ConstantDesc> o = Lang.describeConstable(t);
     assertTrue(o.isPresent());
     assertTrue(Lang.sameType(t, (TypeMirror)o.orElseThrow(AssertionError::new).resolveConstantDesc(MethodHandles.lookup())));
+  }
+
+  @Test
+  final void testConstableElementSource() throws ReflectiveOperationException {
+    final ElementSource es = Lang.elementSource();
+    assertSame(es, ((Constable)es).describeConstable().orElseThrow().resolveConstantDesc(MethodHandles.lookup()));
   }
   
 }
