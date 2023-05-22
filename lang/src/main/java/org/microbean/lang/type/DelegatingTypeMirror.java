@@ -182,7 +182,7 @@ public final class DelegatingTypeMirror
 
   @Override // TypeMirror
   public final TypeKind getKind() {
-    synchronized (CompletionLock.class) {
+    synchronized (CompletionLock.monitor()) {
       return this.delegate.getKind();
     }
   }

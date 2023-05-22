@@ -133,7 +133,7 @@ public final class DelegatingElement
 
   @Override // Element
   public final List<? extends AnnotationMirror> getAnnotationMirrors() {
-    synchronized (CompletionLock.class) {
+    synchronized (CompletionLock.monitor()) {
       // TODO: delegating annotation mirror?
       return this.delegate.getAnnotationMirrors();
     }
@@ -194,7 +194,7 @@ public final class DelegatingElement
   @Override // Element
   public final List<? extends Element> getEnclosedElements() {
     final List<? extends Element> ee;
-    synchronized (CompletionLock.class) {
+    synchronized (CompletionLock.monitor()) {
       ee = this.delegate.getEnclosedElements();
     }
     return of(ee, this.elementSource, this.ehc);
@@ -231,14 +231,14 @@ public final class DelegatingElement
 
   @Override // Element
   public final ElementKind getKind() {
-    synchronized (CompletionLock.class) {
+    synchronized (CompletionLock.monitor()) {
       return this.delegate.getKind();
     }
   }
 
   @Override // Element
   public final Set<Modifier> getModifiers() {
-    synchronized (CompletionLock.class) {
+    synchronized (CompletionLock.monitor()) {
       return this.delegate.getModifiers();
     }
   }

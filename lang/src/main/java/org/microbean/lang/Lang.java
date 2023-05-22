@@ -184,7 +184,7 @@ public final class Lang {
     if (e == null) {
       return Optional.of(NULL);
     }
-    final ElementKind k = kind(e);
+    final ElementKind k = e.getKind();
     return switch (k) {
     case MODULE -> describeConstable((ModuleElement)e);
     case PACKAGE -> describeConstable((PackageElement)e);
@@ -261,7 +261,7 @@ public final class Lang {
     if (t == null) {
       return Optional.of(NULL);
     }
-    return switch (kind(t)) {
+    return switch (t.getKind()) {
     case ARRAY -> describeConstable((ArrayType)t);
     case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> describeConstable((PrimitiveType)t);
     case DECLARED, ERROR -> describeConstable((DeclaredType)t);
@@ -299,13 +299,13 @@ public final class Lang {
     } else if (t instanceof ConstantDesc cd) {
       // Future proofing?
       return Optional.of(cd);
-    } else if (kind(t) == TypeKind.ERROR) {
+    } else if (t.getKind() == TypeKind.ERROR) {
       return Optional.empty();
     }
     // Ugh; this is tricky thanks to varargs. We'll do it imperatively for clarity.
     final TypeMirror enclosingType = t.getEnclosingType();
     final ConstantDesc enclosingTypeDesc =
-      kind(enclosingType) == TypeKind.NONE ? NULL : describeConstable(enclosingType).orElse(null);
+      enclosingType.getKind() == TypeKind.NONE ? NULL : describeConstable(enclosingType).orElse(null);
     if (enclosingTypeDesc == null) {
       return Optional.empty();
     }
@@ -349,7 +349,7 @@ public final class Lang {
                                                                         "noType",
                                                                         MethodTypeDesc.of(CD_NoType,
                                                                                           CD_TypeKind)),
-                                              kind(t).describeConstable().orElseThrow()));
+                                              t.getKind().describeConstable().orElseThrow()));
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final NullType t) {
@@ -383,7 +383,7 @@ public final class Lang {
                                                                         "primitiveType",
                                                                         MethodTypeDesc.of(CD_PrimitiveType,
                                                                                           CD_TypeKind)),
-                                              kind(t).describeConstable().orElseThrow()));
+                                              t.getKind().describeConstable().orElseThrow()));
 
   }
 
@@ -440,14 +440,14 @@ public final class Lang {
 
   @Deprecated
   public static final ElementKind kind(final Element e) {
-    synchronized (CompletionLock.class) {
+    synchronized (CompletionLock.monitor()) {
       return e.getKind();
     }
   }
 
   @Deprecated
   public static final TypeKind kind(final TypeMirror t) {
-    synchronized (CompletionLock.class) {
+    synchronized (CompletionLock.monitor()) {
       return t.getKind();
     }
   }
@@ -461,7 +461,7 @@ public final class Lang {
 
   public static final TypeMirror box(TypeMirror t) {
     final TypeKind k;
-    synchronized (CompletionLock.class) {
+    synchronized (CompletionLock.monitor()) {
       k = t.getKind();
     }
     return k.isPrimitive() ? boxedClass((PrimitiveType)t).asType() : t;
@@ -666,7 +666,6 @@ public final class Lang {
                                                 final TypeMirror... typeArguments) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      // TODO: unwrap array
       return wrap(pe.getTypeUtils().getDeclaredType(unwrap(containingType), unwrap(typeElement), unwrap(typeArguments)));
     }
   }
