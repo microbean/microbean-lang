@@ -2,17 +2,14 @@
  *
  * Copyright © 2023 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang;
 
@@ -28,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.microbean.lang.type.DelegatingTypeMirror;
 import org.microbean.lang.type.Types;
 
 import org.microbean.lang.visitor.AssignableVisitor;
@@ -37,6 +35,8 @@ import org.microbean.lang.visitor.Visitors;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import static org.microbean.lang.Lang.unwrap;
 
 final class TestAssignable {
 
@@ -82,7 +82,9 @@ final class TestAssignable {
   @Test
   final void testListStringAssignableToListQuestionMark() {
     final DeclaredType listString = this.jlm.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
+    assertTrue(listString instanceof DelegatingTypeMirror);
     final DeclaredType listQuestionMark = this.jlm.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.jlm.wildcardType());
+    assertTrue(listQuestionMark instanceof DelegatingTypeMirror);
     assertSubtype(listString, listQuestionMark);
     assertAssignable(listString, listQuestionMark);
     assertNotSubtype(listQuestionMark, listString);
@@ -108,11 +110,11 @@ final class TestAssignable {
   @Test
   final void testRawListAssignableToListQuestionMark() {
     final DeclaredType rawList = this.jlm.declaredType((TypeElement)this.es.element("java.base", "java.util.List"));
-    assertTrue(((com.sun.tools.javac.code.Type)rawList).isRaw());
+    assertTrue(((com.sun.tools.javac.code.Type)unwrap(rawList)).isRaw());
     assertTrue(this.types.raw(rawList));
 
     final DeclaredType listQuestionMark = this.jlm.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.jlm.wildcardType());
-    assertFalse(((com.sun.tools.javac.code.Type)listQuestionMark).isRaw());
+    assertFalse(((com.sun.tools.javac.code.Type)unwrap(listQuestionMark)).isRaw());
     assertFalse(this.types.raw(listQuestionMark));
 
     // List<?> is a subtype of List

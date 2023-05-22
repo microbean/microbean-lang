@@ -47,7 +47,7 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
     this.precedesPredicate = Objects.requireNonNull(precedesPredicate, "precedesPredicate");
     this.closureCache = new WeakHashMap<>();
   }
-  
+
   @Override
   protected final TypeClosure defaultAction(final TypeMirror t, final Void x) {
     // Interestingly, javac's Types#closure(Type) method returns a single-element list containing t if t is not a class
@@ -82,13 +82,11 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
     if (closure == null) {
       switch (t.getKind()) {
       case INTERSECTION:
-        // (Vetted.)
-
         // The closure does not include the intersection type itself.  Note that this little nugget effectively removes
         // intersection types from the possible types that will ever be passed to TypeClosure#union(TypeMirror).
         closure = this.visit(this.supertypeVisitor.visit(t));
         break;
-        
+
       case DECLARED:
       case TYPEVAR:
         final TypeMirror st = this.supertypeVisitor.visit(t);
@@ -101,7 +99,6 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
           break;
 
         case TYPEVAR:
-          closure = this.visit(st);
           // javac does this
           // (https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3717-L3718):
           //
@@ -113,17 +110,29 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
           //
           // (The only time a supertype can be a type variable is if the subtype is also a type variable.)
           assert t.getKind() == TypeKind.TYPEVAR : "Expected " + TypeKind.TYPEVAR + "; got DECLARED; t: " + t + "; st: " + st;
+          closure = this.visit(st);
           closure.prepend((TypeVariable)t); // reflexive
           break;
 
         case NONE:
           closure = new TypeClosure(this.elementSource, this.precedesPredicate);
-          assert t.getKind() == TypeKind.DECLARED; // ...i.e. not TYPEVAR
           closure.union(t); // reflexive
           break;
 
         default:
-          throw new IllegalArgumentException("t: " + t);
+          // Every now and again, probably only under parallel testing scenarios:
+          /*
+            java.lang.IllegalArgumentException: t: T
+            at org.microbean.lang@0.0.1-SNAPSHOT/org.microbean.lang.visitor.TypeClosureVisitor.visitDeclaredOrIntersectionOrTypeVariable(TypeClosureVisitor.java:123)
+            at org.microbean.lang@0.0.1-SNAPSHOT/org.microbean.lang.visitor.TypeClosureVisitor.visitTypeVariable(TypeClosureVisitor.java:74)
+            at org.microbean.lang@0.0.1-SNAPSHOT/org.microbean.lang.visitor.TypeClosureVisitor.visitTypeVariable(TypeClosureVisitor.java:30)
+            at jdk.compiler/com.sun.tools.javac.code.Type$TypeVar.accept(Type.java:1737)
+            at java.compiler@20/javax.lang.model.util.AbstractTypeVisitor6.visit(AbstractTypeVisitor6.java:104)
+            at org.microbean.bean@0.0.1-SNAPSHOT/org.microbean.bean.ReferenceTypeList.closure(ReferenceTypeList.java:251)
+            at org.microbean.bean@0.0.1-SNAPSHOT/org.microbean.bean.ReferenceTypeList.closure(ReferenceTypeList.java:237)
+          */
+          // Probably t.getKind() is ERROR, and this is a synchronization problem.
+          throw new IllegalArgumentException("t: " + t + "; t.getKind(): " + t.getKind());
         }
         break;
       default:

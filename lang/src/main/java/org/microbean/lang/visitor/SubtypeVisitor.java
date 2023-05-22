@@ -293,7 +293,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     final DeclaredType tsupDt = (DeclaredType)tsup;
     final DeclaredType sDt = (DeclaredType)s;
 
-    if (tsupDt.asElement() == sDt.asElement()) {
+    if (this.equality.equals(tsupDt.asElement(), sDt.asElement())) {
       // so far so good
       if (allTypeArguments(sDt).isEmpty()) {
         // so far so good

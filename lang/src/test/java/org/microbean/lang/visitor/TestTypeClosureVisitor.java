@@ -38,11 +38,17 @@ import org.junit.jupiter.api.Test;
 import org.microbean.lang.Equality;
 import org.microbean.lang.Lang;
 
+import org.microbean.lang.element.DelegatingElement;
+
+import org.microbean.lang.type.DelegatingTypeMirror;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+
+import static org.microbean.lang.Lang.unwrap;
 
 final class TestTypeClosureVisitor {
 
@@ -71,7 +77,9 @@ final class TestTypeClosureVisitor {
   @Test
   final void testClosure() {
     final TypeMirror s = Lang.declaredType("java.lang.String");
-    final List<? extends TypeMirror> closure = javacCodeTypes.closure((Type)s);
+    assertTrue(s instanceof DelegatingTypeMirror);
+    
+    final List<? extends TypeMirror> closure = javacCodeTypes.closure((Type)unwrap(s));
     final List<? extends TypeMirror> visitorClosure = this.visitors.typeClosureVisitor().visit(s).toList();
     assertEquals(closure.size(), visitorClosure.size());
     assertTrue(sameType(Lang.declaredType("java.lang.Object"), closure.get(closure.size() - 1)));
@@ -114,13 +122,19 @@ final class TestTypeClosureVisitor {
   @Test
   final void testUnion() {
     final TypeElement serializableElement = Lang.typeElement("java.io.Serializable");
+    assertTrue(serializableElement instanceof DelegatingElement);
+
     final DeclaredType serializable = (DeclaredType)serializableElement.asType();
-
+    assertTrue(serializable instanceof DelegatingTypeMirror);
+    
     final TypeElement constantDescElement = Lang.typeElement("java.lang.constant.ConstantDesc");
+    assertTrue(constantDescElement instanceof DelegatingElement);
+    
     final DeclaredType constantDesc = (DeclaredType)constantDescElement.asType();
-
-    final List<? extends TypeMirror> union = javacCodeTypes.union(com.sun.tools.javac.util.List.of((Type)serializable),
-                                                                  com.sun.tools.javac.util.List.of((Type)constantDesc));
+    assertTrue(constantDesc instanceof DelegatingTypeMirror);
+    
+    final List<? extends TypeMirror> union = javacCodeTypes.union(com.sun.tools.javac.util.List.of((Type)unwrap(serializable)),
+                                                                  com.sun.tools.javac.util.List.of((Type)unwrap(constantDesc)));
 
     final PrecedesPredicate precedesPredicate = this.visitors.precedesPredicate();
     final TypeClosure typeClosure = new TypeClosure(Lang.elementSource(), precedesPredicate);
@@ -131,25 +145,32 @@ final class TestTypeClosureVisitor {
 
   @Test
   final void testCharSequenceAndComparablePrecedence() {
-    final TypeElement charSequenceElement = Lang.typeElement("java.lang.CharSequence");
-    final DeclaredType charSequence = (DeclaredType)charSequenceElement.asType();
 
+    final TypeElement charSequenceElement = Lang.typeElement("java.lang.CharSequence");
+    assertTrue(charSequenceElement instanceof DelegatingElement);
+
+    final DeclaredType charSequence = (DeclaredType)charSequenceElement.asType();
+    assertTrue(charSequence instanceof DelegatingTypeMirror);
+    
     final TypeElement comparableElement = Lang.typeElement("java.lang.Comparable");
+    assertTrue(comparableElement instanceof DelegatingElement);
+    
     final DeclaredType comparableString = Lang.declaredType(null, comparableElement, Lang.declaredType("java.lang.String"));
-    assertSame(comparableElement, comparableString.asElement());
+    assertTrue(comparableString instanceof DelegatingTypeMirror);
+    assertSame(unwrap(comparableElement), unwrap(comparableString.asElement()));
 
     final PrecedesPredicate precedesPredicate = this.visitors.precedesPredicate();
 
     // This is wild.  The ranks are the same across the board:
-    final int rank = javacCodeTypes.rank((Type)charSequence);
+    final int rank = javacCodeTypes.rank((Type)unwrap(charSequence));
     assertEquals(1, rank);
-    assertEquals(1, javacCodeTypes.rank((Type)comparableString));
+    assertEquals(1, javacCodeTypes.rank((Type)unwrap(comparableString)));
     assertEquals(1, precedesPredicate.rank(charSequence));
     assertEquals(1, precedesPredicate.rank(comparableString));
 
     // The type tags are the same:
-    assertSame(TypeTag.CLASS, ((Type)charSequence).getTag());
-    assertSame(TypeTag.CLASS, ((Type)comparableString).getTag());
+    assertSame(TypeTag.CLASS, ((Type)unwrap(charSequence)).getTag());
+    assertSame(TypeTag.CLASS, ((Type)unwrap(comparableString)).getTag());
 
     // charSequenceName precedes comparableName:
     final com.sun.tools.javac.util.Name charSequenceName = (com.sun.tools.javac.util.Name)charSequenceElement.getQualifiedName();
@@ -173,7 +194,7 @@ final class TestTypeClosureVisitor {
     //     (types.rank(that.type) == types.rank(this.type) &&
     //     this.getQualifiedName().compareTo(that.getQualifiedName()) < 0); // <-- NOTE
 
-    final boolean precedes = ((TypeSymbol)charSequenceElement).precedes((TypeSymbol)comparableElement, javacCodeTypes);
+    final boolean precedes = ((TypeSymbol)unwrap(charSequenceElement)).precedes((TypeSymbol)unwrap(comparableElement), javacCodeTypes);
     if (Runtime.version().feature() < 21) {
       assertFalse(precedes); // See https://github.com/openjdk/jdk/commit/426025aab42d485541a899844b96c06570088771
     } else {
@@ -188,22 +209,28 @@ final class TestTypeClosureVisitor {
   @Test
   final void testSerializableAndConstantDescPrecedence() {
     final TypeElement serializableElement = Lang.typeElement("java.io.Serializable");
+    assertTrue(serializableElement instanceof DelegatingElement);
+    
     final DeclaredType serializable = (DeclaredType)serializableElement.asType();
-
+    assertTrue(serializable instanceof DelegatingTypeMirror);
+    
     final TypeElement constantDescElement = Lang.typeElement("java.lang.constant.ConstantDesc");
+    assertTrue(constantDescElement instanceof DelegatingElement);
+    
     final DeclaredType constantDesc = (DeclaredType)constantDescElement.asType();
-
+    assertTrue(constantDesc instanceof DelegatingTypeMirror);
+    
     final PrecedesPredicate precedesPredicate = this.visitors.precedesPredicate();
 
     // Ranks are equal.
-    assertEquals(1, javacCodeTypes.rank((Type)serializable));
-    assertEquals(1, javacCodeTypes.rank((Type)constantDesc));
+    assertEquals(1, javacCodeTypes.rank((Type)unwrap(serializable)));
+    assertEquals(1, javacCodeTypes.rank((Type)unwrap(constantDesc)));
     assertEquals(1, precedesPredicate.rank(serializable));
     assertEquals(1, precedesPredicate.rank(constantDesc));
 
     // Both types have CLASS tag internally.
-    assertSame(TypeTag.CLASS, ((Type)serializable).getTag());
-    assertSame(TypeTag.CLASS, ((Type)constantDesc).getTag());
+    assertSame(TypeTag.CLASS, ((Type)unwrap(serializable)).getTag());
+    assertSame(TypeTag.CLASS, ((Type)unwrap(constantDesc)).getTag());
 
     final com.sun.tools.javac.util.Name serializableName = (com.sun.tools.javac.util.Name)serializableElement.getQualifiedName();
     final com.sun.tools.javac.util.Name constantDescName = (com.sun.tools.javac.util.Name)constantDescElement.getQualifiedName();
@@ -217,11 +244,11 @@ final class TestTypeClosureVisitor {
       // "java.lang.constant.ConstantDesc".
       assertTrue(serializableName.compareTo(constantDescName) > 0); // This is wild. See https://github.com/openjdk/jdk/commit/426025aab42d485541a899844b96c06570088771
       // And yet, thanks to the reverse comparison order in JDK 20:
-      assertTrue(((TypeSymbol)serializableElement).precedes((TypeSymbol)constantDescElement, javacCodeTypes));
+      assertTrue(((TypeSymbol)unwrap(serializableElement)).precedes((TypeSymbol)unwrap(constantDescElement), javacCodeTypes));
     } else {
       // In JDK 21+, they fixed this.
       assertTrue(serializableName.compareTo(constantDescName) < 0);
-      assertTrue(((TypeSymbol)serializableElement).precedes((TypeSymbol)constantDescElement, javacCodeTypes));
+      assertTrue(((TypeSymbol)unwrap(serializableElement)).precedes((TypeSymbol)unwrap(constantDescElement), javacCodeTypes));
     }
 
     // We follow the JDK 21 approach.

@@ -38,6 +38,8 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import static org.microbean.lang.Lang.unwrap;
+
 final class TestBoundingClassVisitor {
 
   private Visitors visitors;
@@ -59,9 +61,9 @@ final class TestBoundingClassVisitor {
   @Test
   final void testSimple() {
     final DeclaredType t = Lang.declaredType(String.class);
-    assertSame(Lang.noType(TypeKind.NONE), t.getEnclosingType());
+    assertSame(Lang.noType(TypeKind.NONE), unwrap(t.getEnclosingType()));
     // classBound() doesn't do anything here, obviously:
-    assertSame(t, this.javacCodeTypes.classBound((Type)t));
+    assertSame(unwrap(t), this.javacCodeTypes.classBound((Type)unwrap(t)));
     assertSame(t, this.visitors.boundingClassVisitor().visit(t));
   }
   
@@ -70,12 +72,12 @@ final class TestBoundingClassVisitor {
     final DataHolder<String>.Inner inner = new DataHolder<>("hello").data();
     final DeclaredType outerDeclaredType = Lang.declaredType(Lang.typeElement(DataHolder.class), Lang.declaredType(String.class));
     final DeclaredType innerDeclaredType = Lang.declaredType(outerDeclaredType, Lang.typeElement(inner.getClass()));
-    assertSame(outerDeclaredType, innerDeclaredType.getEnclosingType());
+    assertSame(unwrap(outerDeclaredType), unwrap(innerDeclaredType.getEnclosingType()));
     // classBound() doesn't do anything here:
-    assertSame(outerDeclaredType, this.javacCodeTypes.classBound((Type)outerDeclaredType));
+    assertSame(unwrap(outerDeclaredType), this.javacCodeTypes.classBound((Type)unwrap(outerDeclaredType)));
     assertSame(outerDeclaredType, this.visitors.boundingClassVisitor().visit(outerDeclaredType));
     // classBound() doesn't do anything here either:
-    assertSame(innerDeclaredType, this.javacCodeTypes.classBound((Type)innerDeclaredType));
+    assertSame(unwrap(innerDeclaredType), this.javacCodeTypes.classBound((Type)unwrap(innerDeclaredType)));
     assertSame(innerDeclaredType, this.visitors.boundingClassVisitor().visit(innerDeclaredType));
   }
 
@@ -90,7 +92,7 @@ final class TestBoundingClassVisitor {
     final DeclaredType outerDeclaredType = Lang.declaredType(Lang.typeElement(DataHolder.class), Lang.declaredType(String.class));
     final DeclaredType innerDeclaredType = Lang.declaredType(outerDeclaredType, Lang.typeElement(inner.getClass()));
     // classBound() doesn't do anything here either:
-    assertSame(innerDeclaredType, this.javacCodeTypes.classBound((Type)innerDeclaredType));
+    assertSame(unwrap(innerDeclaredType), this.javacCodeTypes.classBound((Type)unwrap(innerDeclaredType)));
     assertSame(innerDeclaredType, this.visitors.boundingClassVisitor().visit(innerDeclaredType));
 
     final Method thisMethod = TestBoundingClassVisitor.class.getDeclaredMethod("testReallyComplicated0", DataHolder.class);
@@ -103,7 +105,7 @@ final class TestBoundingClassVisitor {
     }
     final TypeVariable xxx = Lang.typeVariable(xx);
     // Here's where classBound() does something:
-    assertNotSame(xxx, this.javacCodeTypes.classBound((Type)xxx));
+    assertNotSame(unwrap(xxx), this.javacCodeTypes.classBound((Type)unwrap(xxx)));
     assertNotSame(xxx, this.visitors.boundingClassVisitor().visit(xxx));
   }
 

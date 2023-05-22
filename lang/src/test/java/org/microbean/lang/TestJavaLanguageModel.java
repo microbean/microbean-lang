@@ -45,6 +45,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.microbean.lang.element.DelegatingElement;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -52,6 +54,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+
+import static org.microbean.lang.Lang.unwrap;
 
 final class TestJavaLanguageModel {
 
@@ -79,6 +83,7 @@ final class TestJavaLanguageModel {
     assertNotNull(x);
     final TypeElement r = jlm.typeElement("org.microbean.lang.TestJavaLanguageModel.Gloop");
     assertNotNull(r);
+    assertTrue(r instanceof DelegatingElement);
     assertSame(ElementKind.RECORD, r.getKind());
     assertSame(TypeKind.DECLARED, r.asType().getKind());
     assertEquals(1, r.getRecordComponents().size());
@@ -134,7 +139,7 @@ final class TestJavaLanguageModel {
     assertSame(List.class, tv.getGenericDeclaration());
     final TypeParameterElement tpe = this.jlm.typeParameterElement(tv);
     assertTrue(tpe.getSimpleName().contentEquals("E"));
-    assertSame(tpe.asType(), this.jlm.typeVariable(tv));
+    assertSame(unwrap(tpe.asType()), unwrap(this.jlm.typeVariable(tv)));
   }
 
   private static List<String> listString() {

@@ -46,6 +46,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import static org.microbean.lang.Lang.unwrap;
+
 final class TestSupertypeVisitor2 {
 
   private com.sun.tools.javac.code.Types javacCodeTypes;
@@ -71,14 +73,17 @@ final class TestSupertypeVisitor2 {
 
     final SupertypeVisitor supertypeVisitor = this.visitors.supertypeVisitor();
     
-    assertSame(this.javacCodeTypes.supertype((Type)integerElementType),
-               supertypeVisitor.visit(integerElementType));
+    assertSame(this.javacCodeTypes.supertype((Type)unwrap(integerElementType)),
+               unwrap(supertypeVisitor.visit(integerElementType)));
 
     // How about superinterfaces?
 
-    final List<Type> javacInterfaces = this.javacCodeTypes.interfaces((Type)integerElementType);
+    final List<Type> javacInterfaces = this.javacCodeTypes.interfaces((Type)unwrap(integerElementType));
     final List<? extends TypeMirror> interfaces = supertypeVisitor.interfacesVisitor().visit(integerElementType);
-    assertEquals(javacInterfaces, interfaces);
+    assertEquals(javacInterfaces.size(), interfaces.size());
+    for (int i = 0; i < javacInterfaces.size(); i++) {
+      assertEquals(javacInterfaces.get(i), unwrap(interfaces.get(i)));
+    }
 
   }
 
@@ -86,12 +91,12 @@ final class TestSupertypeVisitor2 {
   final void testSupertypeOfInterface() {
     final DeclaredType serializableElementType = (DeclaredType)Lang.typeElement("java.io.Serializable").asType();
     assertSame(TypeKind.DECLARED, serializableElementType.getKind());
-    assertSame(Lang.declaredType("java.lang.Object"), this.javacCodeTypes.supertype((Type)serializableElementType));
+    assertSame(unwrap(Lang.declaredType("java.lang.Object")), this.javacCodeTypes.supertype((Type)unwrap(serializableElementType)));
   }
 
   @Test
   final void testSupertypeOfObject() {
-    assertSame(Lang.noType(TypeKind.NONE), this.javacCodeTypes.supertype((Type)Lang.declaredType("java.lang.Object")));
+    assertSame(Lang.noType(TypeKind.NONE), this.javacCodeTypes.supertype((Type)unwrap(Lang.declaredType("java.lang.Object"))));
   }
 
   @Test
@@ -102,19 +107,19 @@ final class TestSupertypeVisitor2 {
         }
         return true;
       });
-    assertSame(Lang.noType(TypeKind.NONE), supertypeVisitor.visit(Lang.declaredType("java.io.Serializable")));
+    assertSame(Lang.noType(TypeKind.NONE), unwrap(supertypeVisitor.visit(Lang.declaredType("java.io.Serializable"))));
   }
 
   @Test
   final void testFilter2() {
-    assertSame(Lang.declaredType("java.lang.Number"), this.javacCodeTypes.supertype((Type)Lang.declaredType("java.lang.Integer")));
+    assertSame(unwrap(Lang.declaredType("java.lang.Number")), this.javacCodeTypes.supertype((Type)unwrap(Lang.declaredType("java.lang.Integer"))));
     final SupertypeVisitor supertypeVisitor = this.visitors.supertypeVisitor().withFilter(t -> {
         if (t.getKind() == TypeKind.DECLARED && ((TypeElement)((DeclaredType)t).asElement()).getQualifiedName().contentEquals("java.lang.Number")) {
           return false;
         }
         return true;
       });
-    assertSame(Lang.declaredType("java.lang.Object"), supertypeVisitor.visit(Lang.declaredType("java.lang.Integer")));
+    assertSame(unwrap(Lang.declaredType("java.lang.Object")), supertypeVisitor.visit(unwrap(Lang.declaredType("java.lang.Integer"))));
   }
 
 }

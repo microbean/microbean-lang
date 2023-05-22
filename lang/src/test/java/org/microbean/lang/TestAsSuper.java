@@ -32,6 +32,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.microbean.lang.element.DelegatingElement;
+
+import org.microbean.lang.type.DelegatingTypeMirror;
+
 import org.microbean.lang.visitor.AsSuperVisitor;
 import org.microbean.lang.visitor.ContainsTypeVisitor;
 import org.microbean.lang.visitor.EraseVisitor;
@@ -45,6 +49,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import static org.microbean.lang.Lang.unwrap;
 
 final class TestAsSuper {
 
@@ -79,17 +85,25 @@ final class TestAsSuper {
   @Test
   final void testAsSuperStringObject() {
     final TypeElement stringElement = this.jlm.typeElement("java.lang.String");
+    assertTrue(stringElement instanceof DelegatingElement);
+    
     final DeclaredType stringTypeDeclaration = (DeclaredType)stringElement.asType();
+    assertTrue(stringTypeDeclaration instanceof DelegatingTypeMirror);
+    
     final Element objectElement = this.jlm.typeElement("java.lang.Object");
+    assertTrue(objectElement instanceof DelegatingElement);
+    
     final DeclaredType objectTypeDeclaration = (DeclaredType)objectElement.asType();
-    assertSame(objectElement, objectTypeDeclaration.asElement());
-    assertSame(objectElement, org.microbean.lang.type.Types.asElement(objectTypeDeclaration, true));
+    assertTrue(objectTypeDeclaration instanceof DelegatingTypeMirror);
+    
+    assertSame(unwrap(objectElement), unwrap(objectTypeDeclaration.asElement()));
+    assertSame(unwrap(objectElement), unwrap(org.microbean.lang.type.Types.asElement(objectTypeDeclaration, true)));
     final DeclaredType stringTypeSuperclass = (DeclaredType)stringElement.getSuperclass();
     final Element stringTypeSuperclassElement = stringTypeSuperclass.asElement();
-    assertSame(objectElement, stringTypeSuperclassElement);
+    assertSame(unwrap(objectElement), unwrap(stringTypeSuperclassElement));
     // WTF; this fails:
     // assertSame(objectTypeDeclaration, stringTypeSuperclass);
-    assertTrue(this.javacCodeTypes.isSameType((Type)objectTypeDeclaration, (Type)stringTypeSuperclass));
+    assertTrue(this.javacCodeTypes.isSameType((Type)unwrap(objectTypeDeclaration), (Type)unwrap(stringTypeSuperclass)));
     assertTrue(this.visitors.sameTypeVisitor().visit(objectTypeDeclaration, stringTypeSuperclass));
     assertAsSuper(objectTypeDeclaration, stringTypeDeclaration, objectElement);
   }
@@ -98,26 +112,29 @@ final class TestAsSuper {
   final void testGorp() {
     // The element denoted by java.util.List.  Its underlying type declaration is the type denoted by java.util.List<E>.
     final TypeElement listElement = this.jlm.typeElement("java.util.List");
-
+    assertTrue(listElement instanceof DelegatingElement);
+    
     // The type denoted by java.util.List<E>
     final DeclaredType listTypeDeclaration = (DeclaredType)listElement.asType();
-
+    assertTrue(listTypeDeclaration instanceof DelegatingTypeMirror);
+    
     // The type denoted by java.util.List, i.e. a raw type.
     final DeclaredType rawListType = this.jlm.declaredType(listElement); // note: no varargs type arguments supplied
-    assertTrue(((Type)rawListType).isRaw());
+    assertTrue(rawListType instanceof DelegatingTypeMirror);
+    assertTrue(((Type)unwrap(rawListType)).isRaw());
 
     // The raw List type is not the same as the List<E> type declaration.
-    assertNotSame(rawListType, listTypeDeclaration);
+    assertNotSame(unwrap(rawListType), unwrap(listTypeDeclaration));
 
     // The type denoted by java.util.List<?>.
-    final DeclaredType listQuestionMarkType =
-      this.jlm.declaredType(listElement, this.jlm.wildcardType());
-    assertFalse(((Type)listQuestionMarkType).isRaw());
+    final DeclaredType listQuestionMarkType = this.jlm.declaredType(listElement, this.jlm.wildcardType());
+    assertTrue(listQuestionMarkType instanceof DelegatingTypeMirror);
+    assertFalse(((Type)unwrap(listQuestionMarkType)).isRaw());
     
-    assertSame(listElement, listQuestionMarkType.asElement());
-    assertSame(listElement, rawListType.asElement());
+    assertSame(unwrap(listElement), unwrap(listQuestionMarkType.asElement()));
+    assertSame(unwrap(listElement), unwrap(rawListType.asElement()));
 
-    assertSame(listElement, org.microbean.lang.type.Types.asElement(rawListType, true));
+    assertSame(unwrap(listElement), unwrap(org.microbean.lang.type.Types.asElement(rawListType, true)));
     
     // Why is the expected type rawListType? Because the asSuper visitor's visitClassType() method, line 2175 or so,
     // says:
@@ -135,12 +152,14 @@ final class TestAsSuper {
   }
 
   private final void assertAsSuper(final TypeMirror expected, final TypeMirror t, final Element e) {
-    assertSameType(expected, this.javacCodeTypes.asSuper((Type)t, (Symbol)e));
+    assertTrue(t instanceof DelegatingTypeMirror);
+    assertTrue(e instanceof DelegatingElement);
+    assertSameType(expected, this.javacCodeTypes.asSuper((Type)unwrap(t), (Symbol)unwrap(e)));
     assertSameType(expected, this.visitors.asSuperVisitor().visit(t, e));
   }
 
   private final void assertSameType(final TypeMirror t, final TypeMirror s) {
-    assertTrue(this.javacCodeTypes.isSameType((Type)t, (Type)s));
+    assertTrue(this.javacCodeTypes.isSameType((Type)unwrap(t), (Type)unwrap(s)));
     assertTrue(this.visitors.sameTypeVisitor().visit(t, s));
   }
 

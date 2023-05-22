@@ -122,7 +122,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
     assert t.getKind() == TypeKind.DECLARED && s.getKind() == TypeKind.DECLARED;
     assert t != s;
     return
-      t.asElement() == s.asElement() && // TODO: *true* identity? Or just extreme equality?
+      this.equality.equals(t.asElement(), s.asElement()) && // yes, really extreme equality not identity/==
       this.visit(t.getEnclosingType(), s.getEnclosingType()) && // RECURSIVE
       this.containsTypeEquivalent(t.getTypeArguments(), s.getTypeArguments());
   }

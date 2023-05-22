@@ -19,11 +19,14 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVisitor;
 
 import org.microbean.lang.ElementSource;
+import org.microbean.lang.Lang;
 
 import org.microbean.lang.type.Types;
 
 public final class Visitors {
 
+  private final ElementSource elementSource;
+  
   private final EraseVisitor eraseVisitor;
 
   private final SupertypeVisitor supertypeVisitor;
@@ -62,11 +65,15 @@ public final class Visitors {
     this(es, subtypeCapture, wildcardsCompatible, t -> true);
   }
 
-  public Visitors(final ElementSource es,
+  public Visitors(ElementSource es,
                   final boolean subtypeCapture /* false by default */,
                   final boolean wildcardsCompatible /* true by default */,
                   final Predicate<? super TypeMirror> supertypeFilter) {
     super();
+    if (es == null) {
+      es = Lang.elementSource();
+    }
+    this.elementSource = es;
     final Types types = new Types(es);
     this.eraseVisitor = new EraseVisitor(es, types);
     this.supertypeVisitor = new SupertypeVisitor(es, types, this.eraseVisitor, supertypeFilter);
@@ -103,6 +110,10 @@ public final class Visitors {
     this.captureVisitor.setTypeClosureVisitor(this.typeClosureVisitor);
 
     assert this.initialized();
+  }
+
+  public final ElementSource elementSource() {
+    return this.elementSource;
   }
 
   public final EraseVisitor eraseVisitor() {

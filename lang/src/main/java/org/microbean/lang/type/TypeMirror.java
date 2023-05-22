@@ -66,55 +66,20 @@ public abstract sealed class TypeMirror
 
   @Override // TypeMirror
   public <R, P> R accept(final TypeVisitor<R, P> v, P p) {
-    switch (this.getKind()) {
-
-    case ARRAY:
-      return v.visitArray((javax.lang.model.type.ArrayType)this, p);
-
-    case DECLARED:
-      return v.visitDeclared((javax.lang.model.type.DeclaredType)this, p);
-
-    case ERROR:
-      return v.visitError((javax.lang.model.type.ErrorType)this, p);
-
-    case EXECUTABLE:
-      return v.visitExecutable((javax.lang.model.type.ExecutableType)this, p);
-
-    case INTERSECTION:
-      return v.visitIntersection((javax.lang.model.type.IntersectionType)this, p);
-
-    case MODULE:
-    case NONE:
-    case PACKAGE:
-    case VOID:
-      return v.visitNoType((javax.lang.model.type.NoType)this, p);
-
-    case NULL:
-      return v.visitNull((javax.lang.model.type.NullType)this, p);
-
-    case BOOLEAN:
-    case BYTE:
-    case CHAR:
-    case DOUBLE:
-    case FLOAT:
-    case INT:
-    case LONG:
-    case SHORT:
-      return v.visitPrimitive((javax.lang.model.type.PrimitiveType)this, p);
-
-    case TYPEVAR:
-      return v.visitTypeVariable((javax.lang.model.type.TypeVariable)this, p);
-
-    case UNION:
-      return v.visitUnion((javax.lang.model.type.UnionType)this, p);
-
-    case WILDCARD:
-      return v.visitWildcard((javax.lang.model.type.WildcardType)this, p);
-
-    default:
-      return v.visitUnknown(this, p);
-
-    }
+    return switch (this.getKind()) {
+    case ARRAY -> v.visitArray((javax.lang.model.type.ArrayType)this, p);
+    case DECLARED -> v.visitDeclared((javax.lang.model.type.DeclaredType)this, p);
+    case ERROR -> v.visitError((javax.lang.model.type.ErrorType)this, p);
+    case EXECUTABLE -> v.visitExecutable((javax.lang.model.type.ExecutableType)this, p);
+    case INTERSECTION -> v.visitIntersection((javax.lang.model.type.IntersectionType)this, p);
+    case MODULE, NONE, PACKAGE, VOID -> v.visitNoType((javax.lang.model.type.NoType)this, p);
+    case NULL -> v.visitNull((javax.lang.model.type.NullType)this, p);
+    case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> v.visitPrimitive((javax.lang.model.type.PrimitiveType)this, p);
+    case TYPEVAR -> v.visitTypeVariable((javax.lang.model.type.TypeVariable)this, p);
+    case UNION -> v.visitUnion((javax.lang.model.type.UnionType)this, p);
+    case WILDCARD -> v.visitWildcard((javax.lang.model.type.WildcardType)this, p);
+    case OTHER -> v.visitUnknown(this, p);
+    };
   }
 
   protected TypeKind validateKind(final TypeKind kind) {

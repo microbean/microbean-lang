@@ -79,6 +79,8 @@ import javax.tools.ToolProvider;
 
 import javax.lang.model.SourceVersion;
 
+import org.microbean.lang.element.DelegatingElement;
+
 import org.microbean.lang.type.DelegatingTypeMirror;
 
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
@@ -421,14 +423,7 @@ public final class Lang {
    */
 
 
-  /*
-   * Completion methods.
-   */
-
-  // These methods exist because "completion" in the compiler is lazy and is not thread safe. So to ensure a TypeMirror
-  // or an Element is completed, call one of these methods.
-  //
-  // In general this class tries to complete everything before returning a TypeMirror or an Element.
+  // Apparently only one Symbol completion can occur at any time. Good grief.
   //
   // Sample stack trace:
   /*
@@ -443,81 +438,16 @@ public final class Lang {
         at jdk.compiler/com.sun.tools.javac.code.Type$ClassType.getKind(Type.java:1181)
   */
 
-  private static final <E extends Element> E complete(final E e) {
-    if (e == null) {
-      return null;
-    }
-    synchronized (completionLock(e)) {
-      final ElementKind k = e.getKind(); // side effect: completes TypeElements and some others
-      if (k.isExecutable()) {
-        final ExecutableElement ee = (ExecutableElement)e;
-        complete(e.asType());
-        completeElements(((ExecutableElement)e).getParameters());
-      } else if (k.isDeclaredType()) {
-        final TypeElement te = (TypeElement)e;
-        complete(te.getSuperclass());
-        completeTypes(te.getInterfaces());
-        completeElements(te.getTypeParameters());
-        completeElements(e.getEnclosedElements());
-      }
-    }
-    return e;
-  }
-
-  private static <L extends Iterable<? extends E>, E extends Element> L completeElements(final L es) {
-    for (final E e : es) {
-      complete(e);
-    }
-    return es;
-  }
-
-  private static final Object completionLock(final Element e) {
-    return e;
-  }
-
-  private static final <T extends TypeMirror> T complete(final T t) {
-    if (t == null) {
-      return null;
-    }
-    synchronized (completionLock(t)) {
-      switch (t.getKind()) { // if t is a declared type this will trigger Element completion
-      case ARRAY:
-        complete(((ArrayType)t).getComponentType());
-        break;
-      case EXECUTABLE:
-        final ExecutableType et = (ExecutableType)t;
-        completeTypes(et.getParameterTypes());
-        complete(et.getReceiverType());
-        complete(et.getReturnType());
-        completeTypes(et.getThrownTypes());
-        completeTypes(et.getTypeVariables());
-        break;
-      default:
-        break;
-      }
-    }
-    return t;
-  }
-
-  private static <L extends Iterable<? extends T>, T extends TypeMirror> L completeTypes(final L ts) {
-    for (final T t : ts) {
-      complete(t);
-    }
-    return ts;
-  }
-
-  private static final Object completionLock(final TypeMirror t) {
-    return t;
-  }
-
+  @Deprecated
   public static final ElementKind kind(final Element e) {
-    synchronized (completionLock(e)) {
+    synchronized (CompletionLock.class) {
       return e.getKind();
     }
   }
 
+  @Deprecated
   public static final TypeKind kind(final TypeMirror t) {
-    synchronized (completionLock(t)) {
+    synchronized (CompletionLock.class) {
       return t.getKind();
     }
   }
@@ -525,12 +455,16 @@ public final class Lang {
   public static final Element element(final TypeMirror t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getTypeUtils().asElement(unwrap(t)));
+      return wrap(pe.getTypeUtils().asElement(unwrap(t)));
     }
   }
 
-  public static final TypeMirror box(final TypeMirror t) {
-    return kind(t).isPrimitive() ? boxedClass((PrimitiveType)t).asType() : t;
+  public static final TypeMirror box(TypeMirror t) {
+    final TypeKind k;
+    synchronized (CompletionLock.class) {
+      k = t.getKind();
+    }
+    return k.isPrimitive() ? boxedClass((PrimitiveType)t).asType() : t;
   }
 
   public static final TypeMirror unbox(final TypeMirror t) {
@@ -540,14 +474,14 @@ public final class Lang {
   public static final TypeElement boxedClass(final PrimitiveType t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getTypeUtils().boxedClass((PrimitiveType)unwrap(t)));
+      return wrap(pe.getTypeUtils().boxedClass(unwrap(t)));
     }
   }
 
   public static final PrimitiveType unboxedType(final TypeMirror t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      // No need to complete().
+      // No need to wrap.
       return pe.getTypeUtils().unboxedType(unwrap(t));
     }
   }
@@ -555,14 +489,14 @@ public final class Lang {
   public static final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return completeTypes(pe.getTypeUtils().directSupertypes(unwrap(t)));
+      return wrap(pe.getTypeUtils().directSupertypes(unwrap(t)));
     }
   }
 
   public static final TypeMirror erasure(final TypeMirror t) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getTypeUtils().erasure(unwrap(t)));
+      return wrap(pe.getTypeUtils().erasure(unwrap(t)));
     }
   }
 
@@ -581,14 +515,14 @@ public final class Lang {
   public static final ModuleElement moduleElement(final CharSequence moduleName) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getElementUtils().getModuleElement(moduleName));
+      return wrap(pe.getElementUtils().getModuleElement(moduleName));
     }
   }
 
   public static final ModuleElement moduleOf(final Element e) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getElementUtils().getModuleOf(e));
+      return wrap(pe.getElementUtils().getModuleOf(unwrap(e)));
     }
   }
 
@@ -610,7 +544,7 @@ public final class Lang {
   public static final PackageElement packageElement(final CharSequence fullyQualifiedName) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getElementUtils().getPackageElement(fullyQualifiedName == null ? "" : fullyQualifiedName));
+      return wrap(pe.getElementUtils().getPackageElement(fullyQualifiedName == null ? "" : fullyQualifiedName));
     }
   }
 
@@ -629,14 +563,14 @@ public final class Lang {
   public static final PackageElement packageElement(final ModuleElement moduleElement, final CharSequence fullyQualifiedName) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getElementUtils().getPackageElement(moduleElement, fullyQualifiedName));
+      return wrap(pe.getElementUtils().getPackageElement(moduleElement, fullyQualifiedName));
     }
   }
 
   public static final PackageElement packageOf(final Element e) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getElementUtils().getPackageOf(e));
+      return wrap(pe.getElementUtils().getPackageOf(unwrap(e)));
     }
   }
 
@@ -662,7 +596,8 @@ public final class Lang {
   public static final ArrayType arrayTypeOf(final TypeMirror componentType) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getTypeUtils().getArrayType(unwrap(componentType)));
+      // Not fully clear on whether we should wrap or not, so let's do it.
+      return wrap(pe.getTypeUtils().getArrayType(unwrap(componentType)));
     }
   }
 
@@ -713,8 +648,7 @@ public final class Lang {
                                                 final TypeMirror... typeArguments) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      // TODO: unwrap array
-      return complete(pe.getTypeUtils().getDeclaredType(typeElement, typeArguments));
+      return wrap(pe.getTypeUtils().getDeclaredType(unwrap(typeElement), unwrap(typeArguments)));
     }
   }
 
@@ -733,7 +667,7 @@ public final class Lang {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
       // TODO: unwrap array
-      return complete(pe.getTypeUtils().getDeclaredType(containingType, typeElement, typeArguments));
+      return wrap(pe.getTypeUtils().getDeclaredType(unwrap(containingType), unwrap(typeElement), unwrap(typeArguments)));
     }
   }
 
@@ -876,7 +810,7 @@ public final class Lang {
   public static final NoType noType(final TypeKind k) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      // No need to complete.
+      // No need to wrap.
       return pe.getTypeUtils().getNoType(k);
     }
   }
@@ -885,7 +819,7 @@ public final class Lang {
   public static final NullType nullType() {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      // No need to complete.
+      // No need to wrap.
       return pe.getTypeUtils().getNullType();
     }
   }
@@ -901,7 +835,7 @@ public final class Lang {
   public static final PrimitiveType primitiveType(final TypeKind k) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      // No need to complete.
+      // No need to wrap.
       return pe.getTypeUtils().getPrimitiveType(k);
     }
   }
@@ -934,7 +868,7 @@ public final class Lang {
   public static final TypeElement typeElement(final CharSequence canonicalName) {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getElementUtils().getTypeElement(canonicalName));
+      return wrap(pe.getElementUtils().getTypeElement(canonicalName));
     }
   }
 
@@ -953,7 +887,7 @@ public final class Lang {
     }
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
-      return complete(pe.getElementUtils().getTypeElement(moduleElement, canonicalName));
+      return wrap(pe.getElementUtils().getTypeElement(unwrap(moduleElement), canonicalName));
     }
   }
 
@@ -985,14 +919,14 @@ public final class Lang {
     return null;
   }
 
-  public static final TypeVariable typeVariable(java.lang.reflect.TypeVariable<?> t) {
+  public static final TypeVariable typeVariable(final java.lang.reflect.TypeVariable<?> t) {
     synchronized (pe()) {
       final TypeParameterElement e = typeParameterElement(t);
       return e == null ? null : (TypeVariable)e.asType();
     }
   }
 
-  public static final TypeVariable typeVariable(GenericDeclaration gd, final String name) {
+  public static final TypeVariable typeVariable(final GenericDeclaration gd, final String name) {
     synchronized (pe()) {
       final TypeParameterElement e = typeParameterElement(gd, name);
       return e == null ? null : (TypeVariable)e.asType();
@@ -1033,7 +967,7 @@ public final class Lang {
     final ProcessingEnvironment pe = pe();
     synchronized (pe) {
       // No need to complete.
-      return pe.getTypeUtils().getWildcardType(unwrap(extendsBound), unwrap(superBound));
+      return wrap(pe.getTypeUtils().getWildcardType(unwrap(extendsBound), unwrap(superBound)));
     }
   }
 
@@ -1245,8 +1179,32 @@ public final class Lang {
     t.start();
   }
 
-  private static final TypeMirror unwrap(final TypeMirror t) {
-    return DelegatingTypeMirror.unwrap(t);
+  @SuppressWarnings("unchecked")
+  public static final <T extends TypeMirror> T unwrap(final T t) {
+    return t == null ? null : (T)DelegatingTypeMirror.unwrap(t);
+  }
+
+  public static final TypeMirror[] unwrap(final TypeMirror[] ts) {
+    return ts == null ? null : DelegatingTypeMirror.unwrap(ts);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static final <T extends TypeMirror> T wrap(final T t) {
+    return t == null ? null : (T)DelegatingTypeMirror.of(t, elementSource(), null);
+  }
+
+  public static final List<? extends TypeMirror> wrap(final Collection<? extends TypeMirror> ts) {
+    return DelegatingTypeMirror.of(ts, elementSource(), null);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static final <E extends Element> E unwrap(final E e) {
+    return e == null ? null : (E)DelegatingElement.unwrap(e);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static final <E extends Element> E wrap(final E e) {
+    return e == null ? null : (E)DelegatingElement.of(e, elementSource(), null);
   }
 
 
