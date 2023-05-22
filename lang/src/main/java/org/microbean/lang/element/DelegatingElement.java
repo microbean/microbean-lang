@@ -96,13 +96,13 @@ public final class DelegatingElement
   @Override // Element
   public final <R, P> R accept(final ElementVisitor<R, P> v, final P p) {
     return switch (this.getKind()) {
-    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> v.visitType((javax.lang.model.element.TypeElement)this, p);
-    case TYPE_PARAMETER -> v.visitTypeParameter((javax.lang.model.element.TypeParameterElement)this, p);
-    case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE -> v.visitVariable((javax.lang.model.element.VariableElement)this, p);
-    case RECORD_COMPONENT -> v.visitRecordComponent((javax.lang.model.element.RecordComponentElement)this, p);
-    case CONSTRUCTOR, INSTANCE_INIT, METHOD, STATIC_INIT -> v.visitExecutable((javax.lang.model.element.ExecutableElement)this, p);
-    case PACKAGE -> v.visitPackage((javax.lang.model.element.PackageElement)this, p);
-    case MODULE -> v.visitModule((javax.lang.model.element.ModuleElement)this, p);
+    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> v.visitType(this, p);
+    case TYPE_PARAMETER -> v.visitTypeParameter(this, p);
+    case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE -> v.visitVariable(this, p);
+    case RECORD_COMPONENT -> v.visitRecordComponent(this, p);
+    case CONSTRUCTOR, INSTANCE_INIT, METHOD, STATIC_INIT -> v.visitExecutable(this, p);
+    case PACKAGE -> v.visitPackage(this, p);
+    case MODULE -> v.visitModule(this, p);
     case OTHER -> v.visitUnknown(this, p);
     };
   }
@@ -118,12 +118,10 @@ public final class DelegatingElement
 
   @Override // RecordComponentElement
   public final ExecutableElement getAccessor() {
-    switch (this.getKind()) {
-    case RECORD_COMPONENT:
-      return of(((RecordComponentElement)this.delegate).getAccessor(), this.elementSource, this.ehc);
-    default:
-      return null;
-    }
+    return switch (this.getKind()) {
+    case RECORD_COMPONENT -> of(((RecordComponentElement)this.delegate).getAccessor(), this.elementSource, this.ehc);
+    default -> null;
+    };
   }
 
   @Override // Element
@@ -146,55 +144,44 @@ public final class DelegatingElement
 
   @Override // TypeParameterElement
   public final List<? extends TypeMirror> getBounds() {
-    switch (this.getKind()) {
-    case TYPE_PARAMETER:
-      return DelegatingTypeMirror.of(((TypeParameterElement)this.delegate).getBounds(), this.elementSource, this.ehc);
-    default:
-      return List.of();
-    }
+    return switch (this.getKind()) {
+    case TYPE_PARAMETER ->
+      DelegatingTypeMirror.of(((TypeParameterElement)this.delegate).getBounds(), this.elementSource, this.ehc);
+    default -> List.of();
+    };
   }
 
   @Override // VariableElement
   public final Object getConstantValue() {
-    switch (this.getKind()) {
-    case BINDING_VARIABLE:
-    case ENUM_CONSTANT:
-    case EXCEPTION_PARAMETER:
-    case FIELD:
-    case LOCAL_VARIABLE:
-    case PARAMETER:
-    case RESOURCE_VARIABLE:
-      return ((VariableElement)this.delegate).getConstantValue();
-    default:
-      return null;
-    }
+    return switch (this.getKind()) {
+    case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE ->
+      ((VariableElement)this.delegate).getConstantValue();
+    default -> null;
+    };
   }
 
   @Override // ExecutableElement
   public final AnnotationValue getDefaultValue() {
-    switch (this.getKind()) {
-    case ANNOTATION_TYPE:
+    return switch (this.getKind()) {
+    case ANNOTATION_TYPE ->
       // TODO: delegating annotation value? could be a type mirror after all
-      return ((ExecutableElement)this.delegate).getDefaultValue();
-    default:
-      return null;
-    }
+      ((ExecutableElement)this.delegate).getDefaultValue();
+    default -> null;
+    };
   }
 
   @Override // ModuleElement
   public final List<? extends Directive> getDirectives() {
-    switch (this.getKind()) {
-    case MODULE:
-      return ((ModuleElement)this.delegate).getDirectives();
-    default:
-      return List.of();
-    }
+    return switch (this.getKind()) {
+    case MODULE -> ((ModuleElement)this.delegate).getDirectives();
+    default -> List.of();
+    };
   }
 
   @Override // Element
   public final List<? extends Element> getEnclosedElements() {
     final List<? extends Element> ee;
-    synchronized (CompletionLock.monitor()) {
+    synchronized (CompletionLock.monitor()) { // CRITICAL!
       ee = this.delegate.getEnclosedElements();
     }
     return of(ee, this.elementSource, this.ehc);
@@ -207,96 +194,73 @@ public final class DelegatingElement
 
   @Override // TypeParameterElement
   public final Element getGenericElement() {
-    switch (this.getKind()) {
-    case TYPE_PARAMETER:
-      return of(((TypeParameterElement)this.delegate).getGenericElement(), this.elementSource, this.ehc);
-    default:
-      return null; // illegal state
-    }
+    return switch (this.getKind()) {
+    case TYPE_PARAMETER -> of(((TypeParameterElement)this.delegate).getGenericElement(), this.elementSource, this.ehc);
+    default -> null; // illegal state
+    };
   }
 
   @Override // TypeElement
   public final List<? extends TypeMirror> getInterfaces() {
-    switch (this.getKind()) {
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-      return DelegatingTypeMirror.of(((TypeElement)this.delegate).getInterfaces(), this.elementSource, this.ehc);
-    default:
-      return List.of();
-    }
+    return switch (this.getKind()) {
+    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD ->
+      DelegatingTypeMirror.of(((TypeElement)this.delegate).getInterfaces(), this.elementSource, this.ehc);
+    default -> List.of();
+    };
   }
 
   @Override // Element
   public final ElementKind getKind() {
-    synchronized (CompletionLock.monitor()) {
+    synchronized (CompletionLock.monitor()) { // CRITICAL!
       return this.delegate.getKind();
     }
   }
 
   @Override // Element
   public final Set<Modifier> getModifiers() {
-    synchronized (CompletionLock.monitor()) {
+    synchronized (CompletionLock.monitor()) { // CRITICAL!
       return this.delegate.getModifiers();
     }
   }
 
   @Override // TypeElement
   public final NestingKind getNestingKind() {
-    switch (this.getKind()) {
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-      return ((TypeElement)this.delegate).getNestingKind();
-    default:
-      return null;
-    }
+    return switch (this.getKind()) {
+    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> ((TypeElement)this.delegate).getNestingKind();
+    default -> null;
+    };
   }
 
   @Override // ExecutableElement
   public final List<? extends VariableElement> getParameters() {
-    switch (this.getKind()) {
-    case CONSTRUCTOR:
-    case METHOD:
-      return of(((ExecutableElement)this.delegate).getParameters(), this.elementSource, this.ehc);
-    default:
-      return List.of();
-    }
+    return switch (this.getKind()) {
+    case CONSTRUCTOR, METHOD -> of(((ExecutableElement)this.delegate).getParameters(), this.elementSource, this.ehc);
+    default -> List.of();
+    };
   }
 
   @Override // ModuleElement, PackageElement, TypeElement
   public final Name getQualifiedName() {
-    switch (this.getKind()) {
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-    case MODULE:
-    case PACKAGE:
-      return ((QualifiedNameable)this.delegate).getQualifiedName();
-    default:
-      return org.microbean.lang.element.Name.of();
-    }
+    return switch (this.getKind()) {
+    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, MODULE, PACKAGE, RECORD -> ((QualifiedNameable)this.delegate).getQualifiedName();
+    default -> org.microbean.lang.element.Name.of();
+    };
   }
 
   @Override // ExecutableElement
   public final TypeMirror getReceiverType() {
-    return DelegatingTypeMirror.of(this.asType(), this.elementSource, this.ehc).getReceiverType();
+    return
+      this.getKind().isExecutable() ?
+      DelegatingTypeMirror.of(this.asType(), this.elementSource, this.ehc).getReceiverType() :
+      null;
   }
 
   @Override // TypeElement
   public final List<? extends RecordComponentElement> getRecordComponents() {
-    switch (this.getKind()) {
-    case RECORD:
-      return ((TypeElement)this.delegate).getRecordComponents();
-    default:
-      return List.of();
-    }
+    return switch (this.getKind()) {
+    case RECORD -> ((TypeElement)this.delegate).getRecordComponents();
+    default -> List.of();
+    };
   }
 
   @Override // ExecutableElement
@@ -311,82 +275,61 @@ public final class DelegatingElement
 
   @Override // TypeElement
   public final TypeMirror getSuperclass() {
-    switch (this.getKind()) {
-    case ANNOTATION_TYPE:
-    case CLASS:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-      return DelegatingTypeMirror.of(((TypeElement)this.delegate).getSuperclass(), this.elementSource, this.ehc);
-    default:
-      return NoType.NONE;
-    }
+    return switch (this.getKind()) {
+    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD ->
+      DelegatingTypeMirror.of(((TypeElement)this.delegate).getSuperclass(), this.elementSource, this.ehc);
+    default -> NoType.NONE;
+    };
   }
 
   @Override // ExecutableElement
   public final List<? extends TypeMirror> getThrownTypes() {
-    if (this.getKind().isExecutable()) {
-      return DelegatingTypeMirror.of(((ExecutableElement)this.delegate).getThrownTypes(), this.elementSource, this.ehc);
-    }
-    return List.of();
+    return
+      this.getKind().isExecutable() ?
+      DelegatingTypeMirror.of(((ExecutableElement)this.delegate).getThrownTypes(), this.elementSource, this.ehc) :
+      List.of();
   }
 
   @Override // ExecutableElement
   public final List<? extends TypeParameterElement> getTypeParameters() {
-    switch (this.getKind()) {
-    case CLASS:
-    case CONSTRUCTOR:
-    case ENUM:
-    case INTERFACE:
-    case RECORD:
-    case METHOD:
-      return of(((Parameterizable)this.delegate).getTypeParameters(), this.elementSource, this.ehc);
-    default:
-      return List.of();
-    }
+    return switch (this.getKind()) {
+    case CLASS, CONSTRUCTOR, ENUM, INTERFACE, RECORD, METHOD ->
+      of(((Parameterizable)this.delegate).getTypeParameters(), this.elementSource, this.ehc);
+    default -> List.of();
+    };
   }
 
   @Override // ExecutableElement
   public final boolean isDefault() {
-    switch (this.getKind()) {
-    case METHOD:
-      return ((ExecutableElement)this.delegate).isDefault();
-    default:
-      return false;
-    }
+    return switch (this.getKind()) {
+    case METHOD -> ((ExecutableElement)this.delegate).isDefault();
+    default -> false;
+    };
   }
 
   @Override // ModuleElement
   public final boolean isOpen() {
-    switch (this.getKind()) {
-    case MODULE:
-      return ((ModuleElement)this.delegate).isOpen();
-    default:
-      return false;
-    }
+    return switch (this.getKind()) {
+    case MODULE -> ((ModuleElement)this.delegate).isOpen();
+    default -> false;
+    };
   }
 
   @Override // ModuleElement, PackageElement
   public final boolean isUnnamed() {
-    switch (this.getKind()) {
-    case MODULE:
-      return ((ModuleElement)this.delegate).isUnnamed();
-    case PACKAGE:
-      return ((PackageElement)this.delegate).isUnnamed();
-    default:
-      return false;
-    }
+    return switch (this.getKind()) {
+    case MODULE -> ((ModuleElement)this.delegate).isUnnamed();
+    case PACKAGE -> ((PackageElement)this.delegate).isUnnamed();
+    default -> false;
+    };
   }
 
   @Override // ExecutableElement
   public final boolean isVarArgs() {
-    switch (this.getKind()) {
-    case CONSTRUCTOR:
-    case METHOD:
-      return ((ExecutableElement)this.delegate).isVarArgs();
-    default:
-      return false;
-    }
+    return switch (this.getKind()) {
+    case CONSTRUCTOR, METHOD -> ((ExecutableElement)this.delegate).isVarArgs();
+    default -> false;
+    };
   }
 
   @Override // Element

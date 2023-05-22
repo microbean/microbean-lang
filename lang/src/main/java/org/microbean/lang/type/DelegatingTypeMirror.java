@@ -75,11 +75,11 @@ public final class DelegatingTypeMirror
   private static final ClassDesc CD_DelegatingTypeMirror = ClassDesc.of("org.microbean.lang.type.DelegatingTypeMirror");
 
   private static final ClassDesc CD_ElementSource = ClassDesc.of("org.microbean.lang.ElementSource");
-  
+
   private static final ClassDesc CD_Equality = ClassDesc.of("org.microbean.lang.Equality");
 
   private static final ClassDesc CD_TypeMirror = ClassDesc.of("javax.lang.model.type.TypeMirror");
-  
+
   private final ElementSource elementSource;
 
   private final TypeMirror delegate;
@@ -96,17 +96,17 @@ public final class DelegatingTypeMirror
   @Override // TypeMirror
   public final <R, P> R accept(final TypeVisitor<R, P> v, final P p) {
     return switch (this.getKind()) {
-    case ARRAY -> v.visitArray((javax.lang.model.type.ArrayType)this, p);
-    case DECLARED -> v.visitDeclared((javax.lang.model.type.DeclaredType)this, p);
-    case ERROR -> v.visitError((javax.lang.model.type.ErrorType)this, p);
-    case EXECUTABLE -> v.visitExecutable((javax.lang.model.type.ExecutableType)this, p);
-    case INTERSECTION -> v.visitIntersection((javax.lang.model.type.IntersectionType)this, p);
-    case MODULE, NONE, PACKAGE, VOID -> v.visitNoType((javax.lang.model.type.NoType)this, p);
-    case NULL -> v.visitNull((javax.lang.model.type.NullType)this, p);
-    case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> v.visitPrimitive((javax.lang.model.type.PrimitiveType)this, p);
-    case TYPEVAR -> v.visitTypeVariable((javax.lang.model.type.TypeVariable)this, p);
-    case UNION -> v.visitUnion((javax.lang.model.type.UnionType)this, p);
-    case WILDCARD -> v.visitWildcard((javax.lang.model.type.WildcardType)this, p);
+    case ARRAY -> v.visitArray(this, p);
+    case DECLARED -> v.visitDeclared(this, p);
+    case ERROR -> v.visitError(this, p);
+    case EXECUTABLE -> v.visitExecutable(this, p);
+    case INTERSECTION -> v.visitIntersection(this, p);
+    case MODULE, NONE, PACKAGE, VOID -> v.visitNoType(this, p);
+    case NULL -> v.visitNull(this, p);
+    case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> v.visitPrimitive(this, p);
+    case TYPEVAR -> v.visitTypeVariable(this, p);
+    case UNION -> v.visitUnion(this, p);
+    case WILDCARD -> v.visitWildcard(this, p);
     case OTHER -> v.visitUnknown(this, p);
     };
   }
@@ -182,7 +182,7 @@ public final class DelegatingTypeMirror
 
   @Override // TypeMirror
   public final TypeKind getKind() {
-    synchronized (CompletionLock.monitor()) {
+    synchronized (CompletionLock.monitor()) { // CRITICAL!
       return this.delegate.getKind();
     }
   }
@@ -244,7 +244,7 @@ public final class DelegatingTypeMirror
   }
 
   @Override // DeclaredType
-  public final List<? extends TypeMirror> getTypeArguments() {    
+  public final List<? extends TypeMirror> getTypeArguments() {
     return switch (this.getKind()) {
     case DECLARED -> of(((DeclaredType)this.delegate).getTypeArguments(), this.elementSource, this.ehc);
     default -> List.of();
@@ -292,7 +292,7 @@ public final class DelegatingTypeMirror
                                                                     equalityDesc))));
   }
 
-                       
+
   /*
    * Static methods.
    */
@@ -309,7 +309,7 @@ public final class DelegatingTypeMirror
     }
     return Collections.unmodifiableList(newTs);
   }
-  
+
   public static final DelegatingTypeMirror of(final TypeMirror t, final ElementSource elementSource) {
     return of(t, elementSource, null);
   }
