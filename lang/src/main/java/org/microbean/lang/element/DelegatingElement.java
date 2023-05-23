@@ -119,7 +119,7 @@ public final class DelegatingElement
   @Override // RecordComponentElement
   public final ExecutableElement getAccessor() {
     return switch (this.getKind()) {
-    case RECORD_COMPONENT -> of(((RecordComponentElement)this.delegate).getAccessor(), this.elementSource, this.ehc);
+    case RECORD_COMPONENT -> this.wrap(((RecordComponentElement)this.delegate).getAccessor());
     default -> null;
     };
   }
@@ -184,18 +184,18 @@ public final class DelegatingElement
     synchronized (CompletionLock.monitor()) { // CRITICAL!
       ee = this.delegate.getEnclosedElements();
     }
-    return of(ee, this.elementSource, this.ehc);
+    return this.wrap(ee);
   }
 
   @Override // Element
   public final Element getEnclosingElement() {
-    return of(this.delegate.getEnclosingElement(), this.elementSource, this.ehc);
+    return this.wrap(this.delegate.getEnclosingElement());
   }
 
   @Override // TypeParameterElement
   public final Element getGenericElement() {
     return switch (this.getKind()) {
-    case TYPE_PARAMETER -> of(((TypeParameterElement)this.delegate).getGenericElement(), this.elementSource, this.ehc);
+    case TYPE_PARAMETER -> this.wrap(((TypeParameterElement)this.delegate).getGenericElement());
     default -> null; // illegal state
     };
   }
@@ -234,7 +234,7 @@ public final class DelegatingElement
   @Override // ExecutableElement
   public final List<? extends VariableElement> getParameters() {
     return switch (this.getKind()) {
-    case CONSTRUCTOR, METHOD -> of(((ExecutableElement)this.delegate).getParameters(), this.elementSource, this.ehc);
+    case CONSTRUCTOR, METHOD -> this.wrap(((ExecutableElement)this.delegate).getParameters());
     default -> List.of();
     };
   }
@@ -293,8 +293,7 @@ public final class DelegatingElement
   @Override // ExecutableElement
   public final List<? extends TypeParameterElement> getTypeParameters() {
     return switch (this.getKind()) {
-    case CLASS, CONSTRUCTOR, ENUM, INTERFACE, RECORD, METHOD ->
-      of(((Parameterizable)this.delegate).getTypeParameters(), this.elementSource, this.ehc);
+    case CLASS, CONSTRUCTOR, ENUM, INTERFACE, RECORD, METHOD -> this.wrap(((Parameterizable)this.delegate).getTypeParameters());
     default -> List.of();
     };
   }
@@ -351,6 +350,14 @@ public final class DelegatingElement
   @Override // Element
   public final String toString() {
     return this.delegate.toString();
+  }
+
+  private final DelegatingElement wrap(final Element e) {
+    return of(e, this.elementSource, this.ehc);
+  }
+
+  private final List<DelegatingElement> wrap(final Collection<? extends Element> es) {
+    return of(es, this.elementSource, this.ehc);
   }
 
 

@@ -6,7 +6,7 @@ The microBean™ Lang project provides classes and interfaces that implement the
 
 # Status
 
-This project is currently experimental, in a pre-alpha state, and unsuitable for production use.
+This project is currently experimental, in a pre-alpha state, and therefore entirely unsuitable for production use.
 
 # Compatibility
 
@@ -15,7 +15,7 @@ changes, regardless of project version and without notice.**
 
 # Requirements
 
-microBean™ Lang requires a Java runtime of version 19 or higher.
+microBean™ Lang requires a Java runtime of version 20 or higher.
 
 # Installation
 
@@ -35,6 +35,10 @@ Maven dependency:
 
 Full documentation is or will be available at
 [microbean.github.io/microbean-lang](https://microbean.github.io/microbean-lang/).
+
+# Overview
+
+The microBean™ Lang project arranges for some of the `javax.lang.model.*` classes to be available at runtime.
 
 # Related Issues
 
