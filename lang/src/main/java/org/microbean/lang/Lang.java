@@ -73,7 +73,6 @@ import javax.lang.model.util.Types;
 
 import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
-import javax.tools.JavaFileManager;
 
 import javax.tools.ToolProvider;
 
@@ -438,12 +437,62 @@ public final class Lang {
         at jdk.compiler/com.sun.tools.javac.code.Type$ClassType.getKind(Type.java:1181)
   */
 
-  public static final Element element(final TypeMirror t) {
-    // JavacTypes#asElement(TypeMirror) calls TypeMirror#getKind().
+
+  public static final Name binaryName(final TypeElement e) {
+    // This does not cause completion.
+    return pe().getElementUtils().getBinaryName(unwrap(e));
+  }
+
+  public static final boolean functionalInterface(TypeElement e) {
+    e = unwrap(e);
+    final Elements elements = pe().getElementUtils();
+    // JavacElements#isFunctionalInterface(Element) calls Element#getKind().
+    synchronized (CompletionLock.monitor()) {
+      return elements.isFunctionalInterface(e);
+    }
+  }
+  
+  public static final TypeMirror capture(TypeMirror t) {
+    t = unwrap(t);
+    // JavacTypes#capture(TypeMirror) calls TypeMirror#getKind().
+    final Types types = pe().getTypeUtils();
+    final TypeMirror rv;
+    synchronized (CompletionLock.monitor()) {
+      rv = types.capture(t);
+    }
+    return wrap(rv);
+  }
+
+  public static final boolean contains(TypeMirror t, TypeMirror s) {
+    t = unwrap(t);
+    s = unwrap(s);
+    // JavacTypes#contains(TypeMirror, TypeMirror) calls TypeMirror#getKind().
     final Types types = pe().getTypeUtils();
     synchronized (CompletionLock.monitor()) {
-      return wrap(types.asElement(unwrap(t)));
+      return types.contains(t, s);
     }
+  }
+
+  public static final Element element(TypeMirror t) {
+    t = unwrap(t);
+    final Types types = pe().getTypeUtils();
+    final Element rv;
+    // JavacTypes#asElement(TypeMirror) calls TypeMirror#getKind().
+    synchronized (CompletionLock.monitor()) {
+      rv = types.asElement(t);
+    }
+    return wrap(rv);
+  }
+
+  public static final TypeMirror memberOf(DeclaredType t, Element e) {
+    t = unwrap(t);
+    e = unwrap(e);
+    final Types types = pe().getTypeUtils();
+    final TypeMirror rv;
+    synchronized (CompletionLock.monitor()) {
+      rv = types.asMemberOf(t, e);
+    }
+    return wrap(rv);
   }
 
   public static final TypeMirror box(TypeMirror t) {
@@ -464,27 +513,42 @@ public final class Lang {
     return wrap(pe().getTypeUtils().boxedClass(unwrap(t)));
   }
 
-  public static final PrimitiveType unboxedType(final TypeMirror t) {
+  public static final PrimitiveType unboxedType(TypeMirror t) {
+    t = unwrap(t);
+    final Types types = pe().getTypeUtils();
     // JavacTypes#unboxedType(TypeMirror) calls TypeMirror#getKind().
-    final Types types = pe().getTypeUtils();
     synchronized (CompletionLock.monitor()) {
-      return types.unboxedType(unwrap(t));
+      return types.unboxedType(t);
     }
   }
 
-  public static final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
+  public static final List<? extends TypeMirror> directSupertypes(TypeMirror t) {
+    t = unwrap(t);
+    final Types types = pe().getTypeUtils();
+    final List<? extends TypeMirror> rv;
+    synchronized (CompletionLock.monitor()) {
+      rv = types.directSupertypes(t);
+    }
+    return wrap(rv);
+  }
+
+  public static final boolean subsignature(ExecutableType e, ExecutableType f) {
+    e = unwrap(e);
+    f = unwrap(f);
     final Types types = pe().getTypeUtils();
     synchronized (CompletionLock.monitor()) {
-      return types.directSupertypes(unwrap(t));
+      return types.isSubsignature(e, f);
     }
   }
 
-  public static final TypeMirror erasure(final TypeMirror t) {
+  public static final TypeMirror erasure(TypeMirror t) {
+    t = unwrap(t);
     final Types types = pe().getTypeUtils();
     // JavacTypes#erasure(TypeMirror) calls TypeMirror#getKind().
     synchronized (CompletionLock.monitor()) {
-      return wrap(types.erasure(unwrap(t)));
+      t = types.erasure(t);
     }
+    return wrap(t);
   }
 
   public static final ElementSource elementSource() {
@@ -501,10 +565,12 @@ public final class Lang {
 
   public static final ModuleElement moduleElement(final CharSequence moduleName) {
     final Elements elements = pe().getElementUtils();
+    final ModuleElement rv;
     // Not absolutely clear this causes completion but...
     synchronized (CompletionLock.monitor()) {
-      return wrap(elements.getModuleElement(moduleName));
+      rv = elements.getModuleElement(moduleName);
     }
+    return wrap(rv);
   }
 
   public static final ModuleElement moduleOf(final Element e) {
@@ -528,9 +594,11 @@ public final class Lang {
     final Elements elements = pe().getElementUtils();
     // JavacElements#getPackageElement() may end up calling JavacElements#nameToSymbol(ModuleSymbol, String, Class),
     // which calls complete() in certain code paths.
+    final PackageElement rv;
     synchronized (CompletionLock.monitor()) {
-      return wrap(elements.getPackageElement(fullyQualifiedName == null ? "" : fullyQualifiedName));
+      rv = elements.getPackageElement(fullyQualifiedName == null ? "" : fullyQualifiedName);
     }
+    return wrap(rv);
   }
 
   public static final PackageElement packageElement(final Module module, final Package pkg) {
@@ -543,9 +611,11 @@ public final class Lang {
 
   public static final PackageElement packageElement(final ModuleElement moduleElement, final CharSequence fullyQualifiedName) {
     final Elements elements = pe().getElementUtils();
+    final PackageElement rv;
     synchronized (CompletionLock.monitor()) {
-      return wrap(elements.getPackageElement(moduleElement, fullyQualifiedName));
+      rv = elements.getPackageElement(moduleElement, fullyQualifiedName);
     }
+    return wrap(rv);
   }
 
   public static final PackageElement packageOf(final Element e) {
@@ -568,12 +638,15 @@ public final class Lang {
   }
 
   // Called by describeConstable().
-  public static final ArrayType arrayTypeOf(final TypeMirror componentType) {
+  public static final ArrayType arrayTypeOf(TypeMirror componentType) {
+    componentType = unwrap(componentType);
     final Types types = pe().getTypeUtils();
+    final ArrayType rv;
     // JavacTypes#getArrayType(TypeMirror) calls getKind() on the component type.
     synchronized (CompletionLock.monitor()) {
-      return wrap(types.getArrayType(unwrap(componentType)));
+      rv = types.getArrayType(componentType);
     }
+    return wrap(rv);
   }
 
   public static final DeclaredType declaredType(final Type t) {
@@ -611,14 +684,18 @@ public final class Lang {
     return declaredType(typeElement(canonicalName));
   }
 
-  public static final DeclaredType declaredType(final TypeElement typeElement,
-                                                final TypeMirror... typeArguments) {
+  public static final DeclaredType declaredType(TypeElement typeElement,
+                                                TypeMirror... typeArguments) {
+    typeElement = unwrap(typeElement);
+    typeArguments = unwrap(typeArguments);
     final Types types = pe().getTypeUtils();
+    final DeclaredType rv;
     // JavacTypes#getDeclaredType() can call erasure() internally which can cause completion. It also might call
     // getTypeArguments() which can cause completion.
     synchronized (CompletionLock.monitor()) {
-      return wrap(types.getDeclaredType(unwrap(typeElement), unwrap(typeArguments)));
+      rv = types.getDeclaredType(typeElement, typeArguments);
     }
+    return wrap(rv);
   }
 
   public static final DeclaredType declaredType(final Type ownerType,
@@ -628,13 +705,18 @@ public final class Lang {
   }
 
 
-  public static final DeclaredType declaredType(final DeclaredType containingType,
-                                                final TypeElement typeElement,
-                                                final TypeMirror... typeArguments) {
+  public static final DeclaredType declaredType(DeclaredType containingType,
+                                                TypeElement typeElement,
+                                                TypeMirror... typeArguments) {
+    containingType = unwrap(containingType);
+    typeElement = unwrap(typeElement);
+    typeArguments = unwrap(typeArguments);
     final Types types = pe().getTypeUtils();
+    final DeclaredType rv;
     synchronized (CompletionLock.monitor()) {
-      return wrap(types.getDeclaredType(unwrap(containingType), unwrap(typeElement), unwrap(typeArguments)));
+      rv = types.getDeclaredType(containingType, typeElement, typeArguments);
     }
+    return wrap(rv);
   }
 
   public static final ExecutableElement executableElement(final Executable e) {
@@ -670,12 +752,12 @@ public final class Lang {
     }
     declaringClass = unwrap(declaringClass);
     final Types types = pe().getTypeUtils();
+    ExecutableElement rv = null;
     final int parameterTypesSize = parameterTypes == null ? 0 : parameterTypes.size();
     synchronized (CompletionLock.monitor()) {
       CONSTRUCTOR_LOOP:
-      // Conveniently, constructorsIn() doesn't use internal javac constructs so we can just skip the unwrapping.
-      for (final ExecutableElement ee : (Iterable<? extends ExecutableElement>)constructorsIn(declaringClass.getEnclosedElements())) {
-        final List<? extends VariableElement> parameterElements = ee.getParameters();
+      for (final ExecutableElement c : (Iterable<? extends ExecutableElement>)constructorsIn(declaringClass.getEnclosedElements())) {
+        final List<? extends VariableElement> parameterElements = c.getParameters();
         if (parameterTypesSize == parameterElements.size()) {
           for (int i = 0; i < parameterTypesSize; i++) {
             if (!types.isSameType(types.erasure(unwrap(parameterTypes.get(i))),
@@ -683,11 +765,12 @@ public final class Lang {
               continue CONSTRUCTOR_LOOP;
             }
           }
-          return ee;
+          rv = c;
+          break;
         }
       }
     }
-    return null;
+    return wrap(rv);
   }
 
   public static final ExecutableElement executableElement(TypeElement declaringClass,
@@ -697,11 +780,12 @@ public final class Lang {
     }
     declaringClass = unwrap(declaringClass);
     final Types types = pe().getTypeUtils();
+    ExecutableElement rv = null;
     final int parameterTypesSize = parameterTypes == null ? 0 : parameterTypes.length;
     synchronized (CompletionLock.monitor()) {
       CONSTRUCTOR_LOOP:
-      for (final ExecutableElement ee : (Iterable<? extends ExecutableElement>)constructorsIn(declaringClass.getEnclosedElements())) {
-        final List<? extends VariableElement> parameterElements = ee.getParameters();
+      for (final ExecutableElement c : (Iterable<? extends ExecutableElement>)constructorsIn(declaringClass.getEnclosedElements())) {
+        final List<? extends VariableElement> parameterElements = c.getParameters();
         if (parameterTypesSize == parameterElements.size()) {
           for (int i = 0; i < parameterTypesSize; i++) {
             if (!types.isSameType(types.erasure(unwrap(parameterTypes[i])),
@@ -709,11 +793,12 @@ public final class Lang {
               continue CONSTRUCTOR_LOOP;
             }
           }
-          return ee;
+          rv = c;
+          break;
         }
       }
     }
-    return null;
+    return wrap(rv);
   }
 
   public static final ExecutableElement executableElement(TypeElement declaringClass,
@@ -725,13 +810,14 @@ public final class Lang {
     }
     declaringClass = unwrap(declaringClass);
     final Types types = pe().getTypeUtils();
+    ExecutableElement rv = null;
     final int parameterTypesSize = parameterTypes == null ? 0 : parameterTypes.size();
     synchronized (CompletionLock.monitor()) {
       returnType = types.erasure(unwrap(returnType));
       METHOD_LOOP:
-      for (final ExecutableElement ee : (Iterable<? extends ExecutableElement>)methodsIn(declaringClass.getEnclosedElements())) {
-        if (ee.getSimpleName().contentEquals(name) && types.isSameType(types.erasure(ee.getReturnType()), returnType)) {
-          final List<? extends VariableElement> parameterElements = ee.getParameters();
+      for (final ExecutableElement m : (Iterable<? extends ExecutableElement>)methodsIn(declaringClass.getEnclosedElements())) {
+        if (m.getSimpleName().contentEquals(name) && types.isSameType(types.erasure(m.getReturnType()), returnType)) {
+          final List<? extends VariableElement> parameterElements = m.getParameters();
           if (parameterTypesSize == parameterElements.size()) {
             for (int i = 0; i < parameterTypesSize; i++) {
               if (!types.isSameType(types.erasure(unwrap(parameterTypes.get(i))),
@@ -739,12 +825,13 @@ public final class Lang {
                 continue METHOD_LOOP;
               }
             }
-            return ee;
+            rv = m;
+            break;
           }
         }
       }
     }
-    return null;
+    return wrap(rv);
   }
 
   public static final ExecutableElement executableElement(TypeElement declaringClass,
@@ -756,13 +843,14 @@ public final class Lang {
     }
     declaringClass = unwrap(declaringClass);
     final Types types = pe().getTypeUtils();
+    ExecutableElement rv = null;
     final int parameterTypesSize = parameterTypes == null ? 0 : parameterTypes.length;
     synchronized (CompletionLock.monitor()) {
       returnType = types.erasure(unwrap(returnType));
       METHOD_LOOP:
-      for (final ExecutableElement ee : (Iterable<? extends ExecutableElement>)methodsIn(declaringClass.getEnclosedElements())) {
-        if (ee.getSimpleName().contentEquals(name) && types.isSameType(types.erasure(ee.getReturnType()), returnType)) {
-          final List<? extends VariableElement> parameterElements = ee.getParameters();
+      for (final ExecutableElement m : (Iterable<? extends ExecutableElement>)methodsIn(declaringClass.getEnclosedElements())) {
+        if (m.getSimpleName().contentEquals(name) && types.isSameType(types.erasure(m.getReturnType()), returnType)) {
+          final List<? extends VariableElement> parameterElements = m.getParameters();
           if (parameterTypesSize == parameterElements.size()) {
             for (int i = 0; i < parameterTypesSize; i++) {
               if (!types.isSameType(types.erasure(unwrap(parameterTypes[i])),
@@ -770,12 +858,13 @@ public final class Lang {
                 continue METHOD_LOOP;
               }
             }
-            return ee;
+            rv = m;
+            break;
           }
         }
       }
     }
-    return null;
+    return wrap(rv);
   }
 
   public static final ExecutableType executableType(final Executable e) {
@@ -803,11 +892,17 @@ public final class Lang {
     return pe().getTypeUtils().getPrimitiveType(k);
   }
 
-  public static final boolean sameType(final TypeMirror t, final TypeMirror s) {
+  public static final boolean sameType(TypeMirror t, TypeMirror s) {
+    if (t == s) {
+      // Optimization
+      return true;
+    }
+    t = unwrap(t);
+    s = unwrap(s);
     final Types types = pe().getTypeUtils();
     synchronized (CompletionLock.monitor()) {
       // Internally JavacTypes calls getKind() on each type, causing symbol completion
-      return types.isSameType(unwrap(t), unwrap(s));
+      return types.isSameType(t, s);
     }
   }
 
@@ -826,23 +921,28 @@ public final class Lang {
 
   public static final TypeElement typeElement(final CharSequence canonicalName) {
     final Elements elements = pe().getElementUtils();
+    final TypeElement rv;
     synchronized (CompletionLock.monitor()) {
-      return wrap(elements.getTypeElement(canonicalName));
+      rv = elements.getTypeElement(canonicalName);
     }
+    return wrap(rv);
   }
 
   public static final TypeElement typeElement(final Module module, final CharSequence canonicalName) {
     return module == null ? typeElement(canonicalName) : typeElement(moduleElement(module), canonicalName);
   }
 
-  public static final TypeElement typeElement(final ModuleElement moduleElement, final CharSequence canonicalName) {
+  public static final TypeElement typeElement(ModuleElement moduleElement, final CharSequence canonicalName) {
     if (moduleElement == null) {
       return typeElement(canonicalName);
     }
+    moduleElement = unwrap(moduleElement);
     final Elements elements = pe().getElementUtils();
+    final TypeElement rv;
     synchronized (CompletionLock.monitor()) {
-      return wrap(elements.getTypeElement(unwrap(moduleElement), canonicalName));
+      rv = elements.getTypeElement(moduleElement, canonicalName);
     }
+    return wrap(rv);
   }
 
   public static final Parameterizable parameterizable(final GenericDeclaration gd) {
@@ -910,25 +1010,33 @@ public final class Lang {
     return wildcardType(type(upperBound), type(lowerBound));
   }
 
-  public static final WildcardType wildcardType(final TypeMirror extendsBound, final TypeMirror superBound) {
+  public static final WildcardType wildcardType(TypeMirror extendsBound, TypeMirror superBound) {
+    extendsBound = unwrap(extendsBound);
+    superBound = unwrap(superBound);
     final Types types = pe().getTypeUtils();
+    final WildcardType rv;
     synchronized (CompletionLock.monitor()) {
       // JavacTypes#getWildcardType() can call getKind() on bounds etc. which triggers symbol completion
-      return wrap(types.getWildcardType(unwrap(extendsBound), unwrap(superBound)));
+      rv = types.getWildcardType(extendsBound, superBound);
+    }
+    return wrap(rv);
+  }
+
+  public static final boolean assignable(TypeMirror payload, TypeMirror receiver) {
+    payload = unwrap(payload);
+    receiver = unwrap(receiver);
+    final Types types = pe().getTypeUtils();
+    synchronized (CompletionLock.monitor()) {
+      return types.isAssignable(payload, receiver);
     }
   }
 
-  public static final boolean assignable(final TypeMirror payload, final TypeMirror receiver) {
+  public static final boolean subtype(TypeMirror payload, TypeMirror receiver) {
+    payload = unwrap(payload);
+    receiver = unwrap(receiver);
     final Types types = pe().getTypeUtils();
     synchronized (CompletionLock.monitor()) {
-      return types.isAssignable(unwrap(payload), unwrap(receiver));
-    }
-  }
-
-  public static final boolean subtype(final TypeMirror payload, final TypeMirror receiver) {
-    final Types types = pe().getTypeUtils();
-    synchronized (CompletionLock.monitor()) {
-      return types.isSubtype(unwrap(payload), unwrap(receiver));
+      return types.isSubtype(payload, receiver);
     }
   }
 
@@ -1016,7 +1124,7 @@ public final class Lang {
     return pe;
   }
 
-  // Called once, ever, by the static initializer.
+  // Called once, ever, by the static initializer. Idempotent.
   private static final void initialize() {
     if (pe != null) { // volatile read
       return;
@@ -1164,9 +1272,7 @@ public final class Lang {
 
     @Override
     public final Element element(final String moduleName, final String name) {
-      synchronized (pe()) {
-        return typeElement(moduleElement(moduleName), name);
-      }
+      return moduleName == null ? typeElement(name) : typeElement(moduleElement(moduleName), name);
     }
 
     @Override

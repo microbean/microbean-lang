@@ -34,8 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class TestOuterInner {
 
-  private JavaLanguageModel jlm;
-  
   private com.sun.tools.javac.code.Types javacCodeTypes;
 
   private TestOuterInner() {
@@ -44,7 +42,6 @@ final class TestOuterInner {
 
   @BeforeEach
   final void setup() throws IllegalAccessException, NoSuchFieldException {
-    this.jlm = new JavaLanguageModel();
     final Field f = JavacTypes.class.getDeclaredField("types");
     assertTrue(f.trySetAccessible());    
     this.javacCodeTypes = (com.sun.tools.javac.code.Types)f.get(Lang.pe().getTypeUtils());

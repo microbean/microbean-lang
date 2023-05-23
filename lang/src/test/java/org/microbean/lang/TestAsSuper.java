@@ -54,8 +54,6 @@ import static org.microbean.lang.Lang.unwrap;
 
 final class TestAsSuper {
 
-  private JavaLanguageModel jlm;
-  
   private com.sun.tools.javac.code.Types javacCodeTypes;
 
   private Visitors visitors;
@@ -70,11 +68,10 @@ final class TestAsSuper {
 
   @BeforeEach
   final void setup() throws IllegalAccessException, NoSuchFieldException {
-    this.jlm = new JavaLanguageModel();
     final Field f = JavacTypes.class.getDeclaredField("types");
     assertTrue(f.trySetAccessible());
     this.javacCodeTypes = (com.sun.tools.javac.code.Types)f.get(Lang.pe().getTypeUtils());
-    this.visitors = new Visitors(this.jlm);
+    this.visitors = new Visitors(Lang.elementSource());
   }
 
   @AfterEach
@@ -84,13 +81,13 @@ final class TestAsSuper {
 
   @Test
   final void testAsSuperStringObject() {
-    final TypeElement stringElement = this.jlm.typeElement("java.lang.String");
+    final TypeElement stringElement = Lang.typeElement("java.lang.String");
     assertTrue(stringElement instanceof DelegatingElement);
     
     final DeclaredType stringTypeDeclaration = (DeclaredType)stringElement.asType();
     assertTrue(stringTypeDeclaration instanceof DelegatingTypeMirror);
     
-    final Element objectElement = this.jlm.typeElement("java.lang.Object");
+    final Element objectElement = Lang.typeElement("java.lang.Object");
     assertTrue(objectElement instanceof DelegatingElement);
     
     final DeclaredType objectTypeDeclaration = (DeclaredType)objectElement.asType();
@@ -111,7 +108,7 @@ final class TestAsSuper {
   @Test
   final void testGorp() {
     // The element denoted by java.util.List.  Its underlying type declaration is the type denoted by java.util.List<E>.
-    final TypeElement listElement = this.jlm.typeElement("java.util.List");
+    final TypeElement listElement = Lang.typeElement("java.util.List");
     assertTrue(listElement instanceof DelegatingElement);
     
     // The type denoted by java.util.List<E>
@@ -119,7 +116,7 @@ final class TestAsSuper {
     assertTrue(listTypeDeclaration instanceof DelegatingTypeMirror);
     
     // The type denoted by java.util.List, i.e. a raw type.
-    final DeclaredType rawListType = this.jlm.declaredType(listElement); // note: no varargs type arguments supplied
+    final DeclaredType rawListType = Lang.declaredType(listElement); // note: no varargs type arguments supplied
     assertTrue(rawListType instanceof DelegatingTypeMirror);
     assertTrue(((Type)unwrap(rawListType)).isRaw());
 
@@ -127,7 +124,7 @@ final class TestAsSuper {
     assertNotSame(unwrap(rawListType), unwrap(listTypeDeclaration));
 
     // The type denoted by java.util.List<?>.
-    final DeclaredType listQuestionMarkType = this.jlm.declaredType(listElement, this.jlm.wildcardType());
+    final DeclaredType listQuestionMarkType = Lang.declaredType(listElement, Lang.wildcardType());
     assertTrue(listQuestionMarkType instanceof DelegatingTypeMirror);
     assertFalse(((Type)unwrap(listQuestionMarkType)).isRaw());
     

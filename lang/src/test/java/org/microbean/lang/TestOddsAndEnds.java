@@ -35,25 +35,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class TestOddsAndEnds {
 
-  private JavaLanguageModel jlm;
-  
   private TestOddsAndEnds() {
     super();
   }
 
-  @BeforeEach
-  final void setup() {
-    this.jlm = new JavaLanguageModel();
-  }
-
-  @AfterEach
-  final void tearDown() {
-
-  }
-
   @Test
   final void testTypeUseAnnotationOnClass() {
-    final TypeElement b = jlm.typeElement("org.microbean.lang.TestOddsAndEnds.B");
+    final TypeElement b = Lang.typeElement("org.microbean.lang.TestOddsAndEnds.B");
     // B is actually a declaration annotation per the rules of the JLS!
     assertEquals(1, b.getAnnotationMirrors().size());
   }

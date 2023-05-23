@@ -44,8 +44,6 @@ final class TestAssignable {
 
   private Types types;
   
-  private JavaLanguageModel jlm;
-
   private SubtypeVisitor subtypeVisitor;
 
   private AssignableVisitor assignableVisitor;
@@ -56,10 +54,9 @@ final class TestAssignable {
 
   @BeforeEach
   final void setup() {
-    this.jlm = new JavaLanguageModel();
-    this.es = this.jlm;
+    this.es = Lang.elementSource();
     this.types = new Types(this.es);
-    final Visitors visitors = new Visitors(this.es);
+    final Visitors visitors = new Visitors(Lang.elementSource());
     this.subtypeVisitor = visitors.subtypeVisitor();
     this.assignableVisitor = visitors.assignableVisitor();
   }
@@ -81,9 +78,9 @@ final class TestAssignable {
   
   @Test
   final void testListStringAssignableToListQuestionMark() {
-    final DeclaredType listString = this.jlm.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
+    final DeclaredType listString = Lang.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
     assertTrue(listString instanceof DelegatingTypeMirror);
-    final DeclaredType listQuestionMark = this.jlm.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.jlm.wildcardType());
+    final DeclaredType listQuestionMark = Lang.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), Lang.wildcardType());
     assertTrue(listQuestionMark instanceof DelegatingTypeMirror);
     assertSubtype(listString, listQuestionMark);
     assertAssignable(listString, listQuestionMark);
@@ -93,7 +90,7 @@ final class TestAssignable {
 
   @Test
   final void testListStringAssignableToListString() {
-    final DeclaredType listString = this.jlm.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
+    final DeclaredType listString = Lang.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
     assertSubtype(listString, listString);
     assertAssignable(listString, listString);
   }
@@ -109,11 +106,11 @@ final class TestAssignable {
 
   @Test
   final void testRawListAssignableToListQuestionMark() {
-    final DeclaredType rawList = this.jlm.declaredType((TypeElement)this.es.element("java.base", "java.util.List"));
+    final DeclaredType rawList = Lang.declaredType((TypeElement)this.es.element("java.base", "java.util.List"));
     assertTrue(((com.sun.tools.javac.code.Type)unwrap(rawList)).isRaw());
     assertTrue(this.types.raw(rawList));
 
-    final DeclaredType listQuestionMark = this.jlm.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.jlm.wildcardType());
+    final DeclaredType listQuestionMark = Lang.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), Lang.wildcardType());
     assertFalse(((com.sun.tools.javac.code.Type)unwrap(listQuestionMark)).isRaw());
     assertFalse(this.types.raw(listQuestionMark));
 
@@ -132,22 +129,22 @@ final class TestAssignable {
   }
 
   private final void assertAssignable(final TypeMirror payload, final TypeMirror receiver) {
-    assertTrue(this.jlm.assignable(payload, receiver));
+    assertTrue(Lang.assignable(payload, receiver));
     assertTrue(this.assignableVisitor.visit(payload, receiver).booleanValue());
   }
 
   private final void assertNotAssignable(final TypeMirror payload, final TypeMirror receiver) {
-    assertFalse(this.jlm.assignable(payload, receiver));
+    assertFalse(Lang.assignable(payload, receiver));
     assertFalse(this.assignableVisitor.visit(payload, receiver).booleanValue());
   }
 
   private final void assertSubtype(final TypeMirror payload, final TypeMirror receiver) {
-    assertTrue(this.jlm.subtype(payload, receiver));
+    assertTrue(Lang.subtype(payload, receiver));
     assertTrue(this.subtypeVisitor.visit(payload, receiver).booleanValue());
   }
   
   private final void assertNotSubtype(final TypeMirror payload, final TypeMirror receiver) {
-    assertFalse(this.jlm.subtype(payload, receiver));
+    assertFalse(Lang.subtype(payload, receiver));
     assertFalse(this.subtypeVisitor.visit(payload, receiver).booleanValue());
   }
   

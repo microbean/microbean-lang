@@ -51,25 +51,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class TestTypeUsages {
 
-  private JavaLanguageModel jlm;
-  
   private TestTypeUsages() {
     super();
   }
 
-  @BeforeEach
-  final void setup() {
-    this.jlm = new JavaLanguageModel();
-  }
-
-  @AfterEach
-  final void tearDown() {
-
-  }
-
   @Test
   final void testClassDeclarationDeclaredTypeHasNoAnnotations() {
-    final Element e = this.jlm.typeElement("org.microbean.lang.TestTypeUsages.B");
+    final Element e = Lang.typeElement("org.microbean.lang.TestTypeUsages.B");
     assertEquals(1, e.getAnnotationMirrors().size()); // @A applies to B-the-element
     assertEquals(0, e.asType().getAnnotationMirrors().size()); // @A does NOT apply to B-the-type-declaration
   }
@@ -77,7 +65,7 @@ final class TestTypeUsages {
   @Disabled // see https://bugs.openjdk.org/browse/JDK-8225377
   @Test
   final void testMethodParameterDeclaredTypeHasNoAnnotations() {
-    final Element e = jlm.typeElement("org.microbean.lang.TestTypeUsages.B");
+    final Element e = Lang.typeElement("org.microbean.lang.TestTypeUsages.B");
 
     final ExecutableElement c = (ExecutableElement)e.getEnclosedElements().get(1);
 
@@ -105,7 +93,7 @@ final class TestTypeUsages {
   @Disabled // see https://docs.oracle.com/javase/specs/jls/se19/html/jls-9.html#jls-9.7.4 and https://bugs.openjdk.org/browse/JDK-8225377
   @Test
   final void testArrayTypeUse() {
-    final Element e = jlm.typeElement("org.microbean.lang.TestTypeUsages.B");
+    final Element e = Lang.typeElement("org.microbean.lang.TestTypeUsages.B");
     final ExecutableElement d = (ExecutableElement)e.getEnclosedElements().get(2);
 
     // The d method in the B class.
@@ -118,10 +106,10 @@ final class TestTypeUsages {
   @Disabled // see https://bugs.openjdk.org/browse/JDK-8225377
   @Test
   final void testTypeArgument() {
-    final TypeElement f = jlm.typeElement("org.microbean.lang.TestTypeUsages.F");
+    final TypeElement f = Lang.typeElement("org.microbean.lang.TestTypeUsages.F");
     final List<? extends TypeParameterElement> tps = f.getTypeParameters();
     assertEquals(1, tps.size());
-    final TypeElement g = jlm.typeElement("org.microbean.lang.TestTypeUsages.G");
+    final TypeElement g = Lang.typeElement("org.microbean.lang.TestTypeUsages.G");
     final DeclaredType supertype = (DeclaredType)g.getSuperclass();
     final List<?> typeArguments = supertype.getTypeArguments();
     assertEquals(1, typeArguments.size());

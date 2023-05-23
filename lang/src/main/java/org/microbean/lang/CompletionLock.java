@@ -13,14 +13,7 @@
  */
 package org.microbean.lang;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
-import javax.lang.model.AnnotatedConstruct;
-
 public final class CompletionLock {
-
-  private static final Lock lock = new ReentrantLock();
 
   private CompletionLock() {
     super();
@@ -28,14 +21,6 @@ public final class CompletionLock {
 
   public static final Object monitor() {
     return CompletionLock.class;
-  }
-
-  public static final void lock(final AnnotatedConstruct a) {
-    lock.lock();
-  }
-
-  public static final void unlock(final AnnotatedConstruct a) {
-    lock.unlock();
   }
 
 }

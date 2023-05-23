@@ -38,7 +38,7 @@ final class TestTypeParameters {
 
   @Test
   final void testTypeParameters() {
-    final TypeElement a = new JavaLanguageModel().typeElement("org.microbean.lang.TestTypeParameters.A");
+    final TypeElement a = Lang.typeElement("org.microbean.lang.TestTypeParameters.A");
     final List<? extends TypeParameterElement> typeParameters = a.getTypeParameters();
     final TypeParameterElement b = typeParameters.get(0);
     assertEquals("B", b.getSimpleName().toString());

@@ -59,29 +59,17 @@ import static org.microbean.lang.Lang.unwrap;
 
 final class TestJavaLanguageModel {
 
-  private JavaLanguageModel jlm;
-
   private TestJavaLanguageModel() {
     super();
   }
 
-  @BeforeEach
-  final void setup() {
-    this.jlm = new JavaLanguageModel();
-  }
-
-  @AfterEach
-  final void tearDown() {
-
-  }
-
   @Test
   final void testJavaLanguageModel() {
-    final TypeElement s = jlm.typeElement("java.lang.String");
+    final TypeElement s = Lang.typeElement("java.lang.String");
     assertNotNull(s);
-    final TypeElement x = jlm.typeElement("java.util.logging.Level");
+    final TypeElement x = Lang.typeElement("java.util.logging.Level");
     assertNotNull(x);
-    final TypeElement r = jlm.typeElement("org.microbean.lang.TestJavaLanguageModel.Gloop");
+    final TypeElement r = Lang.typeElement("org.microbean.lang.TestJavaLanguageModel.Gloop");
     assertNotNull(r);
     assertTrue(r instanceof DelegatingElement);
     assertSame(ElementKind.RECORD, r.getKind());
@@ -101,14 +89,14 @@ final class TestJavaLanguageModel {
 
   @Test
   final void testTypeParameters() {
-    final TypeElement flob = jlm.typeElement("org.microbean.lang.TestJavaLanguageModel.Flob");
+    final TypeElement flob = Lang.typeElement("org.microbean.lang.TestJavaLanguageModel.Flob");
     final TypeParameterElement tp = (TypeParameterElement)flob.getTypeParameters().get(0);
     assertEquals("T", tp.getSimpleName().toString());
   }
 
   @Test
   final void testReturnTypeOfTopLevelClassConstructor() {
-    final TypeElement object = jlm.typeElement("java.lang.Object");
+    final TypeElement object = Lang.typeElement("java.lang.Object");
     ExecutableElement c = null;
     ENCLOSED_ELEMENTS:
     for (final Element e : object.getEnclosedElements()) {
@@ -129,17 +117,17 @@ final class TestJavaLanguageModel {
 
   @Test
   final void testReflectionBridge() throws NoSuchMethodException {
-    final TypeElement e = this.jlm.typeElement(List.class);
+    final TypeElement e = Lang.typeElement(List.class);
     assertTrue(e.getQualifiedName().contentEquals("java.util.List"));
     final Method m = this.getClass().getDeclaredMethod("listString");
-    final ExecutableElement ee = this.jlm.executableElement(m);
+    final ExecutableElement ee = Lang.executableElement(m);
     assertTrue(ee.getSimpleName().contentEquals("listString"));
     final java.lang.reflect.TypeVariable<?> tv = List.class.getTypeParameters()[0];
     assertEquals("E", tv.getName());
     assertSame(List.class, tv.getGenericDeclaration());
-    final TypeParameterElement tpe = this.jlm.typeParameterElement(tv);
+    final TypeParameterElement tpe = Lang.typeParameterElement(tv);
     assertTrue(tpe.getSimpleName().contentEquals("E"));
-    assertSame(unwrap(tpe.asType()), unwrap(this.jlm.typeVariable(tv)));
+    assertSame(unwrap(tpe.asType()), unwrap(Lang.typeVariable(tv)));
   }
 
   private static List<String> listString() {
@@ -148,7 +136,7 @@ final class TestJavaLanguageModel {
 
   @Test
   final void testAnnotationsOnClassesInMethods() throws ClassNotFoundException {
-    final TypeElement e = jlm.typeElement(this.getClass().getName());
+    final TypeElement e = Lang.typeElement(this.getClass().getName());
     assertNotNull(e);
     ExecutableElement baker = null;
     EES:
@@ -173,7 +161,7 @@ final class TestJavaLanguageModel {
     }
 
     // You can't get Charlie directly:
-    assertNull(jlm.typeElement(this.getClass().getName() + "$1Charlie"));
+    assertNull(Lang.typeElement(this.getClass().getName() + "$1Charlie"));
 
     // But it does exist, and in the reflection model you can find out all sorts of things about it.
     final Class<?> c = Class.forName(this.getClass().getName() + "$1Charlie");
