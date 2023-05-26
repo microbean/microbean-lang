@@ -217,16 +217,20 @@ public class Equality implements Constable {
   }
 
   private static final int hashCode(final Element e, final boolean ia) {
-    return e == null ? 0 : switch (e.getKind()) {
-    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> hashCode((TypeElement)e, ia);
-    case TYPE_PARAMETER -> hashCode((TypeParameterElement)e, ia);
-    case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE -> hashCode((VariableElement)e, ia);
-    case RECORD_COMPONENT -> hashCode((RecordComponentElement)e, ia);
-    case CONSTRUCTOR, INSTANCE_INIT, METHOD, STATIC_INIT -> hashCode((ExecutableElement)e, ia);
-    case PACKAGE -> hashCode((PackageElement)e, ia);
-    case MODULE -> hashCode((ModuleElement)e, ia);
-    default -> System.identityHashCode(e); // basically illegal argument
-    };
+    // This is the entry point for all Element hashCode calculations. We have to synchronize on the completion lock
+    // because various elements' getKind() methods may trigger symbol completion.
+    synchronized (CompletionLock.monitor()) {
+      return e == null ? 0 : switch (e.getKind()) {
+      case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> hashCode((TypeElement)e, ia);
+      case TYPE_PARAMETER -> hashCode((TypeParameterElement)e, ia);
+      case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE -> hashCode((VariableElement)e, ia);
+      case RECORD_COMPONENT -> hashCode((RecordComponentElement)e, ia);
+      case CONSTRUCTOR, INSTANCE_INIT, METHOD, STATIC_INIT -> hashCode((ExecutableElement)e, ia);
+      case PACKAGE -> hashCode((PackageElement)e, ia);
+      case MODULE -> hashCode((ModuleElement)e, ia);
+      default -> System.identityHashCode(e); // basically illegal argument
+      };
+    }
   }
 
   private static final int hashCode(final ExecutableElement e, final boolean ia) {
@@ -343,18 +347,22 @@ public class Equality implements Constable {
   }
 
   private static final int hashCode(final TypeMirror t, final boolean ia) {
-    return t == null ? 0 : switch (t.getKind()) {
-    case ARRAY -> hashCode((ArrayType)t, ia);
-    case DECLARED -> hashCode((DeclaredType)t, ia);
-    case EXECUTABLE -> hashCode((ExecutableType)t, ia);
-    case INTERSECTION -> hashCode((IntersectionType)t, ia);
-    case MODULE, NONE, PACKAGE, VOID -> hashCode((NoType)t, ia);
-    case NULL -> hashCode((NullType)t, ia);
-    case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> hashCode((PrimitiveType)t, ia);
-    case TYPEVAR -> hashCode((TypeVariable)t, ia);
-    case WILDCARD -> hashCode((WildcardType)t, ia);
-    case ERROR, OTHER, UNION -> System.identityHashCode(t); // basically illegal argument
-    };
+    // This is the entry point for all TypeMirror hashCode calculations. We have to synchronize on the completion lock
+    // because a declared type's getKind() method may trigger symbol completion.
+    synchronized (CompletionLock.monitor()) {
+      return t == null ? 0 : switch (t.getKind()) {
+      case ARRAY -> hashCode((ArrayType)t, ia);
+      case DECLARED -> hashCode((DeclaredType)t, ia);
+      case EXECUTABLE -> hashCode((ExecutableType)t, ia);
+      case INTERSECTION -> hashCode((IntersectionType)t, ia);
+      case MODULE, NONE, PACKAGE, VOID -> hashCode((NoType)t, ia);
+      case NULL -> hashCode((NullType)t, ia);
+      case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> hashCode((PrimitiveType)t, ia);
+      case TYPEVAR -> hashCode((TypeVariable)t, ia);
+      case WILDCARD -> hashCode((WildcardType)t, ia);
+      case ERROR, OTHER, UNION -> System.identityHashCode(t); // basically illegal argument
+      };
+    }
   }
 
   private static final int hashCode(final ArrayType t, final boolean ia) {
@@ -473,6 +481,7 @@ public class Equality implements Constable {
   }
 
   private static final int hashCode(final Directive d, final boolean ia) {
+    // TODO: do we need to synchronize on the completion lock here?
     return d == null ? 0 : switch (d.getKind()) {
     case EXPORTS -> hashCode((ExportsDirective)d, ia);
     case OPENS -> hashCode((OpensDirective)d, ia);
@@ -691,17 +700,21 @@ public class Equality implements Constable {
     } else if (e1 == null || e2 == null) {
       return false;
     }
-    final ElementKind k = e1.getKind();
-    return k == e2.getKind() && switch (k) {
-    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> equals((TypeElement)e1, (TypeElement)e2, ia);
-    case TYPE_PARAMETER -> equals((TypeParameterElement)e1, (TypeParameterElement)e2, ia);
-    case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE -> equals((VariableElement)e1, (VariableElement)e2, ia);
-    case RECORD_COMPONENT -> equals((RecordComponentElement)e1, (RecordComponentElement)e2, ia);
-    case CONSTRUCTOR, INSTANCE_INIT, METHOD, STATIC_INIT -> equals((ExecutableElement)e1, (ExecutableElement)e2, ia);
-    case PACKAGE -> equals((PackageElement)e1, (PackageElement)e2, ia);
-    case MODULE -> equals((ModuleElement)e1, (ModuleElement)e2, ia);
-    case OTHER -> false;
-    };
+    // This is the entry point for all Element equality calculations. We have to synchronize on the completion lock
+    // because various elements' getKind() methods may trigger symbol completion.
+    synchronized (CompletionLock.monitor()) {
+      final ElementKind k = e1.getKind();
+      return k == e2.getKind() && switch (k) {
+      case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> equals((TypeElement)e1, (TypeElement)e2, ia);
+      case TYPE_PARAMETER -> equals((TypeParameterElement)e1, (TypeParameterElement)e2, ia);
+      case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE -> equals((VariableElement)e1, (VariableElement)e2, ia);
+      case RECORD_COMPONENT -> equals((RecordComponentElement)e1, (RecordComponentElement)e2, ia);
+      case CONSTRUCTOR, INSTANCE_INIT, METHOD, STATIC_INIT -> equals((ExecutableElement)e1, (ExecutableElement)e2, ia);
+      case PACKAGE -> equals((PackageElement)e1, (PackageElement)e2, ia);
+      case MODULE -> equals((ModuleElement)e1, (ModuleElement)e2, ia);
+      case OTHER -> false;
+      };
+    }
   }
 
   private static final boolean equals(final ExecutableElement e1, final ExecutableElement e2, final boolean ia) {
@@ -802,19 +815,23 @@ public class Equality implements Constable {
     } else if (t1 == null || t2 == null || ia && !equals(t1.getAnnotationMirrors(), t2.getAnnotationMirrors(), ia)) {
       return false;
     }
-    final TypeKind k = t1.getKind();
-    return k == t2.getKind() && switch (k) {
-    case ARRAY -> equals((ArrayType)t1, (ArrayType)t2, ia);
-    case DECLARED -> equals((DeclaredType)t1, (DeclaredType)t2, ia);
-    case EXECUTABLE -> equals((ExecutableType)t1, (ExecutableType)t2, ia);
-    case INTERSECTION -> equals((IntersectionType)t1, (IntersectionType)t2, ia);
-    case MODULE, NONE, PACKAGE, VOID -> equals((NoType)t1, (NoType)t2, ia);
-    case NULL -> equals((NullType)t1, (NullType)t2, ia);
-    case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> equals((PrimitiveType)t1, (PrimitiveType)t2, ia);
-    case TYPEVAR -> equals((TypeVariable)t1, (TypeVariable)t2, ia);
-    case WILDCARD -> equals((WildcardType)t1, (WildcardType)t2, ia);
-    case ERROR, OTHER, UNION -> t1.equals(t2); // unhandled argument
-    };
+    // This is the entry point for all TypeMirror equality calculations. We have to synchronize on the completion lock
+    // because a declared type's getKind() method may trigger symbol completion.
+    synchronized (CompletionLock.monitor()) {
+      final TypeKind k = t1.getKind();
+      return k == t2.getKind() && switch (k) {
+      case ARRAY -> equals((ArrayType)t1, (ArrayType)t2, ia);
+      case DECLARED -> equals((DeclaredType)t1, (DeclaredType)t2, ia);
+      case EXECUTABLE -> equals((ExecutableType)t1, (ExecutableType)t2, ia);
+      case INTERSECTION -> equals((IntersectionType)t1, (IntersectionType)t2, ia);
+      case MODULE, NONE, PACKAGE, VOID -> equals((NoType)t1, (NoType)t2, ia);
+      case NULL -> equals((NullType)t1, (NullType)t2, ia);
+      case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> equals((PrimitiveType)t1, (PrimitiveType)t2, ia);
+      case TYPEVAR -> equals((TypeVariable)t1, (TypeVariable)t2, ia);
+      case WILDCARD -> equals((WildcardType)t1, (WildcardType)t2, ia);
+      case ERROR, OTHER, UNION -> t1.equals(t2); // unhandled argument
+      };
+    }
   }
 
   private static final boolean equals(final ArrayType t1, final ArrayType t2, final boolean ia) {

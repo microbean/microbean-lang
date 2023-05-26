@@ -680,6 +680,12 @@ public final class Lang {
     return declaredType(typeElement(rawType), typeArray(typeArguments));
   }
 
+  public static final DeclaredType declaredType(final Type rawType, // usually (always) a Class<?>
+                                                final TypeMirror... typeArguments) {
+    // Most commonly used when typeArguments is a single WildcardType
+    return declaredType(typeElement(rawType), typeArguments);
+  }
+
   public static final DeclaredType declaredType(final CharSequence canonicalName) {
     return declaredType(typeElement(canonicalName));
   }
@@ -693,6 +699,12 @@ public final class Lang {
     // JavacTypes#getDeclaredType() can call erasure() internally which can cause completion. It also might call
     // getTypeArguments() which can cause completion.
     synchronized (CompletionLock.monitor()) {
+      // STILL occasionally getting:
+      //
+      // java.lang.NullPointerException: Cannot read field "type" because "sym" is null
+      //     at jdk.compiler/com.sun.tools.javac.model.JavacTypes.getDeclaredType(JavacTypes.java:238)
+      //     at org.microbean.lang@0.0.1-SNAPSHOT/org.microbean.lang.Lang.declaredType(Lang.java:702) // <-- that's here
+      //     at org.microbean.bean@0.0.1-SNAPSHOT/org.microbean.bean.TestSelector.testSelectorListUnknownExtendsStringSelectsListString(TestSelector.java:83)
       rv = types.getDeclaredType(typeElement, typeArguments);
     }
     return wrap(rv);
