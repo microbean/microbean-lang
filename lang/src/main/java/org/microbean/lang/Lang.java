@@ -564,6 +564,9 @@ public final class Lang {
   }
 
   public static final ModuleElement moduleElement(final CharSequence moduleName) {
+    if (moduleName == null) {
+      return null;
+    }
     final Elements elements = pe().getElementUtils();
     final ModuleElement rv;
     // Not absolutely clear this causes completion but...
@@ -575,11 +578,11 @@ public final class Lang {
 
   public static final ModuleElement moduleOf(final Element e) {
     // This does NOT appear to cause completion.
-    return wrap(pe().getElementUtils().getModuleOf(unwrap(e)));
+    return e == null ? null : wrap(pe().getElementUtils().getModuleOf(unwrap(e)));
   }
 
   public static final Name name(final CharSequence name) {
-    return pe().getElementUtils().getName(name);
+    return name == null ? null : pe().getElementUtils().getName(name);
   }
 
   public static final PackageElement packageElement(final Class<?> c) {
@@ -591,12 +594,15 @@ public final class Lang {
   }
 
   public static final PackageElement packageElement(final CharSequence fullyQualifiedName) {
+    if (fullyQualifiedName == null) {
+      return null;
+    }
     final Elements elements = pe().getElementUtils();
     // JavacElements#getPackageElement() may end up calling JavacElements#nameToSymbol(ModuleSymbol, String, Class),
     // which calls complete() in certain code paths.
     final PackageElement rv;
     synchronized (CompletionLock.monitor()) {
-      rv = elements.getPackageElement(fullyQualifiedName == null ? "" : fullyQualifiedName);
+      rv = elements.getPackageElement(fullyQualifiedName);
     }
     return wrap(rv);
   }
@@ -620,7 +626,7 @@ public final class Lang {
 
   public static final PackageElement packageOf(final Element e) {
     // This does NOT appear to cause completion.
-    return wrap(pe().getElementUtils().getPackageOf(unwrap(e)));
+    return e == null ? null : wrap(pe().getElementUtils().getPackageOf(unwrap(e)));
   }
 
   public static final ArrayType arrayType(final Class<?> arrayClass) {
@@ -677,21 +683,24 @@ public final class Lang {
 
   public static final DeclaredType declaredType(final Type rawType, // usually (always) a Class<?>
                                                 final Type... typeArguments) {
-    return declaredType(typeElement(rawType), typeArray(typeArguments));
+    return rawType == null ? null : declaredType(typeElement(rawType), typeArray(typeArguments));
   }
 
   public static final DeclaredType declaredType(final Type rawType, // usually (always) a Class<?>
                                                 final TypeMirror... typeArguments) {
     // Most commonly used when typeArguments is a single WildcardType
-    return declaredType(typeElement(rawType), typeArguments);
+    return rawType == null ? null : declaredType(typeElement(rawType), typeArguments);
   }
 
   public static final DeclaredType declaredType(final CharSequence canonicalName) {
-    return declaredType(typeElement(canonicalName));
+    return canonicalName == null ? null : declaredType(typeElement(canonicalName));
   }
 
   public static final DeclaredType declaredType(TypeElement typeElement,
                                                 TypeMirror... typeArguments) {
+    if (typeElement == null) {
+      return null;
+    }
     typeElement = unwrap(typeElement);
     typeArguments = unwrap(typeArguments);
     final Types types = pe().getTypeUtils();
@@ -713,13 +722,16 @@ public final class Lang {
   public static final DeclaredType declaredType(final Type ownerType,
                                                 final Type rawType,
                                                 final Type... typeArguments) {
-    return declaredType(declaredType(ownerType), typeElement(rawType), typeArray(typeArguments));
+    return rawType == null ? null : declaredType(declaredType(ownerType), typeElement(rawType), typeArray(typeArguments));
   }
 
 
   public static final DeclaredType declaredType(DeclaredType containingType,
                                                 TypeElement typeElement,
                                                 TypeMirror... typeArguments) {
+    if (typeElement == null) {
+      return null;
+    }
     containingType = unwrap(containingType);
     typeElement = unwrap(typeElement);
     typeArguments = unwrap(typeArguments);
