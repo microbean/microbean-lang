@@ -124,7 +124,7 @@ final class TestAsSuper {
     assertNotSame(unwrap(rawListType), unwrap(listTypeDeclaration));
 
     // The type denoted by java.util.List<?>.
-    final DeclaredType listQuestionMarkType = Lang.declaredType(listElement, Lang.wildcardType());
+    final DeclaredType listQuestionMarkType = Lang.declaredType(null, listElement, Lang.wildcardType());
     assertTrue(listQuestionMarkType instanceof DelegatingTypeMirror);
     assertFalse(((Type)unwrap(listQuestionMarkType)).isRaw());
     

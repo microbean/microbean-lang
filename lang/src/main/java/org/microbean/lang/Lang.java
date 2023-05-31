@@ -451,7 +451,7 @@ public final class Lang {
       return elements.isFunctionalInterface(e);
     }
   }
-  
+
   public static final TypeMirror capture(TypeMirror t) {
     t = unwrap(t);
     // JavacTypes#capture(TypeMirror) calls TypeMirror#getKind().
@@ -681,42 +681,12 @@ public final class Lang {
                    typeArray(pt.getActualTypeArguments()));
   }
 
-  public static final DeclaredType declaredType(final Type rawType, // usually (always) a Class<?>
-                                                final Type... typeArguments) {
-    return rawType == null ? null : declaredType(typeElement(rawType), typeArray(typeArguments));
-  }
-
-  public static final DeclaredType declaredType(final Type rawType, // usually (always) a Class<?>
-                                                final TypeMirror... typeArguments) {
-    // Most commonly used when typeArguments is a single WildcardType
-    return rawType == null ? null : declaredType(typeElement(rawType), typeArguments);
-  }
-
   public static final DeclaredType declaredType(final CharSequence canonicalName) {
     return canonicalName == null ? null : declaredType(typeElement(canonicalName));
   }
 
-  public static final DeclaredType declaredType(TypeElement typeElement,
-                                                TypeMirror... typeArguments) {
-    if (typeElement == null) {
-      return null;
-    }
-    typeElement = unwrap(typeElement);
-    typeArguments = unwrap(typeArguments);
-    final Types types = pe().getTypeUtils();
-    final DeclaredType rv;
-    // JavacTypes#getDeclaredType() can call erasure() internally which can cause completion. It also might call
-    // getTypeArguments() which can cause completion.
-    synchronized (CompletionLock.monitor()) {
-      // STILL occasionally getting:
-      //
-      // java.lang.NullPointerException: Cannot read field "type" because "sym" is null
-      //     at jdk.compiler/com.sun.tools.javac.model.JavacTypes.getDeclaredType(JavacTypes.java:238)
-      //     at org.microbean.lang@0.0.1-SNAPSHOT/org.microbean.lang.Lang.declaredType(Lang.java:702) // <-- that's here
-      //     at org.microbean.bean@0.0.1-SNAPSHOT/org.microbean.bean.TestSelector.testSelectorListUnknownExtendsStringSelectsListString(TestSelector.java:83)
-      rv = types.getDeclaredType(typeElement, typeArguments);
-    }
-    return wrap(rv);
+  public static final DeclaredType declaredType(TypeElement typeElement) {
+    return typeElement == null ? null : declaredType(null, typeElement);
   }
 
   public static final DeclaredType declaredType(final Type ownerType,
@@ -753,20 +723,13 @@ public final class Lang {
   }
 
   public static final ExecutableElement executableElement(final Constructor<?> c) {
-    if (c == null) {
-      return null;
-    }
-    return executableElement(typeElement(c.getDeclaringClass()), typeArray(c.getParameterTypes())); // deliberate erasure
+    return c == null ? null :
+      executableElement(typeElement(c.getDeclaringClass()), typeArray(c.getParameterTypes())); // deliberate erasure
   }
 
   public static final ExecutableElement executableElement(final Method m) {
-    if (m == null) {
-      return null;
-    }
-    return executableElement(typeElement(m.getDeclaringClass()),
-                             m.getName(),
-                             type(m.getReturnType()), // deliberate erasure
-                             typeArray(m.getParameterTypes())); // deliberate erasure
+    return m == null ? null :
+      executableElement(typeElement(m.getDeclaringClass()), m.getName(), typeArray(m.getParameterTypes())); // deliberate erasure
   }
 
   public static final ExecutableElement executableElement(TypeElement declaringClass,
@@ -827,9 +790,8 @@ public final class Lang {
 
   public static final ExecutableElement executableElement(TypeElement declaringClass,
                                                           final CharSequence name,
-                                                          TypeMirror returnType,
                                                           final List<? extends TypeMirror> parameterTypes) {
-    if (declaringClass == null || returnType == null || name == null) {
+    if (declaringClass == null || name == null) {
       return null;
     }
     declaringClass = unwrap(declaringClass);
@@ -837,10 +799,9 @@ public final class Lang {
     ExecutableElement rv = null;
     final int parameterTypesSize = parameterTypes == null ? 0 : parameterTypes.size();
     synchronized (CompletionLock.monitor()) {
-      returnType = types.erasure(unwrap(returnType));
       METHOD_LOOP:
       for (final ExecutableElement m : (Iterable<? extends ExecutableElement>)methodsIn(declaringClass.getEnclosedElements())) {
-        if (m.getSimpleName().contentEquals(name) && types.isSameType(types.erasure(m.getReturnType()), returnType)) {
+        if (m.getSimpleName().contentEquals(name)) {
           final List<? extends VariableElement> parameterElements = m.getParameters();
           if (parameterTypesSize == parameterElements.size()) {
             for (int i = 0; i < parameterTypesSize; i++) {
@@ -860,9 +821,8 @@ public final class Lang {
 
   public static final ExecutableElement executableElement(TypeElement declaringClass,
                                                           final CharSequence name,
-                                                          TypeMirror returnType,
                                                           final TypeMirror... parameterTypes) {
-    if (declaringClass == null || returnType == null || name == null) {
+    if (declaringClass == null || name == null) {
       return null;
     }
     declaringClass = unwrap(declaringClass);
@@ -870,10 +830,9 @@ public final class Lang {
     ExecutableElement rv = null;
     final int parameterTypesSize = parameterTypes == null ? 0 : parameterTypes.length;
     synchronized (CompletionLock.monitor()) {
-      returnType = types.erasure(unwrap(returnType));
       METHOD_LOOP:
       for (final ExecutableElement m : (Iterable<? extends ExecutableElement>)methodsIn(declaringClass.getEnclosedElements())) {
-        if (m.getSimpleName().contentEquals(name) && types.isSameType(types.erasure(m.getReturnType()), returnType)) {
+        if (m.getSimpleName().contentEquals(name)) {
           final List<? extends VariableElement> parameterElements = m.getParameters();
           if (parameterTypesSize == parameterElements.size()) {
             for (int i = 0; i < parameterTypesSize; i++) {

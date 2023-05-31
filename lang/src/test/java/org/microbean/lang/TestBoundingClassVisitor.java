@@ -70,7 +70,7 @@ final class TestBoundingClassVisitor {
   @Test
   final void testMildlyComplicated() {
     final DataHolder<String>.Inner inner = new DataHolder<>("hello").data();
-    final DeclaredType outerDeclaredType = Lang.declaredType(Lang.typeElement(DataHolder.class), Lang.declaredType(String.class));
+    final DeclaredType outerDeclaredType = Lang.declaredType(null, Lang.typeElement(DataHolder.class), Lang.declaredType(String.class));
     final DeclaredType innerDeclaredType = Lang.declaredType(outerDeclaredType, Lang.typeElement(inner.getClass()));
     assertSame(unwrap(outerDeclaredType), unwrap(innerDeclaredType.getEnclosingType()));
     // classBound() doesn't do anything here:
@@ -89,7 +89,7 @@ final class TestBoundingClassVisitor {
 
   private final <X extends DataHolder<String>> void testReallyComplicated0(final X x) throws NoSuchMethodException {
     final Object inner = x.data();
-    final DeclaredType outerDeclaredType = Lang.declaredType(Lang.typeElement(DataHolder.class), Lang.declaredType(String.class));
+    final DeclaredType outerDeclaredType = Lang.declaredType(null, Lang.typeElement(DataHolder.class), Lang.declaredType(String.class));
     final DeclaredType innerDeclaredType = Lang.declaredType(outerDeclaredType, Lang.typeElement(inner.getClass()));
     // classBound() doesn't do anything here either:
     assertSame(unwrap(innerDeclaredType), this.javacCodeTypes.classBound((Type)unwrap(innerDeclaredType)));

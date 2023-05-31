@@ -54,7 +54,7 @@ final class TestOuterInner {
     // Hmm. OK.
     final TypeElement e = Lang.typeElement(DataHolder.class);
     assertNotNull(e);
-    final DeclaredType outerDeclaredType = Lang.declaredType(e, Lang.declaredType(String.class));
+    final DeclaredType outerDeclaredType = Lang.declaredType(null, e, Lang.declaredType(String.class));
     assertSame(TypeKind.DECLARED, outerDeclaredType.getKind());
     final DeclaredType innerDeclaredType = Lang.declaredType(outerDeclaredType, Lang.typeElement(inner.getClass()));
     assertSame(TypeKind.DECLARED, innerDeclaredType.getKind());

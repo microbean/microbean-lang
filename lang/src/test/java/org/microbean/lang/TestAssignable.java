@@ -78,9 +78,9 @@ final class TestAssignable {
   
   @Test
   final void testListStringAssignableToListQuestionMark() {
-    final DeclaredType listString = Lang.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
+    final DeclaredType listString = Lang.declaredType(null, (TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
     assertTrue(listString instanceof DelegatingTypeMirror);
-    final DeclaredType listQuestionMark = Lang.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), Lang.wildcardType());
+    final DeclaredType listQuestionMark = Lang.declaredType(null, (TypeElement)this.es.element("java.base", "java.util.List"), Lang.wildcardType());
     assertTrue(listQuestionMark instanceof DelegatingTypeMirror);
     assertSubtype(listString, listQuestionMark);
     assertAssignable(listString, listQuestionMark);
@@ -90,7 +90,7 @@ final class TestAssignable {
 
   @Test
   final void testListStringAssignableToListString() {
-    final DeclaredType listString = Lang.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
+    final DeclaredType listString = Lang.declaredType(null, (TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
     assertSubtype(listString, listString);
     assertAssignable(listString, listString);
   }
@@ -110,7 +110,7 @@ final class TestAssignable {
     assertTrue(((com.sun.tools.javac.code.Type)unwrap(rawList)).isRaw());
     assertTrue(this.types.raw(rawList));
 
-    final DeclaredType listQuestionMark = Lang.declaredType((TypeElement)this.es.element("java.base", "java.util.List"), Lang.wildcardType());
+    final DeclaredType listQuestionMark = Lang.declaredType(null, (TypeElement)this.es.element("java.base", "java.util.List"), Lang.wildcardType());
     assertFalse(((com.sun.tools.javac.code.Type)unwrap(listQuestionMark)).isRaw());
     assertFalse(this.types.raw(listQuestionMark));
 
