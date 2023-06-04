@@ -30,7 +30,7 @@
       <type>jar</type>
       <scope>compile</scope>
     </dependency>
-    
+
     <!-- Test-scoped dependencies. -->
 
     <dependency>
