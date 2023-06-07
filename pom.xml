@@ -78,14 +78,14 @@
       <dependency>
         <groupId>io.smallrye</groupId>
         <artifactId>jandex</artifactId>
-        <version>3.1.0</version>
+        <version>3.1.1</version>
         <type>jar</type>
       </dependency>
 
       <dependency>
         <groupId>net.bytebuddy</groupId>
         <artifactId>byte-buddy</artifactId>
-        <version>1.14.4</version>
+        <version>1.14.5</version>
         <type>jar</type>
       </dependency>
 
@@ -99,14 +99,14 @@
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-api</artifactId>
-        <version>5.9.2</version>
+        <version>5.9.3</version>
         <type>jar</type>
       </dependency>
 
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-engine</artifactId>
-        <version>5.9.2</version>
+        <version>5.9.3</version>
         <type>jar</type>
       </dependency>
 

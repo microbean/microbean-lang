@@ -930,38 +930,46 @@ public final class Lang {
   }
 
   public static final String descriptor(TypeMirror t) {
+    final StringBuilder sb = new StringBuilder();
+    descriptor(t, sb);
+    return sb.toString();
+  }
+
+  private static final void descriptor(TypeMirror t, final StringBuilder sb) {
     synchronized (CompletionLock.monitor()) {
-      return switch (t.getKind()) {
-      case ARRAY -> "[" + descriptor(((ArrayType)t).getComponentType()); // recursive
-      case BOOLEAN -> "Z"; // yes, really
-      case BYTE -> "B";
-      case CHAR -> "C";
-      case DECLARED -> "L" + jvmBinaryName((TypeElement)((DeclaredType)t).asElement()) + ";"; // basically an erasure
-      case DOUBLE -> "D";
-      case EXECUTABLE -> descriptor((ExecutableType)t);
-      case FLOAT -> "F";
-      case INT -> "I";
-      case LONG -> "J"; // yes, really
+      switch (t.getKind()) {
+      case ARRAY -> {
+        sb.append("[");
+        descriptor(((ArrayType)t).getComponentType(), sb);
+      }
+      case BOOLEAN -> sb.append("Z"); // yes, really
+      case BYTE -> sb.append("B");
+      case CHAR -> sb.append("C");
+      case DECLARED -> sb.append("L").append(jvmBinaryName((TypeElement)((DeclaredType)t).asElement())).append(";"); // basically an erasure
+      case DOUBLE -> sb.append("D");
+      case EXECUTABLE -> descriptor((ExecutableType)t, sb);
+      case FLOAT -> sb.append("F");
+      case INT -> sb.append("I");
+      case LONG -> sb.append("J"); // yes, really
       case ERROR, INTERSECTION, MODULE, NONE, NULL, OTHER, PACKAGE, UNION, WILDCARD -> throw new IllegalArgumentException("t: " + t);
-      case SHORT -> "S";
-      case TYPEVAR -> descriptor(erasure(t));
-      case VOID -> "V";
+      case SHORT -> sb.append("S");
+      case TYPEVAR -> descriptor(erasure(t), sb);
+      case VOID -> sb.append("V");
       };
     }
   }
 
-  private static final String descriptor(ExecutableType t) {
+  private static final void descriptor(ExecutableType t, final StringBuilder sb) {
     synchronized (CompletionLock.monitor()) {
       if (t.getKind() != TypeKind.EXECUTABLE) {
         throw new IllegalArgumentException("t: " + t);
       }
-      final StringBuilder sb = new StringBuilder("(");
+      sb.append('(');
       for (final TypeMirror pt : t.getParameterTypes()) {
-        sb.append(descriptor(pt));
+        descriptor(pt, sb);
       }
-      return sb.append(")")
-        .append(descriptor(t.getReturnType()))
-        .toString();
+      sb.append(')');
+      descriptor(t.getReturnType(), sb);
     }
   }
 
@@ -1174,7 +1182,8 @@ public final class Lang {
     return packageElement(moduleElement, pkg == null ? null : pkg.getName());
   }
 
-  public static final PackageElement packageElement(final ModuleElement moduleElement, final CharSequence fullyQualifiedName) {
+  public static final PackageElement packageElement(ModuleElement moduleElement, final CharSequence fullyQualifiedName) {
+    moduleElement = unwrap(moduleElement);
     final Elements elements = pe().getElementUtils();
     final PackageElement rv;
     synchronized (CompletionLock.monitor()) {
@@ -1601,6 +1610,10 @@ public final class Lang {
     return f == null ? null : variableElement(f).asType();
   }
 
+  public static final Equality sameTypeEquality() {
+    return SameTypeEquality.INSTANCE;
+  }
+
 
   /*
    * Private static methods.
@@ -1801,6 +1814,28 @@ public final class Lang {
    * Inner and nested classes.
    */
 
+
+  public static final class SameTypeEquality extends Equality {
+
+    public static final SameTypeEquality INSTANCE = new SameTypeEquality();
+
+    private SameTypeEquality() {
+      super(false);
+    }
+
+    @Override
+    public final boolean equals(final Object o1, final Object o2) {
+      if (o1 == o2) {
+        return true;
+      } else if (o1 == null || o2 == null) {
+        return false;
+      } else if (o1 instanceof TypeMirror t1 && o2 instanceof TypeMirror t2) {
+        return Lang.sameType(t1, t2);
+      }
+      return false;
+    }
+
+  }
 
   public static final class ConstableElementSource implements Constable, ElementSource {
 

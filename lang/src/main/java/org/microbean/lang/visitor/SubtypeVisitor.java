@@ -239,9 +239,14 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     // https://github.com/openjdk/jdk/blob/jdk-21%2B15/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1085-L1091
     if (s.getKind() == TypeKind.INTERSECTION) {
       if (!this.visit(t, this.supertypeVisitor.visit(s))) {
-        // Visiting the supertype of an intersection type is exactly visiting its first bound. Bounds of an intersection
-        // type, it turns out, must be (partially) ordered from most specialized to least specialized, with classes preceding
-        // interfaces. So we visit its first bound, which may be an interface or a non-interface type.
+        // Visiting the supertype of an intersection type is exactly visiting its first bound. How? Well, first, the
+        // direct supertypes of an intersection type are its bounds, and its bounds, it turns out, must be (partially)
+        // ordered from most specialized to least specialized, with classes preceding interfaces. So we visit its first
+        // bound, that is, its first direct supertype, which may be an interface or a non-interface type, but will be
+        // the most specialized/specific of all of its direct supertypes.
+        //
+        // Hypothesis unproven as of this writing: the first bound of an interfaces-only intersection type as created by
+        // javac will be java.lang.Object.
         return Boolean.FALSE;
       }
       for (final TypeMirror i : this.supertypeVisitor.interfacesVisitor().visit(s)) { // TODO: really we should start with its second bound
@@ -275,7 +280,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
       }
     }
 
-    final Element sElement = asElement(s, true /* yes, generate synthetic elements */);
+    final Element sElement = asElement(s, true); /* yes, generate synthetic elements; if s is an array type, for example, some weirdo thing will be synthesized */
     assert sElement != null : "sElement == null; s: " + s;
     final TypeMirror tsup = this.asSuperVisitor.visit(t, sElement);
     if (tsup == null) {
@@ -295,9 +300,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
     if (this.equality.equals(tsupDt.asElement(), sDt.asElement())) {
       // so far so good
-      if (allTypeArguments(sDt).isEmpty()) {
-        // so far so good
-      } else if (this.containsTypeRecursive(sDt, tsupDt)) {
+      if (allTypeArguments(sDt).isEmpty() || this.containsTypeRecursive(sDt, tsupDt)) {
         // so far so good
       } else {
         // bzzt you lose

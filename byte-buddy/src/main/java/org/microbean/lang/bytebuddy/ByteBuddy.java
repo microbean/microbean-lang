@@ -40,6 +40,7 @@ import org.microbean.lang.Modeler;
 
 import org.microbean.lang.type.DefineableType;
 
+@Deprecated
 public final class ByteBuddy extends Modeler {
 
   private final TypePool typePool;

@@ -75,7 +75,6 @@ final class TestTypeElementTypePool {
     this.tp = new TypeElementTypePool(new TypePool.CacheProvider.Simple());
   }
 
-  @Disabled // infinite loop
   @Test
   final void testFirstSpike() {
     final TypeDescription td = tp.describe("java.lang.Integer").resolve();
@@ -144,7 +143,7 @@ final class TestTypeElementTypePool {
 
       private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
-      // TODO: for binary names in this mess, are they JVM binary names, or JLS binary names? Raph calls them "internal names" which isn't a thing.
+      // Binary names in this mess are JVM binary names, not JLS binary names. Raph calls them "internal names" which isn't a thing.
       MyTypeDescription(final ClassFileVersion classFileVersion, final TypePool typePool, TypeElement e) {
         super(typePool,
               actualModifiers(e),
@@ -380,14 +379,14 @@ final class TestTypeElementTypePool {
                             Lang.descriptor(e.asType()),
                             genericSignature(e),
                             exceptionBinaryNames,
-                            Map.of(),
-                            Map.of(),
-                            Map.of(),
-                            Map.of(),
-                            Map.of(),
-                            Map.of(),
+                            Map.of(), // typeVariableAnnotationTokens (Map<Integer, Map<String, List<AnnotationToken>>>)
+                            Map.of(), // typeVariableBoundAnnotationTokens
+                            Map.of(), // returnTypeAnnotationTokens
+                            Map.of(), // parameterTypeAnnotationTokens
+                            Map.of(), // exceptionTypeAnnotationTokens
+                            Map.of(), // receiverTypeAnnotationTokens
                             List.of(), // annotationTokens
-                            Map.of(),
+                            Map.of(), // parameterAnnotationTokens
                             Collections.unmodifiableList(parameterTokens),
                             null); // defaultValue
       }

@@ -45,9 +45,11 @@ import org.microbean.lang.type.DelegatingTypeMirror;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import static org.microbean.lang.Lang.arrayType;
 import static org.microbean.lang.Lang.unwrap;
 
 final class TestTypeClosureVisitor {
@@ -204,6 +206,11 @@ final class TestTypeClosureVisitor {
     // We follow the JDK 21 approach:
     assertTrue(precedesPredicate.test(charSequenceElement, comparableElement));
 
+  }
+
+  @Test
+  final void testRankOfArrayClass() {
+    assertThrows(AssertionError.class, () -> javacCodeTypes.rank((Type)unwrap(arrayType(Integer[].class))));
   }
 
   @Test
