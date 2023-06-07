@@ -56,7 +56,7 @@ public non-sealed class TypeVariable extends DefineableType<TypeParameterElement
   @Override // TypeVariable
   public final TypeMirror getLowerBound() {
     final TypeMirror t = this.lowerBound;
-    return t == null ? NullType.INSTANCE : t;
+    return t == null ? NullType.INSTANCE : t; // this is correct; can't just return null
   }
 
   public final void setLowerBound(final TypeMirror lowerBound) {
@@ -73,7 +73,7 @@ public non-sealed class TypeVariable extends DefineableType<TypeParameterElement
   @Override // TypeVariable
   public final TypeMirror getUpperBound() {
     final TypeMirror t = this.upperBound;
-    return t == null ? this.elementSource.element("java.lang.Object").asType() : t;
+    return t == null ? this.elementSource.element("java.lang.Object").asType() : t; // this is correct; can't just return null
   }
 
   public final void setUpperBound(final TypeMirror upperBound) {
@@ -110,13 +110,14 @@ public non-sealed class TypeVariable extends DefineableType<TypeParameterElement
   }
 
   private final TypeMirror validateUpperBound(final TypeMirror upperBound) {
-    if (upperBound == this) {
-      throw new IllegalArgumentException("upperBound: " + upperBound);
-    }
     switch (upperBound.getKind()) {
     case DECLARED:
     case INTERSECTION:
+      return upperBound;
     case TYPEVAR:
+      if (upperBound == this) {
+        throw new IllegalArgumentException("upperBound: " + upperBound);
+      }
       return upperBound;
     default:
       throw new IllegalArgumentException("upperBound: " + upperBound);

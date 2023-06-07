@@ -14,16 +14,20 @@
 package org.microbean.lang;
 
 import java.util.Comparator;
+import java.util.Objects;
+
+import java.util.function.Predicate;
 
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
-public final class TypeVariablesFirstTypeMirrorComparator implements Comparator<TypeMirror> {
+public class TestingTypeMirrorComparator implements Comparator<TypeMirror> {
 
-  public static final TypeVariablesFirstTypeMirrorComparator INSTANCE = new TypeVariablesFirstTypeMirrorComparator();
-
-  private TypeVariablesFirstTypeMirrorComparator() {
+  private final Predicate<? super TypeMirror> p;
+  
+  public TestingTypeMirrorComparator(final Predicate<? super TypeMirror> p) {
     super();
+    this.p = Objects.requireNonNull(p, "p");
   }
 
   @Override // Comparator<TypeMirror>
@@ -32,8 +36,8 @@ public final class TypeVariablesFirstTypeMirrorComparator implements Comparator<
       t == s ? 0 :
       t == null ? 1 :
       s == null ? -1 :
-      t.getKind() == TypeKind.TYPEVAR ? s.getKind() == TypeKind.TYPEVAR ? 0 : -1 :
-      s.getKind() == TypeKind.TYPEVAR ? 1 : 0;
+      p.test(t) ? p.test(s) ? 0 : -1 :
+      p.test(s) ? 1 : 0;
   }
 
 }

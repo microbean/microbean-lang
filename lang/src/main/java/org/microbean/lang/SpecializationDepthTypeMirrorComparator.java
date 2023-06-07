@@ -63,8 +63,8 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
       t == null ? 1 :
       s == null ? -1 :
       // Note this comparison is "backwards"
-      Integer.compare(specializationDepth(DelegatingTypeMirror.of(s, this.elementSource, this.equality)),
-                      specializationDepth(DelegatingTypeMirror.of(t, this.elementSource, this.equality))); 
+      Integer.signum(this.specializationDepth(DelegatingTypeMirror.of(s, this.elementSource, this.equality)) -
+                     this.specializationDepth(DelegatingTypeMirror.of(t, this.elementSource, this.equality)));
   }
 
   public final int specializationDepth(final TypeMirror t) {
@@ -84,11 +84,15 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
     case ARRAY:
     case INTERSECTION:
     case TYPEVAR:
-      int sd = 1;
+      // My initial specialization depth is 0, although we know I will have at least one supertype (java.lang.Object)
+      // because we already handled java.lang.Object, which has no supertypes, above.
+      int sd = 0;
       for (final TypeMirror s : this.directSupertypes.apply(t)) {
-        sd = Math.max(sd, specializationDepth(DelegatingTypeMirror.of(s, this.elementSource, this.equality)));
+        sd = Math.max(sd, this.specializationDepth(DelegatingTypeMirror.of(s, this.elementSource, this.equality)));
       }
-      return sd;
+      // My specialization depth is equal to the greatest one of my direct supertypes, plus one (representing me, a
+      // subtype).
+      return sd + 1;
     case ERROR:
       throw new AssertionError("t.getKind() == TypeKind.ERROR; t: " + t);
     default:

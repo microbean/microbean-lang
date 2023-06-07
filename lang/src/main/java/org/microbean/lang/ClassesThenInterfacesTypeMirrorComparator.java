@@ -20,6 +20,7 @@ import javax.lang.model.type.IntersectionType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
+@Deprecated(forRemoval = true)
 // Only works on reference types (and IntersectionTypes).
 public final class ClassesThenInterfacesTypeMirrorComparator implements Comparator<TypeMirror> {
 
@@ -31,19 +32,7 @@ public final class ClassesThenInterfacesTypeMirrorComparator implements Comparat
 
   @Override // Comparator<TypeMirror>
   public final int compare(final TypeMirror t, final TypeMirror s) {
-    // A note on type variables and intersection types:
-    //
-    // An intersection type is just a way of representing the many bounds of a type variable in a single type. This also
-    // means that IntersectionTypes must play by rules imposed by TypeVariables, the only types that "use" them. So in
-    // the Java language model, a TypeVariable has exactly one upper bound, which may, itself, be an IntersectionType.
-    //
-    // If its sole bound is an IntersectionType, then *its* first (but never only) bound will be a DeclaredType.
-    //
-    // If its sole bound is not an IntersectionType, then it will be either a DeclaredType or a TypeVariable.
-    //
-    // Applying these rules together and recursively where necessary, we can tell whether any given TypeVariable "is an
-    // interface" if either (a) its sole bound is a DeclaredType that "is an interface" or (b) its sole bound is an
-    // IntersectionType whose first bound is a DeclaredType that "is an interface".
+    // See ../../../../../site/markdown/type-variables-and-intersection-types.md.
     return
       t == s ? 0 :
       t == null ? 1 :
@@ -56,8 +45,8 @@ public final class ClassesThenInterfacesTypeMirrorComparator implements Comparat
     return switch (t.getKind()) {
     case ARRAY -> false;
     case DECLARED -> ((DeclaredType)t).asElement().getKind().isInterface();
-    case INTERSECTION -> iface(((IntersectionType)t).getBounds().get(0));
-    case TYPEVAR -> iface(((TypeVariable)t).getUpperBound());
+    case INTERSECTION -> iface(((IntersectionType)t).getBounds().get(0)); // will be DeclaredType (nothing else)
+    case TYPEVAR -> iface(((TypeVariable)t).getUpperBound()); // will be DeclaredType, IntersectionType or TypeVariable (notably never ArrayType)
     case ERROR -> throw new AssertionError("t.getKind() == TypeKind.ERROR; t: " + t);
     default -> throw new IllegalArgumentException("t: " + t);
     };

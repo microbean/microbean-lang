@@ -66,7 +66,7 @@ public final class IntersectionType extends TypeMirror implements javax.lang.mod
   }
 
   public final void addBound(final javax.lang.model.type.TypeMirror bound) {
-    this.bounds.add(validateBound(bound));
+    this.bounds.add(validateBound(bound, this.bounds.size()));
   }
 
   public final void addBounds(final Iterable<? extends javax.lang.model.type.TypeMirror> bounds) {
@@ -84,9 +84,9 @@ public final class IntersectionType extends TypeMirror implements javax.lang.mod
     return sj.toString();
   }
 
-  private final javax.lang.model.type.TypeMirror validateBound(final javax.lang.model.type.TypeMirror bound) {
-    if (Objects.requireNonNull(bound, "bound") == this) {
-      throw new IllegalArgumentException("bound: " + bound);
+  private final javax.lang.model.type.TypeMirror validateBound(final javax.lang.model.type.TypeMirror bound, final int index) {
+    if (bound.getKind() != TypeKind.DECLARED || index > 0 && !((DeclaredType)bound).asElement().getKind().isInterface()) {
+      throw new IllegalArgumentException("bound: " + bound + "; index: " + index);
     }
     return bound;
   }

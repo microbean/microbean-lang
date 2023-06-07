@@ -30,6 +30,8 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
+import org.microbean.lang.TestingTypeMirrorComparator;
+
 // Totally ordering (I hope!) Comparator inconsistent with equals that uses names internally to compare types. The names
 // used are deliberately undefined but incorporate fully qualified names where possible as well as type argument and
 // bound information.
@@ -86,7 +88,15 @@ public final class NameTypeMirrorComparator implements Comparator<TypeMirror> {
         throw new IllegalArgumentException("t: " + t);
       }
       final List<TypeMirror> sortedBounds = new ArrayList<>(bounds);
-      Collections.sort(sortedBounds, ClassesThenInterfacesTypeMirrorComparator.INSTANCE.thenComparing(this));
+      // The bounds of an IntersectionType will always be DeclaredTypes. So all we have to do is put the non-interface
+      // ones first.
+      //
+      // TODO: technically we don't have to do this since this is just to get deterministic order based on names.
+      Collections.sort(sortedBounds,
+                       new TestingTypeMirrorComparator(type ->
+                                                       type.getKind() == TypeKind.DECLARED &&
+                                                       !((DeclaredType)type).asElement().getKind().isInterface())
+                       .thenComparing(this));
       final StringJoiner sj = new StringJoiner(" & ");
       for (final TypeMirror bound : sortedBounds) {
         sj.add(name(bound));
