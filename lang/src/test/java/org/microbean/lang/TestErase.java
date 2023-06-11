@@ -41,7 +41,7 @@ import org.junit.jupiter.api.Test;
 
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 
 import org.microbean.lang.type.Types;
 
@@ -105,13 +105,22 @@ final class TestErase {
 
     // Now do it with our stuff.
 
-    final ElementSource es = (m, n) -> elements.getTypeElement(elements.getModuleElement(m), n);
-    final Types types = new Types(es);
+    final TypeAndElementSource tes = new TypeAndElementSource() {
+        @Override
+        public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
+          return elements.getTypeElement(elements.getModuleElement(m), n);
+        }
+        @Override
+        public final DeclaredType declaredType(final DeclaredType enclosingType, final TypeElement typeElement, final TypeMirror... arguments) {
+          return javacModelTypes.getDeclaredType(enclosingType, typeElement, arguments);
+        }
+      };
+    final Types types = new Types(tes);
 
     // Make sure our stuff thinks the javac erasure is raw.
     assertTrue(types.raw(erasure));
 
-    final EraseVisitor eraseVisitor = new EraseVisitor(es, types);
+    final EraseVisitor eraseVisitor = new EraseVisitor(tes, types);
     erasure = (DeclaredType)eraseVisitor.visit(comparableIntegerType);
     typeArguments = erasure.getTypeArguments();
     assertEquals(0, typeArguments.size());

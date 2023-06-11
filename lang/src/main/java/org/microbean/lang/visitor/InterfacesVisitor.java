@@ -32,7 +32,7 @@ import javax.lang.model.type.TypeVariable;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.Types;
@@ -43,7 +43,7 @@ import static org.microbean.lang.type.Types.isInterface;
 // Basically done
 public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends TypeMirror>, Void> {
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
   
   private final Equality equality;
 
@@ -55,7 +55,7 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
 
   private final Predicate<? super TypeMirror> filter;
 
-  public InterfacesVisitor(final ElementSource elementSource,
+  public InterfacesVisitor(final TypeAndElementSource elementSource,
                            final Equality equality,
                            final Types types,
                            final EraseVisitor eraseVisitor,

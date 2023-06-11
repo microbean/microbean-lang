@@ -41,15 +41,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 final class TestByteBuddy {
 
-  private ByteBuddy bb;
-  
   private TestByteBuddy() {
     super();
-  }
-
-  @BeforeEach
-  final void setup() {
-    this.bb = new ByteBuddy();
   }
 
   @Test

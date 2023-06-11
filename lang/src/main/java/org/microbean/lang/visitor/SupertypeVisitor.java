@@ -31,7 +31,7 @@ import javax.lang.model.type.TypeVariable;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.NoType;
@@ -49,7 +49,7 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
    */
 
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   private final Equality equality;
 
@@ -69,20 +69,20 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
    */
 
 
-  public SupertypeVisitor(final ElementSource elementSource,
+  public SupertypeVisitor(final TypeAndElementSource elementSource,
                           final Types types,
                           final EraseVisitor eraseVisitor) {
     this(elementSource, null, types, eraseVisitor, null);
   }
 
-  public SupertypeVisitor(final ElementSource elementSource,
+  public SupertypeVisitor(final TypeAndElementSource elementSource,
                           final Types types,
                           final EraseVisitor eraseVisitor,
                           final Predicate<? super TypeMirror> filter) {
     this(elementSource, null, types, eraseVisitor, filter);
   }
 
-  public SupertypeVisitor(final ElementSource elementSource,
+  public SupertypeVisitor(final TypeAndElementSource elementSource,
                           final Equality equality,
                           final Types types,
                           final EraseVisitor eraseVisitor,
@@ -132,9 +132,9 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
 
   private final IntersectionType topLevelArraySupertype() {
     return
-      new org.microbean.lang.type.IntersectionType(List.of(this.elementSource.element("java.lang.Object").asType(),
-                                                           this.elementSource.element("java.io.Serializable").asType(),
-                                                           this.elementSource.element("java.lang.Cloneable").asType()));
+      new org.microbean.lang.type.IntersectionType(List.of(this.elementSource.typeElement("java.lang.Object").asType(),
+                                                           this.elementSource.typeElement("java.io.Serializable").asType(),
+                                                           this.elementSource.typeElement("java.lang.Cloneable").asType()));
   }
 
   // The compiler's code is borderline incomprehensible.

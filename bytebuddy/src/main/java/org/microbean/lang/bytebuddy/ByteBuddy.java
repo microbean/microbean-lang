@@ -24,6 +24,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.lang.model.element.TypeElement;
 
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import net.bytebuddy.description.method.MethodDescription;
@@ -56,8 +57,7 @@ public final class ByteBuddy extends Modeler {
 
   public Element element(final Object k) {
     return switch (k) {
-    case String s -> this.element(s);
-    case CharSequence cs -> this.element(this.typePool.describe(cs.toString()).resolve()); // RECURSIVE
+    case CharSequence cs -> this.typeElement(cs); // this.element(this.typePool.describe(cs.toString()).resolve()); // RECURSIVE
     case MethodDescription.InDefinedShape mdids -> this.element(mdids, () -> new org.microbean.lang.element.ExecutableElement(elementKind(mdids)), this::build);
     case PackageDescription pd -> this.element(pd, org.microbean.lang.element.PackageElement::new, this::build);
     case TypeDescription.ForPackageDescription pd -> this.element(pd, org.microbean.lang.element.PackageElement::new, this::build);
@@ -66,14 +66,15 @@ public final class ByteBuddy extends Modeler {
     };
   }
 
-  @Override // ElementSource
-  public Element element(final String n) {
-    return this.element(this.typePool.describe(n).resolve());
+  @Override // TypeAndElementSource
+  public TypeElement typeElement(final CharSequence n) {
+    return (TypeElement)this.element(this.typePool.describe(n.toString()).resolve());
   }
 
-  @Override // ElementSource
-  public Element element(final String m, final String n) {
-    return this.element(n);
+  @Override // TypeAndElementSource
+  public TypeElement typeElement(final CharSequence m, final CharSequence n) {
+    // TODO: m is currently ignored
+    return this.typeElement(n);
   }
 
   public TypeMirror type(final Object k) {
@@ -95,6 +96,11 @@ public final class ByteBuddy extends Modeler {
 
     default -> throw new IllegalArgumentException("k: " + k + "; k.getClass(): " + k.getClass());
     };
+  }
+
+  @Override // TypeAndElementSource
+  public DeclaredType declaredType(final DeclaredType containingType, final TypeElement typeElement, final TypeMirror... arguments) {
+    throw new UnsupportedOperationException("TODO: implement");
   }
 
 

@@ -31,7 +31,7 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.NoType;
@@ -44,7 +44,7 @@ import static org.microbean.lang.type.Types.isStatic;
 // https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2294-L2340
 public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
   
   private final Equality equality;
 
@@ -56,7 +56,7 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
 
   private final SupertypeVisitor supertypeVisitor;
 
-  public MemberTypeVisitor(final ElementSource elementSource,
+  public MemberTypeVisitor(final TypeAndElementSource elementSource,
                            final Equality equality,
                            final Types types,
                            final AsSuperVisitor asSuperVisitor,

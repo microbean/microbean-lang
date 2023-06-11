@@ -60,7 +60,8 @@ final class TestSupertypeVisitor2 {
 
   @BeforeEach
   final void setup() throws IllegalAccessException, NoSuchFieldException {
-    this.visitors = new Visitors((m, n) -> Lang.typeElement(Lang.moduleElement(m), n));
+    // this.visitors = new Visitors((m, n) -> Lang.typeElement(Lang.moduleElement(m), n));
+    this.visitors = new Visitors(Lang.typeAndElementSource());
     final Field f = JavacTypes.class.getDeclaredField("types");
     assertTrue(f.trySetAccessible());
     this.javacCodeTypes = (com.sun.tools.javac.code.Types)f.get(Lang.pe().getTypeUtils());

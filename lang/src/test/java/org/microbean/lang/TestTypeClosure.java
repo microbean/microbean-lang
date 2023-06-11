@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test;
 
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 
 import org.microbean.lang.type.Types;
 
@@ -86,7 +86,17 @@ final class TestTypeClosure {
     assertSame(integerArrayType, integerArrayClosure.get(0));
 
     // Let's prove we don't support it.
-    final Visitors visitors = new Visitors((m, n) -> elements.getTypeElement(elements.getModuleElement(m), n));
+    final TypeAndElementSource tes = new TypeAndElementSource() {
+        @Override
+        public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
+          return elements.getTypeElement(elements.getModuleElement(m), n);
+        }
+        @Override
+        public final DeclaredType declaredType(final DeclaredType enclosingType, final TypeElement typeElement, final TypeMirror... arguments) {
+          return javacModelTypes.getDeclaredType(enclosingType, typeElement, arguments);
+        }
+      };
+    final Visitors visitors = new Visitors(tes); // (m, n) -> elements.getTypeElement(elements.getModuleElement(m), n));
     try {
       visitors.typeClosureVisitor().visit(integerArrayType);
       fail();
@@ -129,7 +139,17 @@ final class TestTypeClosure {
     assertEquals(7, closure.size());
 
     // Let's try it with our visitor.
-    final Visitors visitors = new Visitors((m, n) -> elements.getTypeElement(elements.getModuleElement(m), n));
+    final TypeAndElementSource tes = new TypeAndElementSource() {
+        @Override
+        public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
+          return elements.getTypeElement(elements.getModuleElement(m), n);
+        }
+        @Override
+        public final DeclaredType declaredType(final DeclaredType enclosingType, final TypeElement typeElement, final TypeMirror... arguments) {
+          return javacModelTypes.getDeclaredType(enclosingType, typeElement, arguments);
+        }
+      };
+    final Visitors visitors = new Visitors(tes); // (m, n) -> elements.getTypeElement(elements.getModuleElement(m), n));
     final List<? extends TypeMirror> list = visitors.typeClosureVisitor().visit(integerElementType).toList();
     assertEquals(7, list.size(), "Unexpected type closure list: " + list);
   }

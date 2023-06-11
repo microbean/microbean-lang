@@ -40,7 +40,7 @@ import static org.microbean.lang.Lang.unwrap;
 
 final class TestAssignable {
 
-  private ElementSource es;
+  private TypeAndElementSource es;
 
   private Types types;
   
@@ -54,9 +54,9 @@ final class TestAssignable {
 
   @BeforeEach
   final void setup() {
-    this.es = Lang.elementSource();
+    this.es = Lang.typeAndElementSource();
     this.types = new Types(this.es);
-    final Visitors visitors = new Visitors(Lang.elementSource());
+    final Visitors visitors = new Visitors(Lang.typeAndElementSource());
     this.subtypeVisitor = visitors.subtypeVisitor();
     this.assignableVisitor = visitors.assignableVisitor();
   }
@@ -68,8 +68,8 @@ final class TestAssignable {
 
   @Test
   final void testStringAssignableToObject() {
-    final DeclaredType string = (DeclaredType)this.es.element("java.base", "java.lang.String").asType();
-    final DeclaredType object = (DeclaredType)this.es.element("java.base", "java.lang.Object").asType();
+    final DeclaredType string = (DeclaredType)this.es.typeElement("java.base", "java.lang.String").asType();
+    final DeclaredType object = (DeclaredType)this.es.typeElement("java.base", "java.lang.Object").asType();
     assertSubtype(string, object);
     assertAssignable(string, object);
     assertNotSubtype(object, string);
@@ -78,9 +78,9 @@ final class TestAssignable {
   
   @Test
   final void testListStringAssignableToListQuestionMark() {
-    final DeclaredType listString = Lang.declaredType(null, (TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
+    final DeclaredType listString = Lang.declaredType(null, this.es.typeElement("java.base", "java.util.List"), this.es.typeElement("java.base", "java.lang.String").asType());
     assertTrue(listString instanceof DelegatingTypeMirror);
-    final DeclaredType listQuestionMark = Lang.declaredType(null, (TypeElement)this.es.element("java.base", "java.util.List"), Lang.wildcardType());
+    final DeclaredType listQuestionMark = Lang.declaredType(null, this.es.typeElement("java.base", "java.util.List"), Lang.wildcardType());
     assertTrue(listQuestionMark instanceof DelegatingTypeMirror);
     assertSubtype(listString, listQuestionMark);
     assertAssignable(listString, listQuestionMark);
@@ -90,7 +90,7 @@ final class TestAssignable {
 
   @Test
   final void testListStringAssignableToListString() {
-    final DeclaredType listString = Lang.declaredType(null, (TypeElement)this.es.element("java.base", "java.util.List"), this.es.element("java.base", "java.lang.String").asType());
+    final DeclaredType listString = Lang.declaredType(null, this.es.typeElement("java.base", "java.util.List"), this.es.typeElement("java.base", "java.lang.String").asType());
     assertSubtype(listString, listString);
     assertAssignable(listString, listString);
   }
@@ -106,11 +106,11 @@ final class TestAssignable {
 
   @Test
   final void testRawListAssignableToListQuestionMark() {
-    final DeclaredType rawList = Lang.declaredType((TypeElement)this.es.element("java.base", "java.util.List"));
+    final DeclaredType rawList = Lang.declaredType(this.es.typeElement("java.base", "java.util.List"));
     assertTrue(((com.sun.tools.javac.code.Type)unwrap(rawList)).isRaw());
     assertTrue(this.types.raw(rawList));
 
-    final DeclaredType listQuestionMark = Lang.declaredType(null, (TypeElement)this.es.element("java.base", "java.util.List"), Lang.wildcardType());
+    final DeclaredType listQuestionMark = Lang.declaredType(null, this.es.typeElement("java.base", "java.util.List"), Lang.wildcardType());
     assertFalse(((com.sun.tools.javac.code.Type)unwrap(listQuestionMark)).isRaw());
     assertFalse(this.types.raw(listQuestionMark));
 

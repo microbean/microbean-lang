@@ -44,7 +44,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import org.microbean.lang.CompletionLock;
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
@@ -68,7 +68,7 @@ public final class DelegatingElement
 
   private final Element delegate;
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   private final Equality ehc;
 
@@ -79,7 +79,7 @@ public final class DelegatingElement
 
 
   private DelegatingElement(final Element delegate,
-                            final ElementSource elementSource,
+                            final TypeAndElementSource elementSource,
                             final Equality ehc) {
     super();
     this.delegate = unwrap(Objects.requireNonNull(delegate, "delegate"));
@@ -366,11 +366,11 @@ public final class DelegatingElement
    */
 
 
-  public static final List<DelegatingElement> of(final Collection<? extends Element> es, final ElementSource elementSource) {
+  public static final List<DelegatingElement> of(final Collection<? extends Element> es, final TypeAndElementSource elementSource) {
     return of(es, elementSource, null);
   }
 
-  public static final List<DelegatingElement> of(final Collection<? extends Element> es, final ElementSource elementSource, final Equality ehc) {
+  public static final List<DelegatingElement> of(final Collection<? extends Element> es, final TypeAndElementSource elementSource, final Equality ehc) {
     final List<DelegatingElement> newEs = new ArrayList<>(es.size());
     for (final Element e : es) {
       newEs.add(of(e, elementSource, ehc));
@@ -378,12 +378,12 @@ public final class DelegatingElement
     return Collections.unmodifiableList(newEs);
   }
 
-  public static final DelegatingElement of(final Element e, final ElementSource elementSource) {
+  public static final DelegatingElement of(final Element e, final TypeAndElementSource elementSource) {
     return of(e, elementSource, null);
   }
 
   public static final DelegatingElement of(final Element e,
-                                           final ElementSource elementSource,
+                                           final TypeAndElementSource elementSource,
                                            final Equality ehc) {
     return
       e == null ? null :

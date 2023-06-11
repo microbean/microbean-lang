@@ -27,27 +27,27 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVisitor;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 
 public non-sealed class TypeVariable extends DefineableType<TypeParameterElement> implements javax.lang.model.type.TypeVariable {
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   private TypeMirror upperBound;
 
   private TypeMirror lowerBound;
 
-  public TypeVariable(final ElementSource elementSource) {
+  public TypeVariable(final TypeAndElementSource elementSource) {
     super(TypeKind.TYPEVAR);
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
   }
 
-  public TypeVariable(final ElementSource elementSource, final TypeMirror upperBound) {
+  public TypeVariable(final TypeAndElementSource elementSource, final TypeMirror upperBound) {
     this(elementSource);
     this.setUpperBound(upperBound);
   }
 
-  public TypeVariable(final ElementSource elementSource, final TypeMirror upperBound, final TypeMirror lowerBound) {
+  public TypeVariable(final TypeAndElementSource elementSource, final TypeMirror upperBound, final TypeMirror lowerBound) {
     this(elementSource);
     this.setUpperBound(upperBound);
     this.setLowerBound(lowerBound);
@@ -73,7 +73,7 @@ public non-sealed class TypeVariable extends DefineableType<TypeParameterElement
   @Override // TypeVariable
   public final TypeMirror getUpperBound() {
     final TypeMirror t = this.upperBound;
-    return t == null ? this.elementSource.element("java.lang.Object").asType() : t; // this is correct; can't just return null
+    return t == null ? this.elementSource.typeElement("java.lang.Object").asType() : t; // this is correct; can't just return null
   }
 
   public final void setUpperBound(final TypeMirror upperBound) {

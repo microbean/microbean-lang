@@ -33,7 +33,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 final class SubstituteVisitor extends StructuralTypeMapping<Void> {
@@ -58,7 +58,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
    */
 
 
-  SubstituteVisitor(final ElementSource elementSource,
+  SubstituteVisitor(final TypeAndElementSource elementSource,
                     final Equality equality,
                     final SupertypeVisitor supertypeVisitor, // used only for intersection types
                     List<? extends TypeMirror> from,

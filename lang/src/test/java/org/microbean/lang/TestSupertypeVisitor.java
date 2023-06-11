@@ -85,10 +85,19 @@ final class TestSupertypeVisitor {
     // Let's try it with our visitor.
 
     // Set up the fundamentals.
-    final ElementSource es = (m, n) -> elements.getTypeElement(elements.getModuleElement(m), n);
-    final Types types = new Types(es);
-    final EraseVisitor eraseVisitor = new EraseVisitor(es, types);
-    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(es, types, eraseVisitor);
+    final TypeAndElementSource tes = new TypeAndElementSource() {
+        @Override
+        public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
+          return elements.getTypeElement(elements.getModuleElement(m), n);
+        }
+        @Override
+        public final DeclaredType declaredType(final DeclaredType enclosingType, final TypeElement typeElement, final TypeMirror... arguments) {
+          return javacModelTypes.getDeclaredType(enclosingType, typeElement, arguments);
+        }
+      };
+    final Types types = new Types(tes);
+    final EraseVisitor eraseVisitor = new EraseVisitor(tes, types);
+    final SupertypeVisitor supertypeVisitor = new SupertypeVisitor(tes, types, eraseVisitor);
 
     final TypeMirror supertype = supertypeVisitor.visit(integerElementType);
 

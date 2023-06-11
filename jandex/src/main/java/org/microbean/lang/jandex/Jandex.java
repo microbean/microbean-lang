@@ -374,14 +374,16 @@ public final class Jandex extends Modeler {
   }
 
   @Override // ElementSource
-  public final Element element(final String m, final String n) {
-    return this.element(n);
+  public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
+    return this.typeElement(n);
   }
 
-  @Override // Modeler
-  public final Element element(final String n) {
-    final ClassInfo ci = this.classInfoFor(n);
-    return ci == null ? null : this.element(ci);
+  @Override // ElementSource
+  public final TypeElement typeElement(final CharSequence n) {
+    final ClassInfo ci = this.classInfoFor(n.toString());
+    return
+      ci == null || ci.isModule() ? null :
+      (TypeElement)this.element(ci);
   }
 
   public final PackageElement packageElement(final DotName n) {
@@ -536,6 +538,11 @@ public final class Jandex extends Modeler {
 
   public final javax.lang.model.type.TypeVariable type(final TypeParameterInfo tpi) {
     return tpi == null ? null : this.type(tpi, () -> new org.microbean.lang.type.TypeVariable(this), this::build);
+  }
+
+  @Override // TypeAndElementSource
+  public final DeclaredType declaredType(final DeclaredType containingType, final TypeElement typeElement, final TypeMirror... arguments) {
+    throw new UnsupportedOperationException("TODO");
   }
 
 

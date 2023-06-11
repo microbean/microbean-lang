@@ -530,6 +530,15 @@ public final class Lang {
     }
   }
 
+  public static final boolean generic(final TypeElement e) {
+    synchronized (CompletionLock.monitor()) {
+      return switch (e.getKind()) {
+      case CLASS, ENUM, INTERFACE, RECORD -> !e.getTypeParameters().isEmpty();
+      default -> false;
+      };
+    }
+  }
+
   public static final TypeMirror capture(TypeMirror t) {
     t = unwrap(t);
     // JavacTypes#capture(TypeMirror) calls TypeMirror#getKind().
@@ -746,6 +755,7 @@ public final class Lang {
       if (bounds.isEmpty()) {
         sb.append(":java.lang.Object");
       } else {
+        sb.append(':');
         classBound(bounds.get(0), sb);
       }
       interfaceBounds(bounds.subList(1, bounds.size()), sb);
@@ -842,7 +852,7 @@ public final class Lang {
       case INT -> sb.append("I");
       case LONG -> sb.append("J");
       case SHORT -> sb.append("S");
-      case TYPEVAR -> sb.append("T").append(((TypeVariable)t).asElement().getSimpleName());
+      case TYPEVAR -> sb.append("T").append(((TypeVariable)t).asElement().getSimpleName()).append(';');
       default -> throw new IllegalArgumentException("t: " + t);
       };
     }
@@ -1017,8 +1027,8 @@ public final class Lang {
     return wrap(t);
   }
 
-  public static final ElementSource elementSource() {
-    return ConstableElementSource.INSTANCE;
+  public static final TypeAndElementSource typeAndElementSource() {
+    return ConstableTypeAndElementSource.INSTANCE;
   }
 
   public static final long modifiers(Element e) {
@@ -1792,11 +1802,11 @@ public final class Lang {
 
   @SuppressWarnings("unchecked")
   public static final <T extends TypeMirror> T wrap(final T t) {
-    return t == null ? null : (T)DelegatingTypeMirror.of(t, elementSource(), null);
+    return t == null ? null : (T)DelegatingTypeMirror.of(t, typeAndElementSource(), null);
   }
 
   public static final List<? extends TypeMirror> wrap(final Collection<? extends TypeMirror> ts) {
-    return DelegatingTypeMirror.of(ts, elementSource(), null);
+    return DelegatingTypeMirror.of(ts, typeAndElementSource(), null);
   }
 
   @SuppressWarnings("unchecked")
@@ -1806,7 +1816,7 @@ public final class Lang {
 
   @SuppressWarnings("unchecked")
   public static final <E extends Element> E wrap(final E e) {
-    return e == null ? null : (E)DelegatingElement.of(e, elementSource(), null);
+    return e == null ? null : (E)DelegatingElement.of(e, typeAndElementSource(), null);
   }
 
 
@@ -1837,29 +1847,36 @@ public final class Lang {
 
   }
 
-  public static final class ConstableElementSource implements Constable, ElementSource {
+  public static final class ConstableTypeAndElementSource implements Constable, TypeAndElementSource {
 
-    private static final ClassDesc CD_ConstableElementSource = ClassDesc.of(ConstableElementSource.class.getName());
+    private static final ClassDesc CD_ConstableTypeAndElementSource = ClassDesc.of(ConstableTypeAndElementSource.class.getName());
 
-    public static final ConstableElementSource INSTANCE = new ConstableElementSource();
+    public static final ConstableTypeAndElementSource INSTANCE = new ConstableTypeAndElementSource();
 
-    private ConstableElementSource() {
+    private ConstableTypeAndElementSource() {
       super();
     }
 
     @Override
-    public final Element element(final String moduleName, final String name) {
-      return moduleName == null ? typeElement(name) : typeElement(moduleElement(moduleName), name);
+    public final DeclaredType declaredType(final DeclaredType containingType,
+                                           final TypeElement typeElement,
+                                           final TypeMirror... typeArguments) {
+      return Lang.declaredType(containingType, typeElement, typeArguments);
+    }
+    
+    @Override
+    public final TypeElement typeElement(final CharSequence moduleName, final CharSequence canonicalName) {
+      return moduleName == null ? Lang.typeElement(canonicalName) : Lang.typeElement(Lang.moduleElement(moduleName), canonicalName);
     }
 
     @Override
-    public final Optional<DynamicConstantDesc<ConstableElementSource>> describeConstable() {
+    public final Optional<DynamicConstantDesc<ConstableTypeAndElementSource>> describeConstable() {
       return
         Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
                                            MethodHandleDesc.ofField(STATIC_GETTER,
-                                                                    CD_ConstableElementSource,
+                                                                    CD_ConstableTypeAndElementSource,
                                                                     "INSTANCE",
-                                                                    CD_ConstableElementSource)));
+                                                                    CD_ConstableTypeAndElementSource)));
     }
 
   }

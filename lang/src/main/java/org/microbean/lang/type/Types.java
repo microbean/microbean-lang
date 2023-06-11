@@ -35,7 +35,7 @@ import javax.lang.model.element.ElementVisitor;
 
 import javax.lang.model.type.TypeKind;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 
 public final class Types {
 
@@ -45,9 +45,9 @@ public final class Types {
   // @GuardedBy("itself")
   private static final WeakHashMap<javax.lang.model.type.TypeMirror, javax.lang.model.element.Element> syntheticElements = new WeakHashMap<>();
 
-  private final ElementSource es;
+  private final TypeAndElementSource es;
 
-  public Types(final ElementSource elementSource) {
+  public Types(final TypeAndElementSource elementSource) {
     super();
     this.es = Objects.requireNonNull(elementSource, "elementSource");
   }
@@ -65,7 +65,7 @@ public final class Types {
         final javax.lang.model.type.TypeMirror extendsBound = w.getExtendsBound();
         if (extendsBound == null) {
           // Unbounded, so upper bound is Object.
-          return this.es.element("java.lang.Object").asType();
+          return this.es.typeElement("java.lang.Object").asType();
         } else {
           // Upper-bounded.
           assert
@@ -113,7 +113,7 @@ public final class Types {
         // So bound gets set to T extends Serializable.  There is no way to extract T extends Serializable from a
         // javax.lang.model.type.WildcardType, and without that ability we have no other information, so we must return
         // Object.class.
-        return this.es.element("java.lang.Object").asType();
+        return this.es.typeElement("java.lang.Object").asType();
       }
     default:
       return t;
@@ -134,15 +134,15 @@ public final class Types {
 
   public final javax.lang.model.type.TypeMirror box(final javax.lang.model.type.TypeMirror t) {
     return t == null ? null : switch (t.getKind()) {
-    case BOOLEAN -> this.es.element("java.lang.Boolean").asType();
-    case BYTE -> this.es.element("java.lang.Byte").asType();
-    case CHAR -> this.es.element("java.lang.Character").asType();
-    case DOUBLE -> this.es.element("java.lang.Double").asType();
-    case FLOAT -> this.es.element("java.lang.Float").asType();
-    case INT -> this.es.element("java.lang.Integer").asType();
-    case LONG -> this.es.element("java.lang.Long").asType();
-    case SHORT -> this.es.element("java.lang.Short").asType();
-    case VOID -> this.es.element("java.lang.Void").asType();
+    case BOOLEAN -> this.es.typeElement("java.lang.Boolean").asType();
+    case BYTE -> this.es.typeElement("java.lang.Byte").asType();
+    case CHAR -> this.es.typeElement("java.lang.Character").asType();
+    case DOUBLE -> this.es.typeElement("java.lang.Double").asType();
+    case FLOAT -> this.es.typeElement("java.lang.Float").asType();
+    case INT -> this.es.typeElement("java.lang.Integer").asType();
+    case LONG -> this.es.typeElement("java.lang.Long").asType();
+    case SHORT -> this.es.typeElement("java.lang.Short").asType();
+    case VOID -> this.es.typeElement("java.lang.Void").asType();
     default -> t;
     };
   }

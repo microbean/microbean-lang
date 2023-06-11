@@ -26,7 +26,7 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 
 import org.microbean.lang.type.Capture;
 import org.microbean.lang.type.Types;
@@ -62,7 +62,7 @@ import org.microbean.lang.type.Types;
 // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1562-L1611
 public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
   
   private final Types types;
 
@@ -70,7 +70,7 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
 
   private SubtypeVisitor subtypeVisitor;
 
-  public ContainsTypeVisitor(final ElementSource elementSource, final Types types) {
+  public ContainsTypeVisitor(final TypeAndElementSource elementSource, final Types types) {
     super(Boolean.FALSE /* default value */);
     this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
     this.types = Objects.requireNonNull(types, "types");

@@ -34,7 +34,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
@@ -43,7 +43,7 @@ import org.microbean.lang.type.DelegatingTypeMirror;
 // NOT THREADSAFE
 public final class TypeClosure {
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   // DelegatingTypeMirror so things like list.contains(t) will work with arbitrary TypeMirror implementations
   private final Deque<DelegatingTypeMirror> deque;
@@ -52,15 +52,15 @@ public final class TypeClosure {
 
   private final BiPredicate<? super Element, ? super Element> equalsPredicate;
 
-  TypeClosure(final ElementSource elementSource, final SupertypeVisitor supertypeVisitor, final SubtypeVisitor subtypeVisitor) {
+  TypeClosure(final TypeAndElementSource elementSource, final SupertypeVisitor supertypeVisitor, final SubtypeVisitor subtypeVisitor) {
     this(elementSource, new PrecedesPredicate(supertypeVisitor, subtypeVisitor), null);
   }
 
-  TypeClosure(final ElementSource elementSource, final BiPredicate<? super Element, ? super Element> precedesPredicate) {
+  TypeClosure(final TypeAndElementSource elementSource, final BiPredicate<? super Element, ? super Element> precedesPredicate) {
     this(elementSource, precedesPredicate, null);
   }
 
-  TypeClosure(final ElementSource elementSource,
+  TypeClosure(final TypeAndElementSource elementSource,
               final BiPredicate<? super Element, ? super Element> precedesPredicate,
               final BiPredicate<? super Element, ? super Element> equalsPredicate) {
     super();

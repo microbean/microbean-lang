@@ -48,7 +48,7 @@ import javax.lang.model.type.WildcardType;
 
 import org.microbean.lang.CompletionLock;
 import org.microbean.lang.Lang;
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.element.DelegatingElement;
@@ -74,22 +74,22 @@ public final class DelegatingTypeMirror
 
   private static final ClassDesc CD_DelegatingTypeMirror = ClassDesc.of("org.microbean.lang.type.DelegatingTypeMirror");
 
-  private static final ClassDesc CD_ElementSource = ClassDesc.of("org.microbean.lang.ElementSource");
+  private static final ClassDesc CD_TypeAndElementSource = ClassDesc.of("org.microbean.lang.TypeAndElementSource");
 
   private static final ClassDesc CD_Equality = ClassDesc.of("org.microbean.lang.Equality");
 
   private static final ClassDesc CD_TypeMirror = ClassDesc.of("javax.lang.model.type.TypeMirror");
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   private final TypeMirror delegate;
 
   private final Equality ehc;
 
-  private DelegatingTypeMirror(final TypeMirror delegate, final ElementSource elementSource, final Equality ehc) {
+  private DelegatingTypeMirror(final TypeMirror delegate, final TypeAndElementSource elementSource, final Equality ehc) {
     super();
     this.delegate = unwrap(Objects.requireNonNull(delegate, "delegate"));
-    this.elementSource = elementSource == null ? Lang.elementSource() : elementSource;
+    this.elementSource = elementSource == null ? Lang.typeAndElementSource() : elementSource;
     this.ehc = ehc == null ? new Equality(true) : ehc;
   }
 
@@ -199,7 +199,7 @@ public final class DelegatingTypeMirror
   public final TypeMirror getUpperBound() {
     return switch (this.getKind()) {
     case TYPEVAR -> this.wrap(((TypeVariable)this.delegate).getUpperBound());
-    default -> this.wrap(this.elementSource.element("java.lang.Object").asType());
+    default -> this.wrap(this.elementSource.typeElement("java.lang.Object").asType());
     };
   }
 
@@ -285,7 +285,7 @@ public final class DelegatingTypeMirror
                                                                                               "of",
                                                                                               MethodTypeDesc.of(CD_DelegatingTypeMirror,
                                                                                                                 CD_TypeMirror,
-                                                                                                                CD_ElementSource,
+                                                                                                                CD_TypeAndElementSource,
                                                                                                                 CD_Equality)),
                                                                     delegateDesc,
                                                                     elementSourceDesc,
@@ -306,11 +306,11 @@ public final class DelegatingTypeMirror
    */
 
 
-  public static final List<DelegatingTypeMirror> of(final Collection<? extends TypeMirror> ts, final ElementSource elementSource) {
+  public static final List<DelegatingTypeMirror> of(final Collection<? extends TypeMirror> ts, final TypeAndElementSource elementSource) {
     return of(ts, elementSource, null);
   }
 
-  public static final List<DelegatingTypeMirror> of(final Collection<? extends TypeMirror> ts, final ElementSource elementSource, final Equality ehc) {
+  public static final List<DelegatingTypeMirror> of(final Collection<? extends TypeMirror> ts, final TypeAndElementSource elementSource, final Equality ehc) {
     final List<DelegatingTypeMirror> newTs = new ArrayList<>(ts.size());
     for (final TypeMirror t : ts) {
       newTs.add(of(t, elementSource, ehc));
@@ -318,12 +318,12 @@ public final class DelegatingTypeMirror
     return Collections.unmodifiableList(newTs);
   }
 
-  public static final DelegatingTypeMirror of(final TypeMirror t, final ElementSource elementSource) {
+  public static final DelegatingTypeMirror of(final TypeMirror t, final TypeAndElementSource elementSource) {
     return of(t, elementSource, null);
   }
 
   // Called by describeConstable
-  public static final DelegatingTypeMirror of(final TypeMirror t, final ElementSource elementSource, final Equality ehc) {
+  public static final DelegatingTypeMirror of(final TypeMirror t, final TypeAndElementSource elementSource, final Equality ehc) {
     return
       t == null ? null :
       t instanceof DelegatingTypeMirror d ? d :

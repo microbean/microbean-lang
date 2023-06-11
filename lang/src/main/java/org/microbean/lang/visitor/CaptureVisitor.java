@@ -33,7 +33,7 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.Capture;
@@ -47,7 +47,7 @@ import static org.microbean.lang.type.Types.isInterface;
 // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4388-L4456
 public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   private final Equality equality;
 
@@ -61,7 +61,7 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
 
   private TypeClosureVisitor typeClosureVisitor;
 
-  public CaptureVisitor(final ElementSource elementSource,
+  public CaptureVisitor(final TypeAndElementSource elementSource,
                         final Equality equality,
                         final Types types,
                         final SupertypeVisitor supertypeVisitor, // used by internal SubstituteVisitor
@@ -149,7 +149,7 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
         captured = true;
         TypeMirror Ui = currentAHead.getUpperBound();
         if (Ui == null) {
-          Ui = this.elementSource.element("java.lang.Object").asType();
+          Ui = this.elementSource.typeElement("java.lang.Object").asType();
         }
         final Capture Si = (Capture)currentSHead;
         final WildcardType Ti = (WildcardType)currentTHead;
@@ -197,7 +197,7 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
     final int size = minimumTypes.size();
     switch (size) {
     case 0:
-      return this.elementSource.element("java.lang.Object").asType();
+      return this.elementSource.typeElement("java.lang.Object").asType();
     case 1:
       return minimumTypes.get(0);
     }

@@ -71,7 +71,7 @@ final class TestAsSuper {
     final Field f = JavacTypes.class.getDeclaredField("types");
     assertTrue(f.trySetAccessible());
     this.javacCodeTypes = (com.sun.tools.javac.code.Types)f.get(Lang.pe().getTypeUtils());
-    this.visitors = new Visitors(Lang.elementSource());
+    this.visitors = new Visitors(Lang.typeAndElementSource());
   }
 
   @AfterEach

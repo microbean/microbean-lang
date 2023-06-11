@@ -73,7 +73,7 @@ final class TestTypeClosureVisitor {
 
   @BeforeEach
   final void setup() {
-    this.visitors = new Visitors(Lang.elementSource());
+    this.visitors = new Visitors(Lang.typeAndElementSource());
   }
 
   @Test
@@ -139,7 +139,7 @@ final class TestTypeClosureVisitor {
                                                                   com.sun.tools.javac.util.List.of((Type)unwrap(constantDesc)));
 
     final PrecedesPredicate precedesPredicate = this.visitors.precedesPredicate();
-    final TypeClosure typeClosure = new TypeClosure(Lang.elementSource(), precedesPredicate);
+    final TypeClosure typeClosure = new TypeClosure(Lang.typeAndElementSource(), precedesPredicate);
     typeClosure.union(serializable);
     typeClosure.union(constantDesc);
     assertTrue(contentsEqual(union, typeClosure.toList()));

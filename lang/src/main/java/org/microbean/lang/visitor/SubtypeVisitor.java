@@ -40,7 +40,7 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.Types;
@@ -54,7 +54,7 @@ import static org.microbean.lang.type.Types.upperBoundedWildcardType;
 // See https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1109-L1238
 public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   private final Equality equality;
 
@@ -78,7 +78,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   private SubtypeVisitor withoutCaptureVariant;
 
-  public SubtypeVisitor(final ElementSource elementSource,
+  public SubtypeVisitor(final TypeAndElementSource elementSource,
                         final Equality equality,
                         final Types types,
                         final AsSuperVisitor asSuperVisitor,

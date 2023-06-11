@@ -65,7 +65,7 @@
   </distributionManagement>
 
   <modules>
-    <module>byte-buddy</module>
+    <module>bytebuddy</module>
     <module>jandex</module>
     <module>lang</module>
   </modules>
@@ -78,7 +78,7 @@
       <dependency>
         <groupId>io.smallrye</groupId>
         <artifactId>jandex</artifactId>
-        <version>3.1.1</version>
+        <version>3.1.2</version>
         <type>jar</type>
       </dependency>
 
@@ -121,7 +121,7 @@
 
       <dependency>
         <groupId>${project.groupId}</groupId>
-        <artifactId>microbean-lang-byte-buddy</artifactId>
+        <artifactId>microbean-lang-bytebuddy</artifactId>
         <version>${project.version}</version>
         <type>jar</type>
       </dependency>

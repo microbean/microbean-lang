@@ -34,7 +34,7 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 
 import org.microbean.lang.element.DelegatingElement;
 
@@ -66,7 +66,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
   // The compiler's implementation mutates this list.
   private final List<TypeMirror> to;
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   private final Types types;
 
@@ -78,7 +78,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
 
   private final Set<TypeMirrorPair> cache;
 
-  AdaptingVisitor(final ElementSource elementSource,
+  AdaptingVisitor(final TypeAndElementSource elementSource,
                   final Types types,
                   final SameTypeVisitor sameTypeVisitor,
                   final SubtypeVisitor subtypeVisitor,

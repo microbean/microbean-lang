@@ -28,26 +28,26 @@ import org.microbean.lang.type.DelegatingTypeMirror;
 
 public final class SpecializationDepthTypeMirrorComparator implements Comparator<TypeMirror> {
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   private final Equality equality;
 
   private final Function<? super DelegatingTypeMirror, ? extends Iterable<? extends TypeMirror>> directSupertypes;
 
   public SpecializationDepthTypeMirrorComparator() {
-    this(Lang.elementSource(), Lang.sameTypeEquality(), Lang::directSupertypes);
+    this(Lang.typeAndElementSource(), Lang.sameTypeEquality(), Lang::directSupertypes);
   }
 
   public SpecializationDepthTypeMirrorComparator(final Equality equality) {
-    this(Lang.elementSource(), equality, Lang::directSupertypes);
+    this(Lang.typeAndElementSource(), equality, Lang::directSupertypes);
   }
 
-  public SpecializationDepthTypeMirrorComparator(final ElementSource elementSource,
+  public SpecializationDepthTypeMirrorComparator(final TypeAndElementSource elementSource,
                                                  final Equality equality) {
     this(elementSource, equality, Lang::directSupertypes);
   }
 
-  public SpecializationDepthTypeMirrorComparator(final ElementSource elementSource,
+  public SpecializationDepthTypeMirrorComparator(final TypeAndElementSource elementSource,
                                                  final Equality equality,
                                                  final Function<? super DelegatingTypeMirror, ? extends Iterable<? extends TypeMirror>> directSupertypes) {
     super();

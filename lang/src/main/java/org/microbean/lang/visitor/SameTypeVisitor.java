@@ -37,7 +37,7 @@ import javax.lang.model.type.WildcardType;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.element.DelegatingElement;
@@ -48,7 +48,7 @@ import org.microbean.lang.type.Types;
 // isSameType() in javac's Types.java
 public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   private final Equality equality;
 
@@ -58,14 +58,14 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
 
   private final boolean wildcardsComparable;
 
-  public SameTypeVisitor(final ElementSource elementSource,
+  public SameTypeVisitor(final TypeAndElementSource elementSource,
                          final ContainsTypeVisitor containsTypeVisitor,
                          final SupertypeVisitor supertypeVisitor,
                          final boolean wildcardsCompatible) {
     this(elementSource, new Equality(false), containsTypeVisitor, supertypeVisitor, wildcardsCompatible);
   }
 
-  public SameTypeVisitor(final ElementSource elementSource,
+  public SameTypeVisitor(final TypeAndElementSource elementSource,
                          final Equality equality,
                          final ContainsTypeVisitor containsTypeVisitor,
                          final SupertypeVisitor supertypeVisitor, // used in visitExecutable, visitIntersection, hasSameBounds (only called from visitExecutable)
@@ -154,7 +154,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
     return
       superBound != null &&
       s.getExtendsBound() == null &&
-      this.visitDeclared(t, this.elementSource.element("java.lang.Object").asType()) &&
+      this.visitDeclared(t, this.elementSource.typeElement("java.lang.Object").asType()) &&
       this.visit(t, superBound);
   }
 
@@ -303,7 +303,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
     return
       s.getExtendsBound() == null &&
       s.getSuperBound() != null &&
-      this.visit(t, this.elementSource.element("java.lang.Object").asType());
+      this.visit(t, this.elementSource.typeElement("java.lang.Object").asType());
   }
 
   @Override

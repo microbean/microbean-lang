@@ -42,7 +42,7 @@ import org.junit.jupiter.api.Test;
 
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 
 import org.microbean.lang.type.Types;
 
@@ -88,7 +88,17 @@ final class TestSameTypeVisitor {
     assertNotNull(javacTypes);
 
     // Set up the fundamentals.
-    final Visitors visitors = new Visitors((m, n) -> elements.getTypeElement(elements.getModuleElement(m), n));
+    final TypeAndElementSource tes = new TypeAndElementSource() {
+        @Override
+        public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
+          return elements.getTypeElement(elements.getModuleElement(m), n);
+        }
+        @Override
+        public final DeclaredType declaredType(final DeclaredType enclosingType, final TypeElement typeElement, final TypeMirror... arguments) {
+          return javacModelTypes.getDeclaredType(enclosingType, typeElement, arguments);
+        }
+      };
+    final Visitors visitors = new Visitors(tes);
 
     // Should be ready to go.
     

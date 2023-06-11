@@ -25,11 +25,11 @@ import javax.lang.model.type.TypeVariable;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
-import org.microbean.lang.ElementSource;
+import org.microbean.lang.TypeAndElementSource;
 
 public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, Void> {
 
-  private final ElementSource elementSource;
+  private final TypeAndElementSource elementSource;
 
   // @GuardedBy("itself")
   private final WeakHashMap<TypeMirror, TypeClosure> closureCache;
@@ -38,7 +38,7 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
 
   private final PrecedesPredicate precedesPredicate;
 
-  public TypeClosureVisitor(final ElementSource elementSource,
+  public TypeClosureVisitor(final TypeAndElementSource elementSource,
                             final SupertypeVisitor supertypeVisitor,
                             final PrecedesPredicate precedesPredicate) {
     super();

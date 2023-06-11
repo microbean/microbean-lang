@@ -54,7 +54,7 @@ final class TestConstableSemantics {
 
   @Test
   final void testConstableElementSource() throws ReflectiveOperationException {
-    final ElementSource es = Lang.elementSource();
+    final TypeAndElementSource es = Lang.typeAndElementSource();
     assertSame(es, ((Constable)es).describeConstable().orElseThrow().resolveConstantDesc(MethodHandles.lookup()));
   }
   
