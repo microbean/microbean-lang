@@ -81,10 +81,10 @@ public final class TypeElementTypePool extends TypePool.Default {
       super(TypeElementTypePool.this,
             actualModifiers(e),
             modifiers(e),
-            Lang.binaryName(e).toString(),
-            binaryName(e.getSuperclass()),
-            interfaceBinaryNames(e),
-            genericSignature(e),
+            Lang.binaryName(e).toString(), // "internalName"
+            binaryName(e.getSuperclass()), // "superClassName"
+            interfaceBinaryNames(e), // "interfaceName" (yes, singular for some reason)
+            genericSignature(e), // "genericSignature" whatever that is; ASM just calls it a "signature" and seems to be expecting a *type* signature in the JVM parlance
             typeContainment(e),
             declaringTypeBinaryName(e),
             declaredTypeDescriptors(e),

@@ -530,10 +530,10 @@ public final class Lang {
     }
   }
 
-  public static final boolean generic(final TypeElement e) {
+  public static final boolean generic(final Element e) {
     synchronized (CompletionLock.monitor()) {
       return switch (e.getKind()) {
-      case CLASS, ENUM, INTERFACE, RECORD -> !e.getTypeParameters().isEmpty();
+      case CLASS, CONSTRUCTOR, ENUM, INTERFACE, METHOD, RECORD -> !((Parameterizable)e).getTypeParameters().isEmpty();
       default -> false;
       };
     }
@@ -640,54 +640,143 @@ public final class Lang {
 
 
   public static final String elementSignature(Element e) {
-    final StringBuilder sb = new StringBuilder();
-    elementSignature(e, sb);
-    return sb.toString();
-  }
-
-  private static final void elementSignature(Element e, final StringBuilder sb) {
     synchronized (CompletionLock.monitor()) {
-      switch (e.getKind()) {
-      case CLASS, ENUM, INTERFACE, RECORD -> classSignature(e, sb);
-      case CONSTRUCTOR, METHOD, INSTANCE_INIT, STATIC_INIT -> methodSignature(e, sb);
-      case ENUM_CONSTANT, FIELD, LOCAL_VARIABLE, PARAMETER, RECORD_COMPONENT -> fieldSignature(e, sb);
+      return switch (e.getKind()) {
+      case CLASS, ENUM, INTERFACE, RECORD -> classSignature((TypeElement)e);
+      case CONSTRUCTOR, METHOD, INSTANCE_INIT, STATIC_INIT -> methodSignature((ExecutableElement)e);
+      case ENUM_CONSTANT, FIELD, LOCAL_VARIABLE, PARAMETER, RECORD_COMPONENT -> fieldSignature(e);
       default -> throw new IllegalArgumentException("e: " + e);
       };
     }
   }
 
-  private static final void classSignature(Element e, final StringBuilder sb) {
+  private static final String classSignature(TypeElement e) {
+    synchronized (CompletionLock.monitor()) {
+      return switch (e.getKind()) {
+      case CLASS, ENUM, INTERFACE, RECORD -> {
+        if (!generic(e) && ((DeclaredType)e.getSuperclass()).getTypeArguments().isEmpty()) {
+          boolean signatureRequired = false;
+          for (final TypeMirror iface : e.getInterfaces()) {
+            if (!((DeclaredType)iface).getTypeArguments().isEmpty()) {
+              signatureRequired = true;
+              break;
+            }
+          }
+          if (!signatureRequired) {
+            yield null;
+          }
+        }
+        final StringBuilder sb = new StringBuilder();
+        classSignature(e, sb);
+        yield sb.toString();
+      }
+      default -> throw new IllegalArgumentException("e: " + e + "; kind: " + e.getKind());
+      };
+    }
+  }
+
+  private static final void classSignature(TypeElement e, final StringBuilder sb) {
     synchronized (CompletionLock.monitor()) {
       switch (e.getKind()) {
       case CLASS, ENUM, INTERFACE, RECORD -> { // note: no ANNOTATION_TYPE on purpose
-        final TypeElement te = (TypeElement)e;
-        typeParameters(te.getTypeParameters(), sb);
-        superclassSignature(te.getSuperclass(), sb);
-        superinterfaceSignatures(te.getInterfaces(), sb);
+        typeParameters(e.getTypeParameters(), sb);
+        final List<? extends TypeMirror> directSupertypes = directSupertypes(e.asType());
+        if (directSupertypes.isEmpty()) {
+          assert e.getQualifiedName().contentEquals("java.lang.Object") : "DeclaredType with no supertypes: " + e.asType();
+          // See
+          // https://stackoverflow.com/questions/76453947/in-the-jvms-what-is-the-classsignature-for-java-lang-object-given-that-supercl
+          //
+          // Do nothing (and thereby violate the grammar? Derp?).
+        } else {
+          final DeclaredType firstSupertype = (DeclaredType)directSupertypes.get(0);
+          assert firstSupertype.getKind() == TypeKind.DECLARED;
+          // "For an interface type with no direct super-interfaces, a type mirror representing java.lang.Object is
+          // returned." Therefore in all situations, given a non-empty list of direct supertypes, the first element will
+          // always be a non-interface class.
+          assert !((TypeElement)firstSupertype.asElement()).getKind().isInterface() : "Contract violation";
+          superclassSignature(firstSupertype, sb);
+          superinterfaceSignatures(directSupertypes.subList(1, directSupertypes.size()), sb);
+        }
       }
-      default -> throw new IllegalArgumentException("e: " + e);
+      default -> throw new IllegalArgumentException("e: " + e + "; kind: " + e.getKind());
       };
     }
   }
 
-  private static final void methodSignature(Element e, final StringBuilder sb) {
+  private static final String methodSignature(ExecutableElement e) {
     synchronized (CompletionLock.monitor()) {
       if (e.getKind().isExecutable()) {
-        final ExecutableElement ee = (ExecutableElement)e;
-        final TypeMirror returnType = ee.getReturnType();
-        typeParameters(ee.getTypeParameters(), sb);
+        boolean throwsClauseRequired = false;
+        for (final TypeMirror exceptionType : e.getThrownTypes()) {
+          if (exceptionType.getKind() == TypeKind.TYPEVAR) {
+            throwsClauseRequired = true;
+            break;
+          }
+        }
+        if (!throwsClauseRequired && !generic(e)) {
+          final TypeMirror returnType = e.getReturnType();
+          if (returnType.getKind() != TypeKind.TYPEVAR && typeArguments(returnType).isEmpty()) {
+            boolean signatureRequired = false;
+            for (final VariableElement p : e.getParameters()) {
+              final TypeMirror parameterType = p.asType();
+              if (parameterType.getKind() == TypeKind.TYPEVAR || !typeArguments(parameterType).isEmpty()) {
+                signatureRequired = true;
+                break;
+              }
+            }
+            if (!signatureRequired) {
+              return null;
+            }
+          }
+        }
+        final StringBuilder sb = new StringBuilder();
+        methodSignature(e, sb, throwsClauseRequired);
+        return sb.toString();
+      } else {
+        throw new IllegalArgumentException("e: " + e + "; kind: " + e.getKind());
+      }
+    }
+  }
+
+  private static final void methodSignature(ExecutableElement e, final StringBuilder sb, final boolean throwsClauseRequired) {
+    synchronized (CompletionLock.monitor()) {
+      if (e.getKind().isExecutable()) {
+        final TypeMirror returnType = e.getReturnType();
+        typeParameters(e.getTypeParameters(), sb);
         sb.append('(');
-        parameterSignatures(ee.getParameters(), sb);
+        parameterSignatures(e.getParameters(), sb);
         sb.append(')');
         if (returnType.getKind() == TypeKind.VOID) {
           sb.append('V');
         } else {
           typeSignature(returnType, sb);
         }
-        throwsSignatures(ee.getThrownTypes(), sb);
+        if (throwsClauseRequired) {
+          throwsSignatures(e.getThrownTypes(), sb);
+        }
       } else {
-        throw new IllegalArgumentException("e: " + e);
+        throw new IllegalArgumentException("e: " + e + "; kind: " + e.getKind());
       }
+    }
+  }
+
+  private static final String fieldSignature(Element e) {
+    synchronized (CompletionLock.monitor()) {
+      return switch (e.getKind()) {
+      case ENUM_CONSTANT, FIELD, LOCAL_VARIABLE, PARAMETER, RECORD_COMPONENT -> {
+        final TypeMirror t = e.asType();
+        if (t.getKind() != TypeKind.TYPEVAR && typeArguments(t).isEmpty()) {
+          // TODO: is this sufficient? Or do we, for example, have to examine the type's supertypes to see if *they*
+          // "use" a parameterized type? Maybe we have to look at the enclosing type too? But if so, why only here, and
+          // why not the same sort of thing for the return type of a method (see above)?
+          yield null;
+        }
+        final StringBuilder sb = new StringBuilder();
+        fieldSignature(e, sb);
+        yield sb.toString();
+      }
+      default -> throw new IllegalArgumentException("e: " + e + "; kind: " + e.getKind());
+      };
     }
   }
 
@@ -1291,6 +1380,20 @@ public final class Lang {
     return wrap(rv);
   }
 
+  public static final List<? extends TypeMirror> typeArguments(final TypeMirror t) {
+    if (t instanceof DeclaredType dt) {
+      synchronized (CompletionLock.monitor()) {
+        switch (t.getKind()) {
+        case DECLARED:
+          return dt.getTypeArguments();
+        default:
+          break;
+        }
+      }
+    }
+    return List.of();
+  }
+
   public static final ExecutableElement executableElement(final Executable e) {
     return switch (e) {
     case null -> null;
@@ -1863,7 +1966,7 @@ public final class Lang {
                                            final TypeMirror... typeArguments) {
       return Lang.declaredType(containingType, typeElement, typeArguments);
     }
-    
+
     @Override
     public final TypeElement typeElement(final CharSequence moduleName, final CharSequence canonicalName) {
       return moduleName == null ? Lang.typeElement(canonicalName) : Lang.typeElement(Lang.moduleElement(moduleName), canonicalName);
