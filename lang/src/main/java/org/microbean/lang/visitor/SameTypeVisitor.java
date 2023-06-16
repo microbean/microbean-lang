@@ -391,6 +391,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
     return true;
   }
 
+  // When invoked, the Lists will be type arguments.or method parameter types.
   private final boolean containsTypeEquivalent(final List<? extends TypeMirror> ts, final List<? extends TypeMirror> ss) {
     final int size = ts.size();
     if (size != ss.size()) {
@@ -407,8 +408,8 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
   // https://github.com/openjdk/jdk/blob/jdk-20+16/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4562-L4565
   private final boolean containsTypeEquivalent(final TypeMirror t, final TypeMirror s) {
     return
-      this.visit(t, s) ||
-      this.containsTypeVisitor.visit(t, s) && this.containsTypeVisitor.visit(s, t);
+      this.visit(t, s) || // either the arguments are basically the same, or...
+      this.containsTypeVisitor.visit(t, s) && this.containsTypeVisitor.visit(s, t); // ...t contains s and s contains t
   }
 
 }

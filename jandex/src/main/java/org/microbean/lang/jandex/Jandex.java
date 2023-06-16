@@ -44,6 +44,8 @@ import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.NoType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
+import javax.lang.model.type.WildcardType;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationTarget;
@@ -541,9 +543,55 @@ public final class Jandex extends Modeler {
   }
 
   @Override // TypeAndElementSource
+  public final javax.lang.model.type.ArrayType arrayTypeOf(final TypeMirror componentType) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  @Override // TypeAndElementSource
+  public final boolean assignable(final TypeMirror t, final TypeMirror s) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  @Override // TypeAndElementSource
+  public final TypeElement boxedClass(final javax.lang.model.type.PrimitiveType t) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  @Override // TypeAndElementSource
+  public final <T extends TypeMirror> T erasure(final T t) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  @Override // TypeAndElementSource
+  public final NoType noType(final TypeKind k) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  @Override // TypeAndElementSource
+  public final javax.lang.model.type.PrimitiveType primitiveType(final TypeKind k) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  @Override // TypeAndElementSource
   public final DeclaredType declaredType(final DeclaredType containingType, final TypeElement typeElement, final TypeMirror... arguments) {
     throw new UnsupportedOperationException("TODO");
   }
+
+  @Override // TypeAndElementSource
+  public final boolean sameType(final TypeMirror t, final TypeMirror s) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  @Override // TypeAndElementSource
+  public final TypeVariable typeVariable(final java.lang.reflect.TypeVariable<?> t) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  public final WildcardType wildcardType(final TypeMirror extendsBound, final TypeMirror superBound) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+
 
 
   /*

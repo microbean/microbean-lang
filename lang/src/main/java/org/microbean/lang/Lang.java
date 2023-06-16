@@ -38,10 +38,8 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -51,7 +49,6 @@ import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -67,7 +64,6 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.NoType;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.ErrorType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.NullType;
 import javax.lang.model.type.PrimitiveType;
@@ -1339,10 +1335,7 @@ public final class Lang {
   }
 
   public static final DeclaredType declaredType(final ParameterizedType pt) {
-    if (pt == null) {
-      return null;
-    }
-    return
+    return pt == null ? null :
       declaredType(declaredType(pt.getOwnerType()),
                    typeElement(pt.getRawType()),
                    typeArray(pt.getActualTypeArguments()));
@@ -1352,16 +1345,25 @@ public final class Lang {
     return canonicalName == null ? null : declaredType(typeElement(canonicalName));
   }
 
-  public static final DeclaredType declaredType(TypeElement typeElement) {
-    return typeElement == null ? null : declaredType(null, typeElement);
-  }
-
   public static final DeclaredType declaredType(final Type ownerType,
                                                 final Type rawType,
                                                 final Type... typeArguments) {
     return rawType == null ? null : declaredType(declaredType(ownerType), typeElement(rawType), typeArray(typeArguments));
   }
 
+  public static final DeclaredType declaredType(TypeElement typeElement, TypeMirror... typeArguments) {
+    if (typeElement == null) {
+      return null;
+    }
+    typeElement = unwrap(typeElement);
+    typeArguments = unwrap(typeArguments);
+    final Types types = pe().getTypeUtils();
+    final DeclaredType rv;
+    synchronized (CompletionLock.monitor()) {
+      rv = types.getDeclaredType(typeElement, typeArguments);
+    }
+    return wrap(rv);
+  }
 
   public static final DeclaredType declaredType(DeclaredType containingType,
                                                 TypeElement typeElement,
@@ -1961,6 +1963,27 @@ public final class Lang {
     }
 
     @Override
+    public final ArrayType arrayTypeOf(final TypeMirror componentType) {
+      return Lang.arrayTypeOf(componentType);
+    }
+
+    // Note the counterintuitive parameter order.
+    @Override
+    public final boolean assignable(final TypeMirror payload, final TypeMirror receiver) {
+      return Lang.assignable(payload, receiver);
+    }
+
+    @Override
+    public final TypeElement boxedClass(final PrimitiveType t) {
+      return Lang.boxedClass(t);
+    }
+
+    @Override
+    public final DeclaredType declaredType(final TypeElement typeElement, final TypeMirror... typeArguments) {
+      return Lang.declaredType(typeElement, typeArguments);
+    }
+
+    @Override
     public final DeclaredType declaredType(final DeclaredType containingType,
                                            final TypeElement typeElement,
                                            final TypeMirror... typeArguments) {
@@ -1968,8 +1991,39 @@ public final class Lang {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public final <T extends TypeMirror> T erasure(final T t) {
+      return (T)Lang.erasure(t);
+    }
+
+    @Override
+    public final NoType noType(final TypeKind k) {
+      return Lang.noType(k);
+    }
+
+    @Override
+    public final PrimitiveType primitiveType(final TypeKind k) {
+      return Lang.primitiveType(k);
+    }
+
+    @Override
+    public final boolean sameType(final TypeMirror t, final TypeMirror s) {
+      return Lang.sameType(t, s);
+    }
+
+    @Override
     public final TypeElement typeElement(final CharSequence moduleName, final CharSequence canonicalName) {
       return moduleName == null ? Lang.typeElement(canonicalName) : Lang.typeElement(Lang.moduleElement(moduleName), canonicalName);
+    }
+
+    @Override
+    public final TypeVariable typeVariable(final java.lang.reflect.TypeVariable<?> t) {
+      return t == null ? null : Lang.typeVariable(t);
+    }
+
+    @Override
+    public final WildcardType wildcardType(final TypeMirror extendsBound, final TypeMirror superBound) {
+      return Lang.wildcardType(extendsBound, superBound);
     }
 
     @Override

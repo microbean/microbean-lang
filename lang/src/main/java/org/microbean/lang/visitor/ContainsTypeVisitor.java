@@ -45,9 +45,9 @@ import org.microbean.lang.type.Types;
  *
  * <p>{@code C<S> <: C<T> if T contains S.}</p>
  *
- * <p>Because of F-bounds, this relation can lead to infinite recursion.  Thus we must somehow break that recursion.
- * Notice that containsType() is only called from ClassType.isSubtype() [not true].  Since the arguments have already
- * been checked against their bounds [not true], we know:</p>
+ * <p>Because of F-bounds [e.g. class Enum<E extends Enum<E>>] , this relation can lead to infinite recursion.  Thus we
+ * must somehow break that recursion.  Notice that containsType() is only called from ClassType.isSubtype() [not true].
+ * Since the arguments have already been checked against their bounds [not true], we know:</p>
  *
  * <p>{@code U(S) <: U(T) if T is "super" bound (U(T) *is* the bound)}</p>
  *

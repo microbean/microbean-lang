@@ -29,9 +29,12 @@ import javax.lang.model.element.TypeParameterElement;
 
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.NoType;
+import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
+import javax.lang.model.type.WildcardType;
 
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Type.ClassType;
@@ -75,7 +78,7 @@ final class TestSupertypeVisitor {
       fail(reflectiveOperationException);
     }
     assertNotNull(javacTypes);
-    
+
     final TypeElement integerElement = elements.getTypeElement("java.lang.Integer");
     final DeclaredType integerElementType = (DeclaredType)integerElement.asType();
     assertSame(TypeKind.DECLARED, integerElementType.getKind());
@@ -87,12 +90,53 @@ final class TestSupertypeVisitor {
     // Set up the fundamentals.
     final TypeAndElementSource tes = new TypeAndElementSource() {
         @Override
-        public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
-          return elements.getTypeElement(elements.getModuleElement(m), n);
+        public final ArrayType arrayTypeOf(final TypeMirror componentType) {
+          return javacModelTypes.getArrayType(componentType);
+        }
+        @Override
+        public boolean assignable(final TypeMirror payload, final TypeMirror receiver) {
+          return javacModelTypes.isAssignable(payload, receiver);
+        }
+        @Override
+        public final TypeElement boxedClass(final PrimitiveType t) {
+          return javacModelTypes.boxedClass(t);
+        }
+        @Override
+        public final DeclaredType declaredType(final TypeElement typeElement, final TypeMirror... arguments) {
+          return javacModelTypes.getDeclaredType(typeElement, arguments);
         }
         @Override
         public final DeclaredType declaredType(final DeclaredType enclosingType, final TypeElement typeElement, final TypeMirror... arguments) {
           return javacModelTypes.getDeclaredType(enclosingType, typeElement, arguments);
+        }
+        @Override
+        @SuppressWarnings("unchecked")
+        public final <T extends TypeMirror> T erasure(final T t) {
+          return (T)javacModelTypes.erasure(t);
+        }
+        @Override
+        public final NoType noType(final TypeKind k) {
+          return javacModelTypes.getNoType(k);
+        }
+        @Override
+        public final PrimitiveType primitiveType(final TypeKind k) {
+          return javacModelTypes.getPrimitiveType(k);
+        }
+        @Override
+        public boolean sameType(final TypeMirror t, final TypeMirror s) {
+          return javacModelTypes.isSameType(t, s);
+        }
+        @Override
+        public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
+          return elements.getTypeElement(elements.getModuleElement(m), n);
+        }
+        @Override
+        public final TypeVariable typeVariable(final java.lang.reflect.TypeVariable<?> t) {
+          throw new UnsupportedOperationException(); // NOTE
+        }
+        @Override
+        public final WildcardType wildcardType(final TypeMirror extendsBound, final TypeMirror superBound) {
+          return javacModelTypes.getWildcardType(extendsBound, superBound);
         }
       };
     final Types types = new Types(tes);
@@ -108,7 +152,7 @@ final class TestSupertypeVisitor {
     final List<Type> javacInterfaces = javacTypes.interfaces((Type)integerElementType);
     final List<? extends TypeMirror> interfaces = supertypeVisitor.interfacesVisitor().visit(integerElementType);
     assertEquals(javacInterfaces, interfaces);
-    
+
   }
 
 }
