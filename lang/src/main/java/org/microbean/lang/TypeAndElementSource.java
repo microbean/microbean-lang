@@ -62,7 +62,7 @@ public interface TypeAndElementSource {
                                    final TypeMirror... typeArguments);
 
   public default DeclaredType declaredType(final ParameterizedType pt) {
-    return pt == null ? null : 
+    return pt == null ? null :
       this.declaredType(this.declaredType(pt.getOwnerType()),
                         this.typeElement(pt.getRawType()),
                         typeArray(pt.getActualTypeArguments()));
@@ -127,6 +127,9 @@ public interface TypeAndElementSource {
   public TypeElement typeElement(final CharSequence moduleName, final CharSequence canonicalName);
 
   public default TypeElement typeElement(final Class<?> c) {
+    if (c == null) {
+      return null;
+    }
     final Module m = c.getModule();
     return m == null ? this.typeElement(c.getCanonicalName()) : this.typeElement(m.getName(), c.getCanonicalName());
   }

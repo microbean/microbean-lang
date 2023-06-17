@@ -1581,6 +1581,9 @@ public final class Lang {
   }
 
   public static final TypeElement typeElement(final Class<?> c) {
+    if (c == null) {
+      return null;
+    }
     final Module m = c.getModule();
     return m == null ? typeElement(c.getCanonicalName()) : typeElement(moduleElement(m), c.getCanonicalName());
   }
@@ -1712,6 +1715,19 @@ public final class Lang {
     case Class<?> c when c == void.class -> noType(TypeKind.VOID);
     case Class<?> c when c.isArray() -> arrayType(c);
     case Class<?> c when c.isPrimitive() -> primitiveType(c);
+    case Class<?> c -> declaredType(declaredType(typeElement(c.getEnclosingClass())), typeElement(c));
+    case ParameterizedType pt -> declaredType((DeclaredType)type(pt.getOwnerType()), typeElement((Class<?>)pt.getRawType()), typeArray(pt.getActualTypeArguments()));
+    case GenericArrayType g -> arrayType(g);
+    case java.lang.reflect.TypeVariable<?> tv -> typeVariable(tv);
+    case java.lang.reflect.WildcardType w -> wildcardType(w);
+    default -> null;
+    };
+    /*
+    return switch (t) {
+    case null -> null;
+    case Class<?> c when c == void.class -> noType(TypeKind.VOID);
+    case Class<?> c when c.isArray() -> arrayType(c);
+    case Class<?> c when c.isPrimitive() -> primitiveType(c);
     case Class<?> c -> declaredType(c);
     case ParameterizedType pt -> declaredType(pt);
     case GenericArrayType g -> arrayType(g);
@@ -1719,6 +1735,7 @@ public final class Lang {
     case java.lang.reflect.WildcardType w -> wildcardType(w);
     default -> null;
     };
+    */
   }
 
   public static final TypeMirror type(final Field f) {
