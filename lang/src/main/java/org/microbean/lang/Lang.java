@@ -13,12 +13,24 @@
  */
 package org.microbean.lang;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.io.Writer;
+import java.io.UncheckedIOException;
+
 import java.lang.constant.ClassDesc;
 import java.lang.constant.Constable;
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.DynamicConstantDesc;
 import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
+
+import java.lang.module.ModuleFinder;
+import java.lang.module.ResolvedModule;
+import java.lang.module.ModuleReader;
+import java.lang.module.ModuleReference;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -29,6 +41,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
+import java.lang.System.Logger;
+
+import java.net.URI;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,6 +52,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +61,11 @@ import java.util.Optional;
 import java.util.Set;
 
 import java.util.concurrent.CountDownLatch;
+
+import java.util.function.Predicate;
+
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -55,6 +77,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.Name;
+import javax.lang.model.element.NestingKind;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.Parameterizable;
 import javax.lang.model.element.TypeElement;
@@ -75,8 +98,14 @@ import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
-import javax.tools.JavaCompiler;
+import javax.tools.FileObject;
+import javax.tools.ForwardingJavaFileManager;
 import javax.tools.JavaCompiler.CompilationTask;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileManager.Location;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
 
 import javax.tools.ToolProvider;
 
@@ -86,6 +115,8 @@ import org.microbean.lang.element.DelegatingElement;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
 
+import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.TRACE;
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 import static java.lang.constant.ConstantDescs.NULL;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
@@ -134,6 +165,8 @@ public final class Lang {
   private static final ClassDesc CD_WildcardType = ClassDesc.of("javax.lang.model.type.WildcardType");
 
   private static final TypeMirror[] EMPTY_TYPEMIRROR_ARRAY = new TypeMirror[0];
+
+  private static final Logger LOGGER = System.getLogger(Lang.class.getName());
 
   // Flags pulled from the Java Virtual Machine Specification, version 20, stored in 16 bits:
 
@@ -542,6 +575,7 @@ public final class Lang {
     final TypeMirror rv;
     synchronized (CompletionLock.monitor()) {
       rv = types.capture(t);
+      assert rv != null;
     }
     return wrap(rv);
   }
@@ -563,6 +597,7 @@ public final class Lang {
     // JavacTypes#asElement(TypeMirror) calls TypeMirror#getKind().
     synchronized (CompletionLock.monitor()) {
       rv = types.asElement(t);
+      assert rv != null;
     }
     return wrap(rv);
   }
@@ -574,6 +609,7 @@ public final class Lang {
     final TypeMirror rv;
     synchronized (CompletionLock.monitor()) {
       rv = types.asMemberOf(t, e);
+      assert rv != null;
     }
     return wrap(rv);
   }
@@ -1108,6 +1144,7 @@ public final class Lang {
     // JavacTypes#erasure(TypeMirror) calls TypeMirror#getKind().
     synchronized (CompletionLock.monitor()) {
       t = types.erasure(t);
+      assert t != null;
     }
     return wrap(t);
   }
@@ -1225,7 +1262,7 @@ public final class Lang {
     synchronized (CompletionLock.monitor()) {
       rv = elements.getModuleElement(moduleName);
     }
-    return wrap(rv);
+    return rv == null ? null : wrap(rv);
   }
 
   public static final ModuleElement moduleOf(final Element e) {
@@ -1243,6 +1280,7 @@ public final class Lang {
     final Elements.Origin rv;
     synchronized (CompletionLock.monitor()) {
       rv = elements.getOrigin(e);
+      assert rv != null;
     }
     return rv;
   }
@@ -1266,7 +1304,7 @@ public final class Lang {
     synchronized (CompletionLock.monitor()) {
       rv = elements.getPackageElement(fullyQualifiedName);
     }
-    return wrap(rv);
+    return rv == null ? null : wrap(rv);
   }
 
   public static final PackageElement packageElement(final Module module, final Package pkg) {
@@ -1284,12 +1322,13 @@ public final class Lang {
     synchronized (CompletionLock.monitor()) {
       rv = elements.getPackageElement(moduleElement, fullyQualifiedName);
     }
-    return wrap(rv);
+    return rv == null ? null : wrap(rv);
   }
 
   public static final PackageElement packageOf(final Element e) {
     // This does NOT appear to cause completion.
-    return e == null ? null : wrap(pe().getElementUtils().getPackageOf(unwrap(e)));
+    final PackageElement rv = pe().getElementUtils().getPackageOf(unwrap(e));
+    return rv == null ? null : wrap(rv);
   }
 
   public static final ArrayType arrayType(final Class<?> arrayClass) {
@@ -1314,6 +1353,7 @@ public final class Lang {
     // JavacTypes#getArrayType(TypeMirror) calls getKind() on the component type.
     synchronized (CompletionLock.monitor()) {
       rv = types.getArrayType(componentType);
+      assert rv != null;
     }
     return wrap(rv);
   }
@@ -1348,19 +1388,19 @@ public final class Lang {
   public static final DeclaredType declaredType(final Type ownerType,
                                                 final Type rawType,
                                                 final Type... typeArguments) {
-    return rawType == null ? null : declaredType(declaredType(ownerType), typeElement(rawType), typeArray(typeArguments));
+    return declaredType(declaredType(ownerType), typeElement(rawType), typeArray(typeArguments));
   }
 
   public static final DeclaredType declaredType(TypeElement typeElement, TypeMirror... typeArguments) {
-    if (typeElement == null) {
-      return null;
-    }
+    assert typeElement != null; // TODO TEMPORARY
+    assert typeArguments != null; // varargs arrays are never null
     typeElement = unwrap(typeElement);
     typeArguments = unwrap(typeArguments);
     final Types types = pe().getTypeUtils();
     final DeclaredType rv;
     synchronized (CompletionLock.monitor()) {
       rv = types.getDeclaredType(typeElement, typeArguments);
+      assert rv != null;
     }
     return wrap(rv);
   }
@@ -1368,16 +1408,21 @@ public final class Lang {
   public static final DeclaredType declaredType(DeclaredType containingType,
                                                 TypeElement typeElement,
                                                 TypeMirror... typeArguments) {
-    if (typeElement == null) {
-      return null;
-    }
+    assert typeElement != null; // TODO TEMPORARY
+    assert typeArguments != null; // varargs arrays are never null
     containingType = unwrap(containingType);
     typeElement = unwrap(typeElement);
     typeArguments = unwrap(typeArguments);
     final Types types = pe().getTypeUtils();
     final DeclaredType rv;
     synchronized (CompletionLock.monitor()) {
+      // java.lang.NullPointerException: Cannot invoke "javax.lang.model.type.TypeMirror.toString()" because "t" is null
+      // at jdk.compiler/com.sun.tools.javac.model.JavacTypes.getDeclaredType0(JavacTypes.java:272)
+      // at jdk.compiler/com.sun.tools.javac.model.JavacTypes.getDeclaredType(JavacTypes.java:241)
+      // at jdk.compiler/com.sun.tools.javac.model.JavacTypes.getDeclaredType(JavacTypes.java:249)
+      // at org.microbean.lang@0.0.1-SNAPSHOT/org.microbean.lang.Lang.declaredType(Lang.java:1381)
       rv = types.getDeclaredType(containingType, typeElement, typeArguments);
+      assert rv != null;
     }
     return wrap(rv);
   }
@@ -1440,7 +1485,7 @@ public final class Lang {
         }
       }
     }
-    return wrap(rv);
+    return rv == null ? null : wrap(rv);
   }
 
   public static final ExecutableElement executableElement(TypeElement declaringClass,
@@ -1468,7 +1513,7 @@ public final class Lang {
         }
       }
     }
-    return wrap(rv);
+    return rv == null ? null : wrap(rv);
   }
 
   public static final ExecutableElement executableElement(TypeElement declaringClass,
@@ -1499,7 +1544,7 @@ public final class Lang {
         }
       }
     }
-    return wrap(rv);
+    return rv == null ? null : wrap(rv);
   }
 
   public static final ExecutableElement executableElement(TypeElement declaringClass,
@@ -1530,7 +1575,7 @@ public final class Lang {
         }
       }
     }
-    return wrap(rv);
+    return rv == null ? null : wrap(rv);
   }
 
   public static final ExecutableType executableType(final Executable e) {
@@ -1585,7 +1630,15 @@ public final class Lang {
       return null;
     }
     final Module m = c.getModule();
-    return m == null ? typeElement(c.getCanonicalName()) : typeElement(moduleElement(m), c.getCanonicalName());
+    final TypeElement e;
+    if (m == null) {
+      e = typeElement(c.getCanonicalName());
+      assert e != null : "no element for " + c.getCanonicalName();
+    } else {
+      e = typeElement(moduleElement(m), c.getCanonicalName());
+      assert e != null : "no element for module " + m + " and " + c.getCanonicalName();
+    }
+    return e;
   }
 
   public static final TypeElement typeElement(final CharSequence canonicalName) {
@@ -1594,7 +1647,7 @@ public final class Lang {
     synchronized (CompletionLock.monitor()) {
       rv = elements.getTypeElement(canonicalName);
     }
-    return wrap(rv);
+    return rv == null ? null : wrap(rv);
   }
 
   public static final TypeElement typeElement(final Module module, final CharSequence canonicalName) {
@@ -1607,11 +1660,15 @@ public final class Lang {
     }
     moduleElement = unwrap(moduleElement);
     final Elements elements = pe().getElementUtils();
-    final TypeElement rv;
+    TypeElement rv;
     synchronized (CompletionLock.monitor()) {
       rv = elements.getTypeElement(moduleElement, canonicalName);
+      // TODO: HACK:
+      if (rv == null) {
+        rv = elements.getTypeElement(canonicalName);
+      }
     }
-    return wrap(rv);
+    return rv == null ? null : wrap(rv);
   }
 
   public static final Parameterizable parameterizable(final GenericDeclaration gd) {
@@ -1687,6 +1744,7 @@ public final class Lang {
     synchronized (CompletionLock.monitor()) {
       // JavacTypes#getWildcardType() can call getKind() on bounds etc. which triggers symbol completion
       rv = types.getWildcardType(extendsBound, superBound);
+      assert rv != null;
     }
     return wrap(rv);
   }
@@ -1715,27 +1773,16 @@ public final class Lang {
     case Class<?> c when c == void.class -> noType(TypeKind.VOID);
     case Class<?> c when c.isArray() -> arrayType(c);
     case Class<?> c when c.isPrimitive() -> primitiveType(c);
-    case Class<?> c -> declaredType(declaredType(typeElement(c.getEnclosingClass())), typeElement(c));
+    case Class<?> c -> {
+      final Class<?> ec = c.getEnclosingClass();
+      yield declaredType(ec == null ? null : declaredType(typeElement(ec)), typeElement(c));
+    }
     case ParameterizedType pt -> declaredType((DeclaredType)type(pt.getOwnerType()), typeElement((Class<?>)pt.getRawType()), typeArray(pt.getActualTypeArguments()));
     case GenericArrayType g -> arrayType(g);
     case java.lang.reflect.TypeVariable<?> tv -> typeVariable(tv);
     case java.lang.reflect.WildcardType w -> wildcardType(w);
     default -> null;
     };
-    /*
-    return switch (t) {
-    case null -> null;
-    case Class<?> c when c == void.class -> noType(TypeKind.VOID);
-    case Class<?> c when c.isArray() -> arrayType(c);
-    case Class<?> c when c.isPrimitive() -> primitiveType(c);
-    case Class<?> c -> declaredType(c);
-    case ParameterizedType pt -> declaredType(pt);
-    case GenericArrayType g -> arrayType(g);
-    case java.lang.reflect.TypeVariable<?> tv -> typeVariable(tv);
-    case java.lang.reflect.WildcardType w -> wildcardType(w);
-    default -> null;
-    };
-    */
   }
 
   public static final TypeMirror type(final Field f) {
@@ -1868,38 +1915,47 @@ public final class Lang {
             initLatch.countDown();
             return;
           }
+
           final List<String> options = new ArrayList<>();
           options.add("-proc:only");
-          options.add("-sourcepath");
-          options.add("");
           options.add("-cp");
-          final String modulePath = System.getProperty("jdk.module.path"); // TODO: seems like we could do better, maybe using ModuleReference et al.
-          if (modulePath == null) {
-            options.add(System.getProperty("java.class.path"));
-          } else {
-            options.add(System.getProperty("java.class.path") + java.io.File.pathSeparator + modulePath); // TODO: yuck?!
-            options.add("-p");
-            options.add(modulePath);
-          }
-          final List<String> classes = new ArrayList<>();
-          classes.add("java.lang.annotation.RetentionPolicy"); // loads the least amount of stuff up front
+          options.add(System.getProperty("java.class.path"));
           if (Boolean.getBoolean("org.microbean.lang.Lang.verbose")) {
             options.add("-verbose");
           }
+
+          final List<String> classes = new ArrayList<>();
+          classes.add("java.lang.annotation.RetentionPolicy"); // loads the least amount of stuff up front
+
           // (Any "loading" is actually performed by, e.g. com.sun.tools.javac.jvm.ClassReader.fillIn(), not reflective
           // machinery.)
           final CompilationTask task =
             jc.getTask(null, // additionalOutputWriter
-                       null, // fileManager,
+                       new ReadOnlyModularJavaFileManager(jc.getStandardFileManager(null, null, null)), // fileManager,
                        null, // diagnosticListener,
                        options,
                        classes,
                        null); // compilation units; null means we aren't actually compiling anything
+
           task.setProcessors(List.of(new P()));
+
+          final Set<ModuleReference> systemModules = ModuleFinder.ofSystem().findAll();
+          final Set<String> modulePath = ModuleLayer.boot()
+            .configuration()
+            .modules()
+            .stream()
+            .map(ResolvedModule::reference)
+            .filter(Predicate.not(systemModules::contains))
+            .map(mr -> mr.descriptor().name())
+            .collect(Collectors.toUnmodifiableSet());
+
+          task.addModules(modulePath);
+
           if (Boolean.FALSE.equals(task.call())) { // NOTE: runs the task
             runningLatch.countDown();
             initLatch.countDown();
           }
+
         } catch (final RuntimeException | Error e) {
           e.printStackTrace();
           runningLatch.countDown();
@@ -1924,7 +1980,7 @@ public final class Lang {
 
   @SuppressWarnings("unchecked")
   public static final <T extends TypeMirror> T wrap(final T t) {
-    return t == null ? null : (T)DelegatingTypeMirror.of(t, typeAndElementSource(), null);
+    return (T)DelegatingTypeMirror.of(t, typeAndElementSource(), null);
   }
 
   public static final List<? extends TypeMirror> wrap(final Collection<? extends TypeMirror> ts) {
@@ -1938,7 +1994,7 @@ public final class Lang {
 
   @SuppressWarnings("unchecked")
   public static final <E extends Element> E wrap(final E e) {
-    return e == null ? null : (E)DelegatingElement.of(e, typeAndElementSource(), null);
+    return (E)DelegatingElement.of(e, typeAndElementSource(), null);
   }
 
 
@@ -1961,10 +2017,13 @@ public final class Lang {
         return true;
       } else if (o1 == null || o2 == null) {
         return false;
-      } else if (o1 instanceof TypeMirror t1 && o2 instanceof TypeMirror t2) {
-        return Lang.sameType(t1, t2);
+      } else if (o1 instanceof TypeMirror t1) {
+        return o2 instanceof TypeMirror t2 && Lang.sameType(t1, t2);
+      } else if (o2 instanceof TypeMirror) {
+        return false;
+      } else {
+        return super.equals(o1, o2);
       }
-      return false;
     }
 
   }
@@ -2051,6 +2110,360 @@ public final class Lang {
                                                                     CD_ConstableTypeAndElementSource,
                                                                     "INSTANCE",
                                                                     CD_ConstableTypeAndElementSource)));
+    }
+
+  }
+
+  private static final class ReadOnlyModularJavaFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> {
+
+    private static final Logger LOGGER = System.getLogger(ReadOnlyModularJavaFileManager.class.getName());
+
+    private ReadOnlyModularJavaFileManager(final StandardJavaFileManager fm) {
+      super(fm);
+    }
+
+    @Override
+    public final boolean contains(final Location location, final FileObject fo) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final ClassLoader getClassLoader(final Location location) {
+      assert !location.isModuleOrientedLocation();
+      if (location instanceof ModuleLocation m) {
+        return ModuleLayer.boot().findLoader(m.moduleReference().descriptor().name());
+      }
+      return super.getClassLoader(location);
+    }
+
+    @Override
+    public final FileObject getFileForInput(final Location location, final String packageName, final String relativeName) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final FileObject getFileForOutput(final Location location, final String packageName, final String relativeName, final FileObject sibling) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final FileObject getFileForOutputForOriginatingFiles(final Location location, final String packageName, final String relativeName, final FileObject... originatingFiles) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final JavaFileObject getJavaFileForInput(final Location location, final String className, final JavaFileObject.Kind kind) throws IOException {
+      if (kind != JavaFileObject.Kind.CLASS) {
+        throw new UnsupportedOperationException();
+      }
+      if (location instanceof ModuleLocation m) {
+        URI uri = null;
+        try (final ModuleReader mr = m.moduleReference().open()) {
+          uri = mr.find(className.replace('.', '/') + JavaFileObject.Kind.CLASS.extension).orElse(null);
+        } catch (final IOException e) {
+          throw new UncheckedIOException(e.getMessage(), e);
+        }
+        return uri == null ? null : new JavaFileRecord(kind, className, uri);
+      }
+      return super.getJavaFileForInput(location, className, kind);
+    }
+
+    @Override
+    public final JavaFileObject getJavaFileForOutput(final Location location, final String className, final JavaFileObject.Kind kind, final FileObject sibling) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final JavaFileObject getJavaFileForOutputForOriginatingFiles(final Location location, final String className, final JavaFileObject.Kind kind, final FileObject... originatingFiles) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final Location getLocationForModule(final Location location, final String moduleName) throws IOException {
+      // It appears this method is called only for PATCH_MODULE_PATH and CLASS_OUTPUT, neither of which we support.
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final Location getLocationForModule(final Location location, final JavaFileObject fileObject) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public final boolean hasLocation(final Location location) {
+      return switch (location) {
+      case null -> false;
+      case StandardLocation s -> switch (s) {
+      case CLASS_PATH, MODULE_PATH, PATCH_MODULE_PATH, PLATFORM_CLASS_PATH, SYSTEM_MODULES, UPGRADE_MODULE_PATH -> !s.isOutputLocation() && super.hasLocation(s);
+      case ANNOTATION_PROCESSOR_MODULE_PATH, ANNOTATION_PROCESSOR_PATH, CLASS_OUTPUT, MODULE_SOURCE_PATH, NATIVE_HEADER_OUTPUT, SOURCE_OUTPUT, SOURCE_PATH -> false;
+      };
+      case ModuleLocation m -> true;
+      default -> !location.isOutputLocation() && super.hasLocation(location);
+      };
+    }
+
+    @Override
+    public final String inferBinaryName(final Location location, final JavaFileObject file) {
+      return file instanceof JavaFileRecord f ? f.binaryName() : super.inferBinaryName(location, file);
+    }
+
+    @Override
+    public final String inferModuleName(final Location location) throws IOException {
+      return location instanceof ModuleLocation m ? m.getName() : super.inferModuleName(location);
+    }
+
+    @Override
+    public final boolean isSameFile(final FileObject a, final FileObject b) {
+      throw new UnsupportedOperationException();
+    }
+
+    // Please return all files that match the kinds either shallowly (recurse == false) or deeply (recurse == true)
+    // under the area in the location described by packageName (which can be the empty string/root).
+    @Override
+    public final Iterable<JavaFileObject> list(final Location location, final String packageName, final Set<JavaFileObject.Kind> kinds, final boolean recurse) throws IOException {
+      // This is where the file manager is asked for things inside a module.
+
+      // The compiler also seems to call this with an empty packageName and recurse = true when it is setting up the automatic module.
+
+      assert !location.isModuleOrientedLocation();
+      if (location instanceof ModuleLocation m) {
+        final Set<String> candidates = new HashSet<>();
+        final Set<JavaFileRecord> set = new HashSet<>();
+        try (final ModuleReader reader = m.moduleReference().open();
+             final Stream<String> stream = reader.list()) {
+          final String p = packageName.replace('.', '/');
+          stream.forEach(s -> {
+              final String candidate = candidate(p, kinds, recurse, s);
+              if (candidate != null && candidates.add(candidate)) {
+                URI uri;
+                try {
+                  // reader will be guaranteed to find candidate because it was listed by reader
+                  uri = reader.find(candidate).orElseThrow();
+                } catch (final IOException ioException) {
+                  throw new UncheckedIOException(ioException.getMessage(), ioException);
+                }
+                String uriPath = uri.getPath();
+                if (uriPath == null) {
+                  // Probably a jar url?
+                  final String ssp = uri.getSchemeSpecificPart();
+                  uriPath = ssp.substring(ssp.lastIndexOf('!'));
+                }
+                if (!uriPath.endsWith("/")) {
+                  final JavaFileObject.Kind kind;
+                  if (uriPath.endsWith(JavaFileObject.Kind.CLASS.extension)) {
+                    kind = JavaFileObject.Kind.CLASS;
+                  } else if (uriPath.endsWith(JavaFileObject.Kind.HTML.extension)) {
+                    kind = JavaFileObject.Kind.HTML;
+                  } else if (uriPath.endsWith(JavaFileObject.Kind.SOURCE.extension)) {
+                    kind = JavaFileObject.Kind.SOURCE;
+                  } else {
+                    kind = JavaFileObject.Kind.OTHER;
+                  }
+                  if (kinds.contains(kind)) {
+                    String binaryName = null;
+                    if (kind == JavaFileObject.Kind.CLASS) {
+                      binaryName = uri.relativize(URI.create(candidate)).getPath();
+                      binaryName = binaryName.substring(0, binaryName.length() - JavaFileObject.Kind.CLASS.extension.length()).replace('/', '.');
+                      if (LOGGER.isLoggable(TRACE)) {
+                        LOGGER.log(TRACE, "candidate: " + candidate + "; binaryName: " + binaryName + "; uri: " + uri);
+                      }
+                    } else if (LOGGER.isLoggable(TRACE)) {
+                      LOGGER.log(TRACE, "candidate: " + candidate + "; uri: " + uri);
+                    }
+                    set.add(new JavaFileRecord(kind, binaryName, uri));
+                  }
+                }
+              }
+            });
+        }
+        if (LOGGER.isLoggable(TRACE)) {
+          final StringBuilder sb = new StringBuilder();
+          if (set.isEmpty()) {
+            sb.append("(empty)");
+          } else {
+            for (final JavaFileRecord jfr : set) {
+              sb.append(System.lineSeparator()).append("    ").append(jfr);
+            }
+          }
+          LOGGER.log(TRACE, "location: " + location + "; packageName: " + packageName + "; kinds: " + kinds + "; recurse: " + recurse + "; return value: " + sb);
+        }
+        return Collections.unmodifiableSet(set);
+      }
+      return super.list(location, packageName, kinds, recurse);
+    }
+
+    @Override
+    public final Iterable<Set<Location>> listLocationsForModules(final Location location) throws IOException {
+      assert location.isModuleOrientedLocation();
+      final Iterable<Set<Location>> returnValue = switch (location) {
+      case StandardLocation s when s == StandardLocation.MODULE_PATH -> {
+        final Set<ModuleReference> moduleReferences = ModuleLayer.boot().configuration().modules().stream().map(ResolvedModule::reference).collect(Collectors.toCollection(HashSet::new));
+        moduleReferences.removeAll(ModuleFinder.ofSystem().findAll());
+        yield Set.of(moduleReferences.stream().map(ModuleLocation::new).collect(Collectors.toUnmodifiableSet()));
+      }
+      default -> super.listLocationsForModules(location);
+      };
+      if (LOGGER.isLoggable(DEBUG)) {
+        LOGGER.log(DEBUG, "locations for " + location + ": " + returnValue);
+      }
+      return returnValue;
+    }
+
+    private static final String candidate(final String packagePrefix,
+                                          final Set<JavaFileObject.Kind> kinds,
+                                          final boolean recurse,
+                                          final String moduleResource) {
+      // Precondition: packagePrefix doesn't start with a slash
+      assert !packagePrefix.startsWith("/");
+      // Precondition: packagePrefix is like com/foo/bar, not com.foo.bar
+      assert !packagePrefix.contains(".");
+      // Precondition: packagePrefix doesn't end with a slash
+      assert !packagePrefix.endsWith("/");
+      // Precondition: moduleResource comes from ModuleReader.list(); they're never "absolute"
+      assert !moduleResource.startsWith("/");
+      // Precondition: moduleResource does not end with /; should be filtered out already
+      if (moduleResource.endsWith("/")) {
+        return null;
+      }
+      String candidate = null;
+      if (moduleResource.startsWith(packagePrefix)) {
+        if (recurse) {
+          if (isAKind(kinds, moduleResource)) {
+            candidate = moduleResource;
+          } else {
+            candidate = null;
+          }
+        } else {
+          // Let's say package prefix is a/b
+          // moduleResource is a/b/c/d
+          // We want a/b/c
+          // Start our slashIndex search at packagePrefix length 3 + 1-for-the-required-terminating-slash, e.g. at the index of c
+          final int slashIndex = moduleResource.indexOf('/', packagePrefix.length() + 1);
+          if (slashIndex < 0) {
+            candidate = moduleResource;
+          } else {
+            candidate = moduleResource.substring(0, slashIndex);
+          }
+          if (!isAKind(kinds, candidate)) {
+            candidate = null;
+          }
+        }
+      } else {
+        candidate = null;
+      }
+      return candidate;
+    }
+
+    private static final boolean isAKind(final Set<JavaFileObject.Kind> kinds, final String moduleResource) {
+      for (final JavaFileObject.Kind k : kinds) {
+        if (moduleResource.endsWith(k.extension)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private static final record ModuleLocation(ModuleReference moduleReference) implements Location {
+
+      @Override
+      public final String getName() {
+        return this.moduleReference().descriptor().name();
+      }
+
+      @Override
+      public final boolean isModuleOrientedLocation() {
+        return false;
+      }
+
+      @Override
+      public final boolean isOutputLocation() {
+        return false;
+      }
+
+    }
+
+    private static final record JavaFileRecord(JavaFileObject.Kind kind, String binaryName, URI uri) implements JavaFileObject {
+
+      @Override
+      public final URI toUri() {
+        return this.uri();
+      }
+
+      @Override
+      public final NestingKind getNestingKind() {
+        return null;
+      }
+
+      @Override
+      public final Modifier getAccessLevel() {
+        return null;
+      }
+
+      @Override
+      public final long getLastModified() {
+        return 0L;
+      }
+
+      @Override
+      public final Reader openReader(final boolean ignoreEncodingErrors) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public final OutputStream openOutputStream() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public final CharSequence getCharContent(final boolean ignoreEncodingErrors) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public final Writer openWriter() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public final JavaFileObject.Kind getKind() {
+        return this.kind();
+      }
+
+      private final String path() {
+        final String path = this.uri().getPath();
+        if (path == null) {
+          // Probably a jar: URI
+          final String ssp = this.uri().getSchemeSpecificPart();
+          return ssp.substring(ssp.lastIndexOf('!') + 1);
+        }
+        return path;
+      }
+
+      @Override
+      public final String getName() {
+        return this.path();
+      }
+
+      @Override
+      public final boolean isNameCompatible(final String simpleName, final JavaFileObject.Kind kind) {
+        if (kind != this.kind()) {
+          return false;
+        }
+        final String basename = simpleName + kind.extension;
+        final String path = this.path();
+        return path.equals(basename) || path.endsWith("/" + basename);
+      }
+
+      @Override
+      public final boolean delete() {
+        return false;
+      }
+
+      @Override
+      public final InputStream openInputStream() throws IOException {
+        return this.uri().toURL().openConnection().getInputStream();
+      }
+
     }
 
   }

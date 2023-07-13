@@ -23,7 +23,6 @@ import java.lang.annotation.RetentionPolicy;
 
 import java.lang.reflect.Method;
 
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -40,9 +39,9 @@ import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import org.microbean.lang.element.DelegatingElement;
@@ -53,7 +52,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import static org.microbean.lang.Lang.unwrap;
 
@@ -61,6 +59,12 @@ final class TestJavaLanguageModel {
 
   private TestJavaLanguageModel() {
     super();
+  }
+
+  @Test
+  final void testGetTypeElementCanonicalName() {
+    final TypeElement e = Lang.typeElement(Lang.moduleElement("java.base"), "java.util.AbstractMap.SimpleEntry");
+    assertNotNull(e);
   }
 
   @Test
@@ -167,6 +171,23 @@ final class TestJavaLanguageModel {
     final Class<?> c = Class.forName(this.getClass().getName() + "$1Charlie");
     assertSame(this.getClass(), c.getEnclosingClass());
     assertEquals("baker", c.getEnclosingMethod().getName());
+  }
+
+  @Test
+  final void testStrangeJUnitTestAnnotationCase1() {
+    assertSame(ElementKind.ANNOTATION_TYPE, Lang.typeElement("org.junit.jupiter.api.Test").getKind());
+    assertSame(ElementKind.ANNOTATION_TYPE, Lang.typeElement(Lang.moduleElement("org.junit.jupiter.api"), "org.junit.jupiter.api.Test").getKind());
+    assertSame(TypeKind.DECLARED, Lang.typeElement("org.junit.jupiter.api.Test").asType().getKind());
+  }
+
+  @Disabled // see https://mail.openjdk.org/pipermail/compiler-dev/2023-July/023750.html
+  @Test
+  final void testStrangeJUnitTestAnnotationCase2() throws ReflectiveOperationException {
+    final ExecutableElement ee = Lang.executableElement(this.getClass().getDeclaredMethod("testStrangeJUnitTestAnnotationCase2"));
+    final AnnotationMirror am = ee.getAnnotationMirrors().get(0);
+    final DeclaredType t = am.getAnnotationType();
+    assertSame(TypeKind.DECLARED, t.getKind()); // fails
+    assertSame(ElementKind.ANNOTATION_TYPE, t.asElement().getKind()); // fails
   }
 
 

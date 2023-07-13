@@ -578,6 +578,11 @@ public final class Jandex extends Modeler {
   }
 
   @Override // TypeAndElementSource
+  public final DeclaredType declaredType(final TypeElement typeElement, final TypeMirror... arguments) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  @Override // TypeAndElementSource
   public final boolean sameType(final TypeMirror t, final TypeMirror s) {
     throw new UnsupportedOperationException("TODO");
   }

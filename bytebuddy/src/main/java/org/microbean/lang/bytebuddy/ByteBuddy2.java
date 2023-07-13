@@ -48,6 +48,10 @@ public final class ByteBuddy2 {
     this.typePool = Objects.requireNonNull(typePool, "typePool");
   }
 
+  public final TypePool typePool() {
+    return this.typePool;
+  }
+
   public final TypeDescription typeDescription(final TypeMirror t) {
     if (t == null) {
       return null;

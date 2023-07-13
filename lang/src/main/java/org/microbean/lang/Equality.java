@@ -647,8 +647,9 @@ public class Equality implements Constable {
       return Map.of();
     }
     final DeclaredType at = am.getAnnotationType();
-    assert at.getKind() == TypeKind.DECLARED;
-    assert at.asElement().getKind() == ElementKind.ANNOTATION_TYPE;
+    // See https://mail.openjdk.org/pipermail/compiler-dev/2023-July/023750.html
+    // assert at.getKind() == TypeKind.DECLARED : "Unexpected kind for am (" + am + "): " + at.getKind();
+    // assert at.asElement().getKind() == ElementKind.ANNOTATION_TYPE : "Unexpected kind for at.asElement() (" + at.asElement() + "): " + at.asElement().getKind();
     final Map<String, AnnotationValue> map = new TreeMap<>();
     for (final Object e : at.asElement().getEnclosedElements()) {
       if (e instanceof ExecutableElement ee && ee.getKind() == ElementKind.METHOD) {

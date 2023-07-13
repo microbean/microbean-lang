@@ -57,6 +57,8 @@
                   <arg>--add-exports</arg>
                   <arg>jdk.compiler/com.sun.tools.javac.util=org.microbean.lang</arg>
                   <arg>-Xlint:-exports</arg>
+                  <arg>--add-reads</arg>
+                  <arg>org.microbean.lang=java.logging</arg>
                 </compilerArgs>
               </configuration>
             </execution>
@@ -72,6 +74,7 @@
               --enable-preview
             </argLine>
             <systemPropertyVariables>
+              <java.util.logging.config.file>src/test/java/logging.properties</java.util.logging.config.file>
               <org.microbean.lang.Lang.verbose>${org.microbean.lang.Lang.verbose}</org.microbean.lang.Lang.verbose>
             </systemPropertyVariables>
             <!-- See https://junit.org/junit5/docs/snapshot/user-guide/#running-tests-build-maven-config-params -->

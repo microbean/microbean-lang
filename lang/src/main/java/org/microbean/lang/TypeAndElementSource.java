@@ -53,7 +53,7 @@ public interface TypeAndElementSource {
   }
 
   public default DeclaredType declaredType(final Class<?> c) {
-    return c == null ? null : this.declaredType(this.declaredType(c.getEnclosingClass()), typeElement(c));
+    return c == null ? null : this.declaredType(this.declaredType(c.getEnclosingClass()), this.typeElement(c));
     // return m == null ? this.declaredType(c.getCanonicalName()) : this.declaredType(m.getName(), c.getCanonicalName());
   }
 
@@ -131,7 +131,15 @@ public interface TypeAndElementSource {
       return null;
     }
     final Module m = c.getModule();
-    return m == null ? this.typeElement(c.getCanonicalName()) : this.typeElement(m.getName(), c.getCanonicalName());
+    final TypeElement e;
+    if (m == null) {
+      e = this.typeElement(c.getCanonicalName());
+      assert e != null : "null type element for " + c.getCanonicalName(); // TODO TEMPORARY
+    } else {
+      e = this.typeElement(m.getName(), c.getCanonicalName());
+      assert e != null : "null type element for module " + m.getName() + " and " + c.getCanonicalName();
+    }
+    return e;
   }
 
   public default TypeElement typeElement(final Type t) {
