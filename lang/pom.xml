@@ -57,8 +57,6 @@
                   <arg>--add-exports</arg>
                   <arg>jdk.compiler/com.sun.tools.javac.util=org.microbean.lang</arg>
                   <arg>-Xlint:-exports</arg>
-                  <arg>--add-reads</arg>
-                  <arg>org.microbean.lang=java.logging</arg>
                 </compilerArgs>
               </configuration>
             </execution>

@@ -52,6 +52,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -60,6 +61,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 import java.util.function.Predicate;
@@ -115,8 +117,6 @@ import org.microbean.lang.element.DelegatingElement;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
 
-import static java.lang.System.Logger.Level.DEBUG;
-import static java.lang.System.Logger.Level.TRACE;
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 import static java.lang.constant.ConstantDescs.NULL;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
@@ -731,7 +731,7 @@ public final class Lang {
         }
       }
       default -> throw new IllegalArgumentException("e: " + e + "; kind: " + e.getKind());
-      };
+      }
     }
   }
 
@@ -817,7 +817,7 @@ public final class Lang {
       switch (e.getKind()) {
       case ENUM_CONSTANT, FIELD, LOCAL_VARIABLE, PARAMETER, RECORD_COMPONENT -> typeSignature(e.asType(), sb);
       default -> throw new IllegalArgumentException("e: " + e);
-      };
+      }
     }
   }
 
@@ -860,7 +860,7 @@ public final class Lang {
         switch (tp.getKind()) {
         case TYPE_PARAMETER -> typeParameter(tp, sb);
         default -> throw new IllegalArgumentException("tps: " + tps);
-        };
+        }
       }
     }
     sb.append('>');
@@ -975,7 +975,7 @@ public final class Lang {
       case SHORT -> sb.append("S");
       case TYPEVAR -> sb.append("T").append(((TypeVariable)t).asElement().getSimpleName()).append(';');
       default -> throw new IllegalArgumentException("t: " + t);
-      };
+      }
     }
   }
 
@@ -1086,7 +1086,7 @@ public final class Lang {
       case SHORT -> sb.append("S");
       case TYPEVAR -> descriptor(erasure(t), sb);
       case VOID -> sb.append("V");
-      };
+      }
     }
   }
 
@@ -1155,7 +1155,7 @@ public final class Lang {
 
   public static final long modifiers(Element e) {
     // modifiers is declared long because there are javac-specific modifiers that *might* be used later
-    long modifiers = 0L;
+    long modifiers;
     synchronized (CompletionLock.monitor()) {
       modifiers = modifiers(e.getModifiers());
       switch (e.getKind()) {
@@ -1858,6 +1858,19 @@ public final class Lang {
     return pe;
   }
 
+  private static final Set<Module> effectiveModulePathModules() {
+    final Set<Module> modules = new HashSet<>(ModuleLayer.boot().modules());
+    modules.removeIf(m -> {
+        for (final ModuleReference mr : ModuleFinder.ofSystem().findAll()) {
+          if (m.getName().equals(mr.descriptor().name())) {
+            return true;
+          }
+        }
+        return false;
+      });
+    return Collections.unmodifiableSet(modules);
+  }
+
   // Called once, ever, by the static initializer. Idempotent.
   private static final void initialize() {
     if (pe != null) { // volatile read
@@ -1905,7 +1918,7 @@ public final class Lang {
         return false; // we don't claim anything, but we're the only processor in existence
       }
 
-    };
+    }
 
     final Thread t = new Thread(() -> {
         try {
@@ -1924,6 +1937,25 @@ public final class Lang {
             options.add("-verbose");
           }
 
+          final Set<Module> effectiveModulePathModules = effectiveModulePathModules();
+          final Module unnamedModule = Lang.class.getClassLoader().getUnnamedModule();
+          for (final Module m : effectiveModulePathModules) {
+            assert m.isNamed();
+            final String name = m.getName();
+            if (m.canRead(unnamedModule)) {
+              // This is a (required) stupendous hack.
+              options.add("--add-reads");
+              options.add(name + "=ALL-UNNAMED");
+            }
+            for (final String p : m.getPackages()) {
+              if (m.isOpen(p, unnamedModule)) {
+                // This is also a (required) stupendous hack.
+                options.add("--add-opens");
+                options.add(name + "/" + p + "=ALL-UNNAMED");
+              }
+            }
+          }
+
           final List<String> classes = new ArrayList<>();
           classes.add("java.lang.annotation.RetentionPolicy"); // loads the least amount of stuff up front
 
@@ -1931,7 +1963,7 @@ public final class Lang {
           // machinery.)
           final CompilationTask task =
             jc.getTask(null, // additionalOutputWriter
-                       new ReadOnlyModularJavaFileManager(jc.getStandardFileManager(null, null, null)), // fileManager,
+                       new ReadOnlyModularJavaFileManager(jc.getStandardFileManager(null, null, null), effectiveModulePathModules), // fileManager,
                        null, // diagnosticListener,
                        options,
                        classes,
@@ -2118,8 +2150,25 @@ public final class Lang {
 
     private static final Logger LOGGER = System.getLogger(ReadOnlyModularJavaFileManager.class.getName());
 
-    private ReadOnlyModularJavaFileManager(final StandardJavaFileManager fm) {
+    private static final Set<JavaFileObject.Kind> ALL_KINDS = EnumSet.allOf(JavaFileObject.Kind.class);
+
+    private final Set<ModuleReference> modulePath;
+
+    private final Map<ModuleReference, Map<String, List<JavaFileRecord>>> maps;
+
+    private ReadOnlyModularJavaFileManager(final StandardJavaFileManager fm, final Set<Module> effectiveModulePathModules) {
       super(fm);
+      this.maps = new ConcurrentHashMap<>();
+      this.modulePath = effectiveModulePathModules.stream()
+        .map(m -> m.getLayer().configuration().findModule(m.getName()).orElseThrow().reference())
+        .collect(Collectors.toUnmodifiableSet());
+
+    }
+
+    @Override
+    public final void close() throws IOException {
+      super.close();
+      this.maps.clear();
     }
 
     @Override
@@ -2153,17 +2202,14 @@ public final class Lang {
 
     @Override
     public final JavaFileObject getJavaFileForInput(final Location location, final String className, final JavaFileObject.Kind kind) throws IOException {
-      if (kind != JavaFileObject.Kind.CLASS) {
-        throw new UnsupportedOperationException();
-      }
       if (location instanceof ModuleLocation m) {
-        URI uri = null;
         try (final ModuleReader mr = m.moduleReference().open()) {
-          uri = mr.find(className.replace('.', '/') + JavaFileObject.Kind.CLASS.extension).orElse(null);
+          return mr.find(className.replace('.', '/') + kind.extension)
+            .map(u -> new JavaFileRecord(kind, className, u))
+            .orElse(null);
         } catch (final IOException e) {
           throw new UncheckedIOException(e.getMessage(), e);
         }
-        return uri == null ? null : new JavaFileRecord(kind, className, uri);
       }
       return super.getJavaFileForInput(location, className, kind);
     }
@@ -2180,7 +2226,6 @@ public final class Lang {
 
     @Override
     public final Location getLocationForModule(final Location location, final String moduleName) throws IOException {
-      // It appears this method is called only for PATCH_MODULE_PATH and CLASS_OUTPUT, neither of which we support.
       throw new UnsupportedOperationException();
     }
 
@@ -2194,7 +2239,10 @@ public final class Lang {
       return switch (location) {
       case null -> false;
       case StandardLocation s -> switch (s) {
-      case CLASS_PATH, MODULE_PATH, PATCH_MODULE_PATH, PLATFORM_CLASS_PATH, SYSTEM_MODULES, UPGRADE_MODULE_PATH -> !s.isOutputLocation() && super.hasLocation(s);
+      case CLASS_PATH, MODULE_PATH, PATCH_MODULE_PATH, PLATFORM_CLASS_PATH, SYSTEM_MODULES, UPGRADE_MODULE_PATH -> {
+        assert !s.isOutputLocation();
+        yield super.hasLocation(s);
+      }
       case ANNOTATION_PROCESSOR_MODULE_PATH, ANNOTATION_PROCESSOR_PATH, CLASS_OUTPUT, MODULE_SOURCE_PATH, NATIVE_HEADER_OUTPUT, SOURCE_OUTPUT, SOURCE_PATH -> false;
       };
       case ModuleLocation m -> true;
@@ -2217,141 +2265,97 @@ public final class Lang {
       throw new UnsupportedOperationException();
     }
 
-    // Please return all files that match the kinds either shallowly (recurse == false) or deeply (recurse == true)
-    // under the area in the location described by packageName (which can be the empty string/root).
+    private static final JavaFileObject.Kind kind(final String s) {
+      return kind(ALL_KINDS, s);
+    }
+
+    private static final JavaFileObject.Kind kind(final Iterable<? extends JavaFileObject.Kind> kinds, final String s) {
+      for (final JavaFileObject.Kind kind : kinds) {
+        if (kind != JavaFileObject.Kind.OTHER && s.endsWith(kind.extension)) {
+          return kind;
+        }
+      }
+      return JavaFileObject.Kind.OTHER;
+    }
+
+    private static final Iterable<JavaFileObject> list(final ModuleReader mr, final String packageName, final Set<JavaFileObject.Kind> kinds, final boolean recurse) throws IOException {
+      final String p = packageName.replace('.', '/');
+      final int packagePrefixLength = p.length() + 1;
+      try (final Stream<String> ss = mr.list()) {
+        return ss
+          .filter(s -> !s.endsWith("/") && s.startsWith(p) && isAKind(kinds, s) && (recurse || s.indexOf('/', packagePrefixLength) < 0))
+          .map(s -> {
+              final JavaFileObject.Kind kind = kind(kinds, s);
+              try {
+                return
+                  new JavaFileRecord(kind,
+                                     kind == JavaFileObject.Kind.CLASS || kind == JavaFileObject.Kind.SOURCE ? s.substring(0, s.length() - kind.extension.length()).replace('/', '.') : null,
+                                     mr.find(s).orElseThrow());
+              } catch (final IOException ioException) {
+                throw new UncheckedIOException(ioException.getMessage(), ioException);
+              }
+            })
+          .collect(Collectors.toUnmodifiableList());
+      }
+    }
+
     @Override
     public final Iterable<JavaFileObject> list(final Location location, final String packageName, final Set<JavaFileObject.Kind> kinds, final boolean recurse) throws IOException {
-      // This is where the file manager is asked for things inside a module.
-
-      // The compiler also seems to call this with an empty packageName and recurse = true when it is setting up the automatic module.
-
-      assert !location.isModuleOrientedLocation();
       if (location instanceof ModuleLocation m) {
-        final Set<String> candidates = new HashSet<>();
-        final Set<JavaFileRecord> set = new HashSet<>();
-        try (final ModuleReader reader = m.moduleReference().open();
-             final Stream<String> stream = reader.list()) {
-          final String p = packageName.replace('.', '/');
-          stream.forEach(s -> {
-              final String candidate = candidate(p, kinds, recurse, s);
-              if (candidate != null && candidates.add(candidate)) {
-                URI uri;
-                try {
-                  // reader will be guaranteed to find candidate because it was listed by reader
-                  uri = reader.find(candidate).orElseThrow();
-                } catch (final IOException ioException) {
-                  throw new UncheckedIOException(ioException.getMessage(), ioException);
-                }
-                String uriPath = uri.getPath();
-                if (uriPath == null) {
-                  // Probably a jar url?
-                  final String ssp = uri.getSchemeSpecificPart();
-                  uriPath = ssp.substring(ssp.lastIndexOf('!'));
-                }
-                if (!uriPath.endsWith("/")) {
-                  final JavaFileObject.Kind kind;
-                  if (uriPath.endsWith(JavaFileObject.Kind.CLASS.extension)) {
-                    kind = JavaFileObject.Kind.CLASS;
-                  } else if (uriPath.endsWith(JavaFileObject.Kind.HTML.extension)) {
-                    kind = JavaFileObject.Kind.HTML;
-                  } else if (uriPath.endsWith(JavaFileObject.Kind.SOURCE.extension)) {
-                    kind = JavaFileObject.Kind.SOURCE;
-                  } else {
-                    kind = JavaFileObject.Kind.OTHER;
-                  }
-                  if (kinds.contains(kind)) {
-                    String binaryName = null;
-                    if (kind == JavaFileObject.Kind.CLASS) {
-                      binaryName = uri.relativize(URI.create(candidate)).getPath();
-                      binaryName = binaryName.substring(0, binaryName.length() - JavaFileObject.Kind.CLASS.extension.length()).replace('/', '.');
-                      if (LOGGER.isLoggable(TRACE)) {
-                        LOGGER.log(TRACE, "candidate: " + candidate + "; binaryName: " + binaryName + "; uri: " + uri);
-                      }
-                    } else if (LOGGER.isLoggable(TRACE)) {
-                      LOGGER.log(TRACE, "candidate: " + candidate + "; uri: " + uri);
-                    }
-                    set.add(new JavaFileRecord(kind, binaryName, uri));
-                  }
-                }
-              }
-            });
-        }
-        if (LOGGER.isLoggable(TRACE)) {
-          final StringBuilder sb = new StringBuilder();
-          if (set.isEmpty()) {
-            sb.append("(empty)");
-          } else {
-            for (final JavaFileRecord jfr : set) {
-              sb.append(System.lineSeparator()).append("    ").append(jfr);
-            }
+        final ModuleReference mref = m.moduleReference();
+        if (recurse) {
+          // Don't cache anything; not really worth it
+          try (final ModuleReader reader = mref.open()) {
+            return list(reader, packageName, kinds, true);
           }
-          LOGGER.log(TRACE, "location: " + location + "; packageName: " + packageName + "; kinds: " + kinds + "; recurse: " + recurse + "; return value: " + sb);
         }
-        return Collections.unmodifiableSet(set);
+        final Map<String, List<JavaFileRecord>> m0 = this.maps.computeIfAbsent(mref, mr -> {
+            try (final ModuleReader reader = mr.open();
+                 final Stream<String> ss = reader.list()) {
+              return
+                Collections.unmodifiableMap(ss.filter(s -> !s.endsWith("/"))
+                                            .collect(HashMap::new,
+                                                     (map, s) -> {
+                                                       // s is, e.g., "foo/Bar.class"
+                                                       final int lastSlashIndex = s.lastIndexOf('/');
+                                                       assert lastSlashIndex != 0;
+                                                       final String p0 = lastSlashIndex > 0 ? s.substring(0, lastSlashIndex).replace('/', '.') : "";
+                                                       // p0 is now "foo"
+                                                       final List<JavaFileRecord> list = map.computeIfAbsent(p0, p1 -> new ArrayList<>());
+                                                       final JavaFileObject.Kind kind = kind(s);
+                                                       try {
+                                                         list.add(new JavaFileRecord(kind,
+                                                                                     kind == JavaFileObject.Kind.CLASS || kind == JavaFileObject.Kind.SOURCE ? s.substring(0, s.length() - kind.extension.length()).replace('/', '.') : null,
+                                                                                     reader.find(s).orElseThrow()));
+                                                       } catch (final IOException ioException) {
+                                                         throw new UncheckedIOException(ioException.getMessage(), ioException);
+                                                       }
+                                                     },
+                                                     Map::putAll));
+            } catch (final IOException ioException) {
+              throw new UncheckedIOException(ioException.getMessage(), ioException);
+            }
+          });
+        List<JavaFileRecord> unfilteredPackageContents = m0.get(packageName);
+        if (unfilteredPackageContents == null) {
+          return List.of();
+        }
+        assert !unfilteredPackageContents.isEmpty();
+        if (kinds.size() < ALL_KINDS.size()) {
+          unfilteredPackageContents = new ArrayList<>(unfilteredPackageContents);
+          unfilteredPackageContents.removeIf(f -> !kinds.contains(f.kind()));
+        }
+        return Collections.unmodifiableList(unfilteredPackageContents);
       }
       return super.list(location, packageName, kinds, recurse);
     }
 
     @Override
     public final Iterable<Set<Location>> listLocationsForModules(final Location location) throws IOException {
-      assert location.isModuleOrientedLocation();
-      final Iterable<Set<Location>> returnValue = switch (location) {
-      case StandardLocation s when s == StandardLocation.MODULE_PATH -> {
-        final Set<ModuleReference> moduleReferences = ModuleLayer.boot().configuration().modules().stream().map(ResolvedModule::reference).collect(Collectors.toCollection(HashSet::new));
-        moduleReferences.removeAll(ModuleFinder.ofSystem().findAll());
-        yield Set.of(moduleReferences.stream().map(ModuleLocation::new).collect(Collectors.toUnmodifiableSet()));
-      }
-      default -> super.listLocationsForModules(location);
-      };
-      if (LOGGER.isLoggable(DEBUG)) {
-        LOGGER.log(DEBUG, "locations for " + location + ": " + returnValue);
-      }
-      return returnValue;
-    }
-
-    private static final String candidate(final String packagePrefix,
-                                          final Set<JavaFileObject.Kind> kinds,
-                                          final boolean recurse,
-                                          final String moduleResource) {
-      // Precondition: packagePrefix doesn't start with a slash
-      assert !packagePrefix.startsWith("/");
-      // Precondition: packagePrefix is like com/foo/bar, not com.foo.bar
-      assert !packagePrefix.contains(".");
-      // Precondition: packagePrefix doesn't end with a slash
-      assert !packagePrefix.endsWith("/");
-      // Precondition: moduleResource comes from ModuleReader.list(); they're never "absolute"
-      assert !moduleResource.startsWith("/");
-      // Precondition: moduleResource does not end with /; should be filtered out already
-      if (moduleResource.endsWith("/")) {
-        return null;
-      }
-      String candidate = null;
-      if (moduleResource.startsWith(packagePrefix)) {
-        if (recurse) {
-          if (isAKind(kinds, moduleResource)) {
-            candidate = moduleResource;
-          } else {
-            candidate = null;
-          }
-        } else {
-          // Let's say package prefix is a/b
-          // moduleResource is a/b/c/d
-          // We want a/b/c
-          // Start our slashIndex search at packagePrefix length 3 + 1-for-the-required-terminating-slash, e.g. at the index of c
-          final int slashIndex = moduleResource.indexOf('/', packagePrefix.length() + 1);
-          if (slashIndex < 0) {
-            candidate = moduleResource;
-          } else {
-            candidate = moduleResource.substring(0, slashIndex);
-          }
-          if (!isAKind(kinds, candidate)) {
-            candidate = null;
-          }
-        }
-      } else {
-        candidate = null;
-      }
-      return candidate;
+      return
+        location == StandardLocation.MODULE_PATH ?
+        Set.of(this.modulePath.stream().map(ModuleLocation::new).collect(Collectors.toUnmodifiableSet())) :
+        super.listLocationsForModules(location);
     }
 
     private static final boolean isAKind(final Set<JavaFileObject.Kind> kinds, final String moduleResource) {
@@ -2364,6 +2368,10 @@ public final class Lang {
     }
 
     private static final record ModuleLocation(ModuleReference moduleReference) implements Location {
+
+      private ModuleLocation(final Module module) {
+        this(module.getLayer().configuration().findModule(module.getName()).orElseThrow().reference());
+      }
 
       @Override
       public final String getName() {

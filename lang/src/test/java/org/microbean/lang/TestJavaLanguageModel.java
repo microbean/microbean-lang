@@ -180,7 +180,7 @@ final class TestJavaLanguageModel {
     assertSame(TypeKind.DECLARED, Lang.typeElement("org.junit.jupiter.api.Test").asType().getKind());
   }
 
-  @Disabled // see https://mail.openjdk.org/pipermail/compiler-dev/2023-July/023750.html
+  // @Disabled // see https://mail.openjdk.org/pipermail/compiler-dev/2023-July/023750.html
   @Test
   final void testStrangeJUnitTestAnnotationCase2() throws ReflectiveOperationException {
     final ExecutableElement ee = Lang.executableElement(this.getClass().getDeclaredMethod("testStrangeJUnitTestAnnotationCase2"));
