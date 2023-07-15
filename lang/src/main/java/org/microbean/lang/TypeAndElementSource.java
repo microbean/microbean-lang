@@ -17,6 +17,8 @@ import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
+import java.util.Objects;
+
 import javax.lang.model.element.TypeElement;
 
 import javax.lang.model.type.ArrayType;
@@ -31,11 +33,14 @@ import javax.lang.model.type.WildcardType;
 public interface TypeAndElementSource {
 
   public default ArrayType arrayType(final Class<?> arrayClass) {
-    return arrayClass == null || !arrayClass.isArray() ? null : arrayTypeOf(type(arrayClass.getComponentType()));
+    if (!arrayClass.isArray()) {
+      throw new IllegalArgumentException("arrayClass: " + arrayClass);
+    }
+    return arrayTypeOf(type(arrayClass.getComponentType()));
   }
 
   public default ArrayType arrayType(final GenericArrayType g) {
-    return g == null ? null : arrayTypeOf(type(g.getGenericComponentType()));
+    return arrayTypeOf(type(g.getGenericComponentType()));
   }
 
   public ArrayType arrayTypeOf(final TypeMirror componentType);
@@ -53,8 +58,7 @@ public interface TypeAndElementSource {
   }
 
   public default DeclaredType declaredType(final Class<?> c) {
-    return c == null ? null : this.declaredType(this.declaredType(c.getEnclosingClass()), this.typeElement(c));
-    // return m == null ? this.declaredType(c.getCanonicalName()) : this.declaredType(m.getName(), c.getCanonicalName());
+    return this.declaredType(c.getEnclosingClass() == null ? null : this.declaredType(c.getEnclosingClass()), this.typeElement(c));
   }
 
   public DeclaredType declaredType(final DeclaredType enclosingType,
@@ -62,18 +66,17 @@ public interface TypeAndElementSource {
                                    final TypeMirror... typeArguments);
 
   public default DeclaredType declaredType(final ParameterizedType pt) {
-    return pt == null ? null :
-      this.declaredType(this.declaredType(pt.getOwnerType()),
+    return
+      this.declaredType(pt.getOwnerType() == null ? null : this.declaredType(pt.getOwnerType()),
                         this.typeElement(pt.getRawType()),
                         typeArray(pt.getActualTypeArguments()));
   }
 
   public default DeclaredType declaredType(final Type t) {
     return switch (t) {
-    case null -> null;
     case Class<?> c -> declaredType(c);
     case ParameterizedType p -> declaredType(p);
-    default -> null;
+    default -> throw new IllegalArgumentException("t: " + t);
     };
   }
 
@@ -84,9 +87,6 @@ public interface TypeAndElementSource {
   public NoType noType(final TypeKind k);
 
   public default PrimitiveType primitiveType(final Class<?> c) {
-    if (c == null || !c.isPrimitive()) {
-      return null;
-    }
     return primitiveType(TypeKind.valueOf(c.getName().toUpperCase()));
   }
 
@@ -96,21 +96,20 @@ public interface TypeAndElementSource {
 
   public default TypeMirror type(final Type t) {
     return switch (t) {
-    case null -> null;
     case Class<?> c when c == void.class -> noType(TypeKind.VOID);
     case Class<?> c when c.isArray() -> arrayType(c);
     case Class<?> c when c.isPrimitive() -> primitiveType(c);
-    case Class<?> c -> declaredType(declaredType(typeElement(c.getEnclosingClass())), typeElement(c));
-    case ParameterizedType pt -> declaredType((DeclaredType)type(pt.getOwnerType()), typeElement((Class<?>)pt.getRawType()), typeArray(pt.getActualTypeArguments()));
+    case Class<?> c -> declaredType(c.getEnclosingClass() == null ? null : declaredType(typeElement(c.getEnclosingClass())), typeElement(c));
+    case ParameterizedType pt -> declaredType(pt.getOwnerType() == null ? null : (DeclaredType)type(pt.getOwnerType()), typeElement((Class<?>)pt.getRawType()), typeArray(pt.getActualTypeArguments()));
     case GenericArrayType g -> arrayType(g);
     case java.lang.reflect.TypeVariable<?> tv -> typeVariable(tv);
     case java.lang.reflect.WildcardType w -> wildcardType(w);
-    default -> null;
+    default -> throw new IllegalArgumentException("t: " + t);
     };
   }
 
   public default TypeMirror[] typeArray(final Type[] ts) {
-    if (ts == null || ts.length <= 0) {
+    if (ts.length <= 0) {
       return new TypeMirror[0];
     }
     final TypeMirror[] rv = new TypeMirror[ts.length];
@@ -127,9 +126,6 @@ public interface TypeAndElementSource {
   public TypeElement typeElement(final CharSequence moduleName, final CharSequence canonicalName);
 
   public default TypeElement typeElement(final Class<?> c) {
-    if (c == null) {
-      return null;
-    }
     final Module m = c.getModule();
     final TypeElement e;
     if (m == null) {
@@ -143,11 +139,11 @@ public interface TypeAndElementSource {
   }
 
   public default TypeElement typeElement(final Type t) {
+    Objects.requireNonNull(t);
     return switch (t) {
-    case null -> null;
     case Class<?> c -> typeElement(c);
     case ParameterizedType pt -> typeElement(pt.getRawType());
-    default -> null;
+    default -> throw new IllegalArgumentException("t: " + t);
     };
   }
 
@@ -156,9 +152,6 @@ public interface TypeAndElementSource {
   public WildcardType wildcardType(TypeMirror extendsBound, TypeMirror superBound);
 
   public default WildcardType wildcardType(final java.lang.reflect.WildcardType t) {
-    if (t == null) {
-      return null;
-    }
     final Type[] lowerBounds = t.getLowerBounds();
     final Type lowerBound = lowerBounds.length <= 0 ? null : lowerBounds[0];
     final Type upperBound = t.getUpperBounds()[0];
