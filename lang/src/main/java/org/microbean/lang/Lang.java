@@ -1382,7 +1382,6 @@ public final class Lang {
   }
 
   public static final DeclaredType declaredType(TypeElement typeElement, TypeMirror... typeArguments) {
-    assert typeElement != null; // TODO TEMPORARY
     typeElement = unwrap(typeElement);
     typeArguments = unwrap(typeArguments);
     final Types types = pe().getTypeUtils();
@@ -1605,15 +1604,7 @@ public final class Lang {
 
   public static final TypeElement typeElement(final Class<?> c) {
     final Module m = c.getModule();
-    final TypeElement e;
-    if (m == null) {
-      e = typeElement(c.getCanonicalName());
-      assert e != null : "no element for " + c.getCanonicalName();
-    } else {
-      e = typeElement(moduleElement(m), c.getCanonicalName());
-      assert e != null : "no element for module " + m + " and " + c.getCanonicalName();
-    }
-    return e;
+    return m == null ? typeElement(c.getCanonicalName()) : typeElement(moduleElement(m), c.getCanonicalName());
   }
 
   public static final TypeElement typeElement(final CharSequence canonicalName) {
@@ -1640,10 +1631,6 @@ public final class Lang {
     TypeElement rv;
     synchronized (CompletionLock.monitor()) {
       rv = elements.getTypeElement(moduleElement, canonicalName);
-      // TODO: HACK:
-      if (rv == null) {
-        rv = elements.getTypeElement(canonicalName);
-      }
     }
     return rv == null ? null : wrap(rv);
   }
@@ -2085,7 +2072,8 @@ public final class Lang {
 
     @Override
     public final TypeElement typeElement(final CharSequence moduleName, final CharSequence canonicalName) {
-      return moduleName == null ? Lang.typeElement(canonicalName) : Lang.typeElement(Lang.moduleElement(moduleName), canonicalName);
+      return
+        moduleName == null ? Lang.typeElement(canonicalName) : Lang.typeElement(Lang.moduleElement(moduleName), canonicalName);
     }
 
     @Override
