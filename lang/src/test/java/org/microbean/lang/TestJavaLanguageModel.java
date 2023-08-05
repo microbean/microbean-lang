@@ -175,8 +175,15 @@ final class TestJavaLanguageModel {
 
   @Test
   final void testStrangeJUnitTestAnnotationCase1() {
+    // This is tricky and perhaps counterintuitive so pay attention.
+    //
+    // In Maven, JUnit is run on the classpath, so is part of the unnamed module. JUnit is actually modular but for
+    // whatever reason Surefire by default puts it on the classpath, not the module path.
+    //
+    // So that's why this test passes:
+    assertNull(Lang.moduleElement("org.junit.jupiter.api"));
+
     assertSame(ElementKind.ANNOTATION_TYPE, Lang.typeElement("org.junit.jupiter.api.Test").getKind());
-    assertSame(ElementKind.ANNOTATION_TYPE, Lang.typeElement(Lang.moduleElement("org.junit.jupiter.api"), "org.junit.jupiter.api.Test").getKind());
     assertSame(TypeKind.DECLARED, Lang.typeElement("org.junit.jupiter.api.Test").asType().getKind());
   }
 

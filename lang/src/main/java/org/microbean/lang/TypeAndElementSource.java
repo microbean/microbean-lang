@@ -127,14 +127,8 @@ public interface TypeAndElementSource {
 
   public default TypeElement typeElement(final Class<?> c) {
     final Module m = c.getModule();
-    final TypeElement e;
-    if (m == null) {
-      e = this.typeElement(c.getCanonicalName());
-      assert e != null : "null type element for " + c.getCanonicalName(); // TODO TEMPORARY
-    } else {
-      e = this.typeElement(m.getName(), c.getCanonicalName());
-      assert e != null : "null type element for module " + m.getName() + " and " + c.getCanonicalName();
-    }
+    final TypeElement e = this.typeElement(m.isNamed() ? m.getName() : "", c.getCanonicalName());
+    assert e != null : "null type element for module " + m.getName() + " and " + c.getCanonicalName();
     return e;
   }
 
