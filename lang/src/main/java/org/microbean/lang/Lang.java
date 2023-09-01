@@ -119,7 +119,9 @@ import org.microbean.lang.element.DelegatingElement;
 import org.microbean.lang.type.DelegatingTypeMirror;
 
 import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
+import static java.lang.constant.ConstantDescs.CD_String;
 import static java.lang.constant.ConstantDescs.NULL;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC_GETTER;
@@ -222,6 +224,26 @@ public final class Lang {
 
   private static final CountDownLatch initLatch = new CountDownLatch(1);
 
+  // For debugging only
+  private static final Field modulesField;
+
+  // For debugging only
+  private static final Method getDefaultModuleMethod;
+
+  static {
+    try {
+      // For debugging only.
+      getDefaultModuleMethod = com.sun.tools.javac.comp.Modules.class.getDeclaredMethod("getDefaultModule");
+      getDefaultModuleMethod.trySetAccessible();
+
+      // For debugging only.
+      modulesField = com.sun.tools.javac.model.JavacElements.class.getDeclaredField("modules");
+      modulesField.trySetAccessible();
+    } catch (final ReflectiveOperationException x) {
+      throw (Error)new ExceptionInInitializerError(x.getMessage()).initCause(x);
+    }
+  }
+  
   private static volatile ProcessingEnvironment pe;
 
 
@@ -279,13 +301,17 @@ public final class Lang {
       // Future proofing?
       return Optional.of(cd);
     }
+    final String s;
+    synchronized (CompletionLock.monitor()) {
+      s = n.toString();
+    }
     return Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
                                               MethodHandleDesc.ofMethod(STATIC,
                                                                         CD_Lang,
                                                                         "name",
                                                                         MethodTypeDesc.of(CD_Name,
-                                                                                          CD_CharSequence)),
-                                              n.toString()));
+                                                                                          CD_String)),
+                                              s));
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final Element e) {
@@ -353,7 +379,7 @@ public final class Lang {
       return Optional.of(cd);
     }
     return describeConstable(moduleOf(e))
-      .flatMap(moduleDesc -> describeConstable(e.getQualifiedName())
+      .flatMap(moduleDesc -> describeConstable(e.getQualifiedName()) // moduleDesc is sometimes NULL for java.base classes for some reason
                .map(nameDesc -> DynamicConstantDesc.of(BSM_INVOKE,
                                                        MethodHandleDesc.ofMethod(STATIC,
                                                                                  CD_Lang,
@@ -1276,8 +1302,16 @@ public final class Lang {
     synchronized (CompletionLock.monitor()) {
       rv = elements.getModuleElement(moduleName);
       if (rv == null) {
+        // Every so often this will return null. It shouldn't.
         if (LOGGER.isLoggable(DEBUG)) {
           LOGGER.log(DEBUG, "null ModuleElement for module name " + moduleName);
+          try {
+            LOGGER.log(DEBUG, "default module: " + getDefaultModuleMethod.invoke(modulesField.get(elements)));
+          } catch (final ReflectiveOperationException x) {
+            if (LOGGER.isLoggable(DEBUG)) {
+              LOGGER.log(DEBUG, x.getMessage(), x);
+            }
+          }
         }
       }
     }
@@ -1294,6 +1328,13 @@ public final class Lang {
       if (rv == null) {
         if (LOGGER.isLoggable(DEBUG)) {
           LOGGER.log(DEBUG, "null ModuleElement for Element " + e);
+          try {
+            LOGGER.log(DEBUG, "default module: " + getDefaultModuleMethod.invoke(modulesField.get(e)));
+          } catch (final ReflectiveOperationException x) {
+            if (LOGGER.isLoggable(DEBUG)) {
+              LOGGER.log(DEBUG, x.getMessage(), x);
+            }
+          }
         }
       }
     }
@@ -1301,6 +1342,19 @@ public final class Lang {
   }
 
   public static final Name name(final CharSequence name) {
+    String s;
+    if (name instanceof String) {
+      s = (String)name;
+    } else {
+      synchronized (CompletionLock.monitor()) {
+        // Name.toString() is not thread-safe.
+        s = name.toString();
+      }
+    }
+    return name(s);
+  }
+  
+  public static final Name name(final String name) {
     return pe().getElementUtils().getName(Objects.requireNonNull(name, "name"));
   }
 
@@ -1644,6 +1698,9 @@ public final class Lang {
     final TypeElement rv;
     synchronized (CompletionLock.monitor()) {
       rv = elements.getTypeElement(canonicalName);
+      if (rv != null && !rv.getKind().isDeclaredType() && LOGGER.isLoggable(WARNING)) {
+        LOGGER.log(WARNING, "rv.getKind(): " + rv.getKind() + "; rv: " + rv);
+      }
     }
     if (rv == null) {
       if (LOGGER.isLoggable(DEBUG)) {
@@ -1659,7 +1716,35 @@ public final class Lang {
   }
 
   public static final TypeElement typeElement(ModuleElement moduleElement, final CharSequence canonicalName) {
-    Objects.requireNonNull(moduleElement, "moduleElement"); // TODO: temporary?
+    if (moduleElement == null) {
+      // TODO: in certain cases while running parallel unit tests even with all the synchronization in this class, a
+      // ModuleElement can be null, and can get described as a DynamicConstant that is
+      // java.lang.constant.ConstantDescs.NULL, which will then be hydrated back to null, and passed to this
+      // method. This should, of course, never happen. Finding out what is responsible is a long-running pain in my ass.
+      //
+      // One possible culprit may be the Elements#getModuleOf(Element) method, which does this (see
+      // com.sun.tools.javac.model.JavacElements):
+      //
+      //  Symbol sym = cast(Symbol.class, e);
+      //  if (modules.getDefaultModule() == syms.noModule)
+      //    return null; // <--- NOTE
+      //  return (sym.kind == MDL) ? ((ModuleElement) e)
+      //          : (sym.owner.kind == MDL) ? (ModuleElement) sym.owner
+      //          : sym.packge().modle;
+      //
+      // modules is an instance of com.sun.tools.javac.comp.Modules. It only sets defaultModule to syms.noModule if
+      // modules are not allowed by the current source level, which would seem to be impossible in this case.
+      String message = "moduleElement; canonicalName: " + canonicalName;
+      final Elements elements = pe().getElementUtils();
+      synchronized (CompletionLock.monitor()) {
+        try {
+          message += "; defaultModule: " + getDefaultModuleMethod.invoke(modulesField.get(elements));
+        } catch (final ReflectiveOperationException x) {
+          x.printStackTrace();
+        }
+      }
+      throw new NullPointerException(message);
+    }
     Objects.requireNonNull(canonicalName, "canonicalName");
     moduleElement = unwrap(moduleElement);
     final Elements elements = pe().getElementUtils();
@@ -1859,141 +1944,15 @@ public final class Lang {
     return pe;
   }
 
-  private static final Set<Module> effectiveModulePathModules() {
-    final Set<Module> modules = new HashSet<>(ModuleLayer.boot().modules());
-    modules.removeIf(m -> {
-        if (m.isNamed()) {
-          for (final ModuleReference mr : ModuleFinder.ofSystem().findAll()) {
-            if (mr.descriptor().name().equals(m.getName())) {
-              return true;
-            }
-          }
-        }
-        return false;
-      });
-    return Collections.unmodifiableSet(modules);
-  }
-
   // Called once, ever, by the static initializer. Idempotent.
   private static final void initialize() {
     if (pe != null) { // volatile read
       return;
     }
-    final CountDownLatch runningLatch = new CountDownLatch(1);
-    final class P extends AbstractProcessor {
-
-      private P() {
-        super();
-      }
-
-      @Override
-      public final void init(final ProcessingEnvironment pe) {
-        Lang.pe = pe; // volatile write
-        initLatch.countDown();
-        // Note to future maintainers: you're going to desperately want to move this to the process() method, and you
-        // cannot.  If you decide to doubt this message, at least comment this out so you don't lose it here.  Don't say
-        // I didn't warn you.
-        try {
-          runningLatch.await();
-        } catch (final InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
-      }
-
-      @Override // AbstractProcessor
-      public final Set<String> getSupportedAnnotationTypes() {
-        return Set.of(); // we claim nothing, although it's moot because we're the only processor in existence
-      }
-
-      @Override // AbstractProcessor
-      public final Set<String> getSupportedOptions() {
-        return Set.of();
-      }
-
-      @Override // AbstractProcessor
-      public final SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latestSupported();
-      }
-
-      @Override // AbstractProcessor
-      public final boolean process(final Set<? extends TypeElement> annotations, final RoundEnvironment roundEnvironment) {
-        assert this.isInitialized();
-        return false; // we don't claim anything, but we're the only processor in existence
-      }
-
+    if (LOGGER.isLoggable(DEBUG)) {
+      LOGGER.log(DEBUG, "Initializing");
     }
-
-    final Thread t = new Thread(() -> {
-        try {
-          final JavaCompiler jc = ToolProvider.getSystemJavaCompiler();
-          if (jc == null) {
-            runningLatch.countDown();
-            initLatch.countDown();
-            return;
-          }
-
-          final List<String> options = new ArrayList<>();
-          options.add("-proc:only");
-          options.add("-cp");
-          options.add(System.getProperty("java.class.path"));
-          if (Boolean.getBoolean(Lang.class.getName() + ".verbose")) {
-            options.add("-verbose");
-          }
-
-          final Set<Module> effectiveModulePathModules = effectiveModulePathModules();
-          final Module unnamedModule = Lang.class.getClassLoader().getUnnamedModule();
-          for (final Module m : effectiveModulePathModules) {
-            assert m.isNamed();
-            if (m.canRead(unnamedModule)) {
-              // This is a (required) stupendous hack.
-              options.add("--add-reads");
-              options.add(m.getName() + "=ALL-UNNAMED");
-            }
-          }
-
-          final List<String> classes = new ArrayList<>();
-          classes.add("java.lang.annotation.RetentionPolicy"); // arbitrary, but loads the least amount of stuff up front
-
-          // (Any "loading" is actually performed by, e.g. com.sun.tools.javac.jvm.ClassReader.fillIn(), not reflective
-          // machinery.)
-          final CompilationTask task =
-            jc.getTask(null, // additionalOutputWriter
-                       new ReadOnlyModularJavaFileManager(jc.getStandardFileManager(null, null, null), effectiveModulePathModules), // fileManager,
-                       null, // diagnosticListener,
-                       options,
-                       classes,
-                       null); // compilation units; null means we aren't actually compiling anything
-
-          task.setProcessors(List.of(new P()));
-
-          final Set<ModuleReference> systemModules = ModuleFinder.ofSystem().findAll();
-          final Set<String> modulePath = ModuleLayer.boot()
-            .configuration()
-            .modules()
-            .stream()
-            .map(ResolvedModule::reference)
-            .filter(Predicate.not(systemModules::contains))
-            .map(mr -> mr.descriptor().name())
-            .collect(Collectors.toUnmodifiableSet());
-
-          task.addModules(modulePath);
-
-          if (Boolean.FALSE.equals(task.call())) { // NOTE: runs the task
-            runningLatch.countDown();
-            initLatch.countDown();
-          }
-
-        } catch (final RuntimeException | Error e) {
-          e.printStackTrace();
-          runningLatch.countDown();
-          initLatch.countDown();
-          throw e;
-        } finally {
-          pe = null; // volatile write
-        }
-    }, "Lang");
-    t.setDaemon(true); // critical; runningLatch is never counted down except in error cases
-    t.start();
+    new BlockingCompilationTaskInvocationThread("Lang", initLatch).start();
   }
 
   @SuppressWarnings("unchecked")
@@ -2150,6 +2109,178 @@ public final class Lang {
                                                                     CD_ConstableTypeAndElementSource,
                                                                     "INSTANCE",
                                                                     CD_ConstableTypeAndElementSource)));
+    }
+
+  }
+
+  private static final class BlockingCompilationTaskInvocationThread extends Thread {
+
+    private static final Logger LOGGER = System.getLogger(BlockingCompilationTaskInvocationThread.class.getName());
+
+    private final CountDownLatch initLatch;
+
+    private final CountDownLatch runningLatch;
+
+    private BlockingCompilationTaskInvocationThread(final String name,
+                                                    final CountDownLatch initLatch) {
+      super(name);
+      this.setDaemon(true); // critical; runningLatch is never counted down except in error cases
+      this.initLatch = Objects.requireNonNull(initLatch, "initLatch");
+      this.runningLatch = new CountDownLatch(1);
+    }
+
+    @Override
+    public final void run() {
+      if (LOGGER.isLoggable(DEBUG)) {
+        LOGGER.log(DEBUG, "CompilationTask invocation daemon thread running");
+      }
+      try {
+        final JavaCompiler jc = ToolProvider.getSystemJavaCompiler();
+        if (jc == null) {
+          runningLatch.countDown();
+          initLatch.countDown();
+          return;
+        }
+
+        final List<String> options = new ArrayList<>();
+        options.add("-proc:only");
+        options.add("-cp");
+        options.add(System.getProperty("java.class.path"));
+        if (Boolean.getBoolean(Lang.class.getName() + ".verbose")) {
+          options.add("-verbose");
+        }
+
+        final Set<Module> effectiveModulePathModules = effectiveModulePathModules();
+        final Module unnamedModule = Lang.class.getClassLoader().getUnnamedModule();
+        for (final Module m : effectiveModulePathModules) {
+          assert m.isNamed();
+          if (m.canRead(unnamedModule)) {
+            // This is a (required) stupendous hack.
+            options.add("--add-reads");
+            options.add(m.getName() + "=ALL-UNNAMED");
+          }
+        }
+
+        final List<String> classes = new ArrayList<>();
+        classes.add("java.lang.annotation.RetentionPolicy"); // arbitrary, but loads the least amount of stuff up front
+
+        // (Any "loading" is actually performed by, e.g. com.sun.tools.javac.jvm.ClassReader.fillIn(), not reflective
+        // machinery. Once a class has been loaded, com.sun.tools.javac.code.Symtab#getClass(ModuleSymbol, Name) will
+        // retrieve it from a HashMap.)
+        final CompilationTask task =
+          jc.getTask(null, // additionalOutputWriter
+                     new ReadOnlyModularJavaFileManager(jc.getStandardFileManager(null, null, null), effectiveModulePathModules), // fileManager,
+                     null, // diagnosticListener,
+                     options,
+                     classes,
+                     null); // compilation units; null means we aren't actually compiling anything
+
+        task.setProcessors(List.of(new P()));
+
+        final Set<ModuleReference> systemModules = ModuleFinder.ofSystem().findAll();
+        final Set<String> modulePath = ModuleLayer.boot()
+          .configuration()
+          .modules()
+          .stream()
+          .map(ResolvedModule::reference)
+          .filter(Predicate.not(systemModules::contains))
+          .map(mr -> mr.descriptor().name())
+          .collect(Collectors.toUnmodifiableSet());
+
+        task.addModules(modulePath);
+
+        if (LOGGER.isLoggable(DEBUG)) {
+          LOGGER.log(DEBUG, "CompilationTask options: " + options);
+          LOGGER.log(DEBUG, "CompilationTask modules: " + modulePath);
+          LOGGER.log(DEBUG, "Calling CompilationTask");
+        }
+
+        if (Boolean.FALSE.equals(task.call())) { // NOTE: runs the task; task blocks forever by design
+          if (LOGGER.isLoggable(WARNING)) {
+            LOGGER.log(WARNING, "CompilationTask called unuccessfully; releasing latches");
+          }
+          runningLatch.countDown();
+          initLatch.countDown();
+        }
+
+      } catch (final RuntimeException | Error e) {
+        e.printStackTrace();
+        runningLatch.countDown();
+        initLatch.countDown();
+        throw e;
+      } finally {
+        pe = null; // volatile write
+      }
+    }
+
+    private static final Set<Module> effectiveModulePathModules() {
+      final Set<Module> modules = new HashSet<>(ModuleLayer.boot().modules());
+      // Remove system modules (e.g. java.base etc.). Whatever's left was on the module path.
+      modules.removeIf(m -> {
+          if (m.isNamed()) {
+            for (final ModuleReference mr : ModuleFinder.ofSystem().findAll()) {
+              if (mr.descriptor().name().equals(m.getName())) {
+                return true;
+              }
+            }
+          }
+          return false;
+        });
+      return Collections.unmodifiableSet(modules);
+    }
+
+    private final class P extends AbstractProcessor {
+
+      private static final Logger LOGGER = System.getLogger(P.class.getName());
+
+      private P() {
+        super();
+        if (LOGGER.isLoggable(DEBUG)) {
+          LOGGER.log(DEBUG, "Created");
+        }
+      }
+
+      @Override
+      public final void init(final ProcessingEnvironment pe) {
+        if (LOGGER.isLoggable(DEBUG)) {
+          LOGGER.log(DEBUG, "AbstractProcessor inititializing with " + pe);
+        }
+        Lang.pe = pe; // volatile write
+        initLatch.countDown();
+        if (LOGGER.isLoggable(DEBUG)) {
+          LOGGER.log(DEBUG, "The " + Lang.class.getName() + " class is ready for use");
+        }
+        // Note to future maintainers: you're going to desperately want to move this to the process() method, and you
+        // cannot.  If you decide to doubt this message, at least comment this out so you don't lose it here.  Don't say
+        // I didn't warn you.
+        try {
+          runningLatch.await();
+        } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+
+      @Override // AbstractProcessor
+      public final Set<String> getSupportedAnnotationTypes() {
+        return Set.of(); // we claim nothing, although it's moot because we're the only processor in existence
+      }
+
+      @Override // AbstractProcessor
+      public final Set<String> getSupportedOptions() {
+        return Set.of();
+      }
+
+      @Override // AbstractProcessor
+      public final SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latestSupported();
+      }
+
+      @Override // AbstractProcessor
+      public final boolean process(final Set<? extends TypeElement> annotations, final RoundEnvironment roundEnvironment) {
+        assert this.isInitialized();
+        return false; // we don't claim anything, but we're the only processor in existence
+      }
+
     }
 
   }

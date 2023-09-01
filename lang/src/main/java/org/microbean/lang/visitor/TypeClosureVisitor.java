@@ -53,7 +53,7 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
     // Interestingly, javac's Types#closure(Type) method returns a single-element list containing t if t is not a class
     // or interface type.  Nevertheless the intention seems to be that only class or interface types should be supplied,
     // so we enforce that here.
-    throw new IllegalArgumentException("t: " + t + "; t.getKind(): " + t.getKind());
+    throw new IllegalArgumentException("t: " + t + "; t.getKind(): " + t.getKind() + (t instanceof DeclaredType dt ? "; element: " + dt.asElement() + "; element kind: " + dt.asElement().getKind() : ""));
   }
 
   @Override

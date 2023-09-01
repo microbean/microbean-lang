@@ -47,6 +47,17 @@
           <artifactId>maven-compiler-plugin</artifactId>
           <executions>
             <execution>
+              <id>default-compile</id>
+              <configuration>
+                <compilerArgs combine.children="append">
+                  <arg>--add-exports</arg>
+                  <arg>jdk.compiler/com.sun.tools.javac.comp=org.microbean.lang</arg>
+                  <arg>--add-exports</arg>
+                  <arg>jdk.compiler/com.sun.tools.javac.model=org.microbean.lang</arg>
+                </compilerArgs>
+              </configuration>
+            </execution>
+            <execution>
               <id>default-testCompile</id>
               <configuration>
                 <compilerArgs combine.children="append">
@@ -67,8 +78,9 @@
           <configuration>
             <argLine>
               --add-exports jdk.compiler/com.sun.tools.javac.code=org.microbean.lang
-              --add-opens jdk.compiler/com.sun.tools.javac.model=org.microbean.lang
+              --add-exports jdk.compiler/com.sun.tools.javac.comp=org.microbean.lang
               --add-exports jdk.compiler/com.sun.tools.javac.util=org.microbean.lang
+              --add-opens jdk.compiler/com.sun.tools.javac.model=org.microbean.lang
               --enable-preview
             </argLine>
             <systemPropertyVariables>
