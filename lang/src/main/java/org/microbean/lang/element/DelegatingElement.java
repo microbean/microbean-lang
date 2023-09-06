@@ -131,9 +131,12 @@ public final class DelegatingElement
 
   @Override // Element
   public final List<? extends AnnotationMirror> getAnnotationMirrors() {
-    synchronized (CompletionLock.monitor()) {
+    CompletionLock.acquire();
+    try {
       // TODO: delegating annotation mirror?
       return this.delegate.getAnnotationMirrors();
+    } finally {
+      CompletionLock.release();
     }
   }
 
@@ -181,8 +184,11 @@ public final class DelegatingElement
   @Override // Element
   public final List<? extends Element> getEnclosedElements() {
     final List<? extends Element> ee;
-    synchronized (CompletionLock.monitor()) { // CRITICAL!
+    CompletionLock.acquire(); // CRITICAL!
+    try {
       ee = this.delegate.getEnclosedElements();
+    } finally {
+      CompletionLock.release();
     }
     return this.wrap(ee);
   }
@@ -211,15 +217,21 @@ public final class DelegatingElement
 
   @Override // Element
   public final ElementKind getKind() {
-    synchronized (CompletionLock.monitor()) { // CRITICAL!
+    CompletionLock.acquire(); // CRITICAL!
+    try {
       return this.delegate.getKind();
+    } finally {
+      CompletionLock.release();
     }
   }
 
   @Override // Element
   public final Set<Modifier> getModifiers() {
-    synchronized (CompletionLock.monitor()) { // CRITICAL!
+    CompletionLock.acquire(); // CRITICAL;
+    try {
       return this.delegate.getModifiers();
+    } finally {
+      CompletionLock.release();
     }
   }
 
@@ -242,7 +254,8 @@ public final class DelegatingElement
   @Override // ModuleElement, PackageElement, TypeElement
   public final Name getQualifiedName() {
     return switch (this.getKind()) {
-    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, MODULE, PACKAGE, RECORD -> ((QualifiedNameable)this.delegate).getQualifiedName();
+      // case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, MODULE, PACKAGE, RECORD -> ((QualifiedNameable)this.delegate).getQualifiedName();
+    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, MODULE, PACKAGE, RECORD -> org.microbean.lang.element.Name.of(((QualifiedNameable)this.delegate).getQualifiedName());
     default -> org.microbean.lang.element.Name.of();
     };
   }
@@ -270,7 +283,8 @@ public final class DelegatingElement
 
   @Override // Element
   public final Name getSimpleName() {
-    return this.delegate.getSimpleName();
+    // return this.delegate.getSimpleName();
+    return org.microbean.lang.element.Name.of(this.delegate.getSimpleName());
   }
 
   @Override // TypeElement
@@ -391,9 +405,10 @@ public final class DelegatingElement
       new DelegatingElement(e, elementSource, ehc);
   }
 
-  public static final Element unwrap(Element e) {
+  @SuppressWarnings("unchecked")
+  public static final <E extends Element> E unwrap(E e) {
     while (e instanceof DelegatingElement de) {
-      e = de.delegate();
+      e = (E)de.delegate();
     }
     return e;
   }

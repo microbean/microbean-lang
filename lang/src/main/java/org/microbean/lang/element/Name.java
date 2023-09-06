@@ -18,15 +18,66 @@ package org.microbean.lang.element;
 
 import java.util.stream.IntStream;
 
+import org.microbean.lang.CompletionLock;
+
 public final class Name implements javax.lang.model.element.Name {
 
   private static final Name EMPTY = new Name("");
-  
+
   private final String content;
-  
+
+  private Name() {
+    super();
+    this.content = "";
+  }
+
+  private Name(final String s) {
+    super();
+    this.content = s == null ? "" : s;
+  }
+
+  private Name(final javax.lang.model.element.Name name) {
+    super();
+    this.content = switch (name) {
+    case null -> "";
+    case Name n -> n.content;
+    default -> {
+      final String s;
+      CompletionLock.acquire();
+      try {
+        s = name.toString();
+      } finally {
+        CompletionLock.release();
+      }
+      yield s == null ? "" : s;
+    }};
+  }
+
   private Name(final CharSequence cs) {
     super();
-    this.content = cs == null ? "" : cs.toString();
+    this.content = switch (cs) {
+    case null -> "";
+    case Name n -> n.content;
+    case javax.lang.model.element.Name n -> {
+      final String s;
+      CompletionLock.acquire();
+      try {
+        s = n.toString();
+      } finally {
+        CompletionLock.release();
+      }
+      yield s == null ? "" : s;
+    }
+    default -> {
+      final String s = cs.toString();
+      yield s == null ? "" : s;
+    }
+    };
+  }
+
+  private Name(final Name n) {
+    super();
+    this.content = n == null ? "" : n.content;
   }
 
   @Override // CharSequence
@@ -56,7 +107,19 @@ public final class Name implements javax.lang.model.element.Name {
 
   @Override // Name
   public final boolean contentEquals(final CharSequence cs) {
-    return this.content.equals(cs.toString());
+    return switch (cs) {
+    case null -> false;
+    case Name n -> this.content.equals(n.content);
+    case javax.lang.model.element.Name n -> {
+      CompletionLock.acquire();
+      try {
+        yield this.content.equals(n.toString());
+      } finally {
+        CompletionLock.release();
+      }
+    }
+    default -> this.content.equals(cs.toString());
+    };
   }
 
   @Override // Object
@@ -69,7 +132,7 @@ public final class Name implements javax.lang.model.element.Name {
     if (this == other) {
       return true;
     } else if (other != null && this.getClass() == other.getClass()) {
-      return this.contentEquals((CharSequence)other);
+      return this.content.equals(((Name)other).content);
     } else {
       return false;
     }
@@ -80,7 +143,7 @@ public final class Name implements javax.lang.model.element.Name {
     return this.content;
   }
 
-  
+
   /*
    * Static methods.
    */
@@ -90,25 +153,50 @@ public final class Name implements javax.lang.model.element.Name {
     return EMPTY;
   }
 
-  public static final Name of(final Name name) {
-    return name == null ? EMPTY : name;
-  }
-  
   public static final Name of(final CharSequence cs) {
-    if (cs instanceof Name n) {
-      return n;
-    } else if (cs == null || cs.length() <= 0) {
-      return EMPTY;
+    return switch (cs) {
+    case null -> EMPTY;
+    case Name n -> n;
+    case javax.lang.model.element.Name n -> {
+      CompletionLock.acquire();
+      try {
+        yield n.length() <= 0 ? EMPTY : new Name(n);
+      } finally {
+        CompletionLock.release();
+      }
     }
-    return new Name(cs.toString());
+    default -> cs.length() <= 0 ? EMPTY : new Name(cs);
+    };
+  }
+
+  public static final Name of(final Name n) {
+    return n == null ? EMPTY : n;
+  }
+
+  public static final Name of(final String s) {
+    return s == null || s.isEmpty() ? EMPTY : new Name(s);
   }
 
   public static final Name ofSimple(final CharSequence cs) {
-    final int lastDotIndex = cs == null ? -1 : cs.toString().lastIndexOf('.');
-    if (lastDotIndex > 0 && cs.length() > 2) {
-      return of(cs.subSequence(lastDotIndex + 1, cs.length()));
+    if (cs == null) {
+      return EMPTY;
     }
-    return of(cs);
+    String s;
+    if (cs instanceof javax.lang.model.element.Name) {
+      CompletionLock.acquire();
+      try {
+        s = cs.toString();
+      } finally {
+        CompletionLock.release();
+      }
+    } else {
+      s = cs.toString();
+    }
+    final int lastDotIndex = s.lastIndexOf('.');
+    if (lastDotIndex > 0 && s.length() > 2) {
+      return of(s.substring(lastDotIndex + 1, s.length()));
+    }
+    return of(s);
   }
-  
+
 }

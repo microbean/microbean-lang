@@ -13,14 +13,27 @@
  */
 package org.microbean.lang;
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 public final class CompletionLock {
 
+  private static final long serialVersionUID = 1L;
+
+  private static final Lock LOCK = new ReentrantLock();
+  
   private CompletionLock() {
     super();
   }
 
-  public static final Object monitor() {
-    return CompletionLock.class;
+  public static final Lock acquire() {
+    LOCK.lock();
+    return LOCK;
+  }
+
+  public static final Lock release() {
+    LOCK.unlock();
+    return LOCK;
   }
 
 }

@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import java.util.concurrent.locks.Lock;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 
@@ -182,8 +184,11 @@ public final class DelegatingTypeMirror
 
   @Override // TypeMirror
   public final TypeKind getKind() {
-    synchronized (CompletionLock.monitor()) { // CRITICAL!
+    CompletionLock.acquire(); // CRITICAL!
+    try {
       return this.delegate.getKind();
+    } finally {
+      CompletionLock.release();
     }
   }
 

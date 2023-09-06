@@ -219,7 +219,8 @@ public class Equality implements Constable {
   private static final int hashCode(final Element e, final boolean ia) {
     // This is the entry point for all Element hashCode calculations. We have to synchronize on the completion lock
     // because various elements' getKind() methods may trigger symbol completion.
-    synchronized (CompletionLock.monitor()) {
+    CompletionLock.acquire();
+    try {
       return e == null ? 0 : switch (e.getKind()) {
       case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> hashCode((TypeElement)e, ia);
       case TYPE_PARAMETER -> hashCode((TypeParameterElement)e, ia);
@@ -230,6 +231,8 @@ public class Equality implements Constable {
       case MODULE -> hashCode((ModuleElement)e, ia);
       default -> System.identityHashCode(e); // basically illegal argument
       };
+    } finally {
+      CompletionLock.release();
     }
   }
 
@@ -349,7 +352,8 @@ public class Equality implements Constable {
   private static final int hashCode(final TypeMirror t, final boolean ia) {
     // This is the entry point for all TypeMirror hashCode calculations. We have to synchronize on the completion lock
     // because a declared type's getKind() method may trigger symbol completion.
-    synchronized (CompletionLock.monitor()) {
+    CompletionLock.acquire();
+    try {
       return t == null ? 0 : switch (t.getKind()) {
       case ARRAY -> hashCode((ArrayType)t, ia);
       case DECLARED -> hashCode((DeclaredType)t, ia);
@@ -362,6 +366,8 @@ public class Equality implements Constable {
       case WILDCARD -> hashCode((WildcardType)t, ia);
       case ERROR, OTHER, UNION -> System.identityHashCode(t); // basically illegal argument
       };
+    } finally {
+      CompletionLock.release();
     }
   }
 
@@ -703,7 +709,8 @@ public class Equality implements Constable {
     }
     // This is the entry point for all Element equality calculations. We have to synchronize on the completion lock
     // because various elements' getKind() methods may trigger symbol completion.
-    synchronized (CompletionLock.monitor()) {
+    CompletionLock.acquire();
+    try {
       final ElementKind k = e1.getKind();
       return k == e2.getKind() && switch (k) {
       case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> equals((TypeElement)e1, (TypeElement)e2, ia);
@@ -715,6 +722,8 @@ public class Equality implements Constable {
       case MODULE -> equals((ModuleElement)e1, (ModuleElement)e2, ia);
       case OTHER -> false;
       };
+    } finally {
+      CompletionLock.release();
     }
   }
 
@@ -818,7 +827,8 @@ public class Equality implements Constable {
     }
     // This is the entry point for all TypeMirror equality calculations. We have to synchronize on the completion lock
     // because a declared type's getKind() method may trigger symbol completion.
-    synchronized (CompletionLock.monitor()) {
+    CompletionLock.acquire();
+    try {
       final TypeKind k = t1.getKind();
       return k == t2.getKind() && switch (k) {
       case ARRAY -> equals((ArrayType)t1, (ArrayType)t2, ia);
@@ -832,6 +842,8 @@ public class Equality implements Constable {
       case WILDCARD -> equals((WildcardType)t1, (WildcardType)t2, ia);
       case ERROR, OTHER, UNION -> t1.equals(t2); // unhandled argument
       };
+    } finally {
+      CompletionLock.release();
     }
   }
 

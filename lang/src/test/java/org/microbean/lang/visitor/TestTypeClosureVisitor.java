@@ -175,8 +175,8 @@ final class TestTypeClosureVisitor {
     assertSame(TypeTag.CLASS, ((Type)unwrap(comparableString)).getTag());
 
     // charSequenceName precedes comparableName:
-    final com.sun.tools.javac.util.Name charSequenceName = (com.sun.tools.javac.util.Name)charSequenceElement.getQualifiedName();
-    final com.sun.tools.javac.util.Name comparableName = (com.sun.tools.javac.util.Name)comparableElement.getQualifiedName();
+    final com.sun.tools.javac.util.Name charSequenceName = (com.sun.tools.javac.util.Name)DelegatingElement.unwrap(charSequenceElement).getQualifiedName();
+    final com.sun.tools.javac.util.Name comparableName = (com.sun.tools.javac.util.Name)DelegatingElement.unwrap(comparableElement).getQualifiedName();
     assertTrue(charSequenceName.compareTo(comparableName) < 0);
     assertTrue(CharSequence.compare(charSequenceName, comparableName) < 0);
 
@@ -239,8 +239,8 @@ final class TestTypeClosureVisitor {
     assertSame(TypeTag.CLASS, ((Type)unwrap(serializable)).getTag());
     assertSame(TypeTag.CLASS, ((Type)unwrap(constantDesc)).getTag());
 
-    final com.sun.tools.javac.util.Name serializableName = (com.sun.tools.javac.util.Name)serializableElement.getQualifiedName();
-    final com.sun.tools.javac.util.Name constantDescName = (com.sun.tools.javac.util.Name)constantDescElement.getQualifiedName();
+    final com.sun.tools.javac.util.Name serializableName = (com.sun.tools.javac.util.Name)DelegatingElement.unwrap(serializableElement).getQualifiedName();
+    final com.sun.tools.javac.util.Name constantDescName = (com.sun.tools.javac.util.Name)DelegatingElement.unwrap(constantDescElement).getQualifiedName();
 
     // Using standard CharSequence semantics, the CharSequence "java.io.Serializable" precedes the CharSequence
     // "java.lang.constant.ConstantDesc".

@@ -56,7 +56,8 @@ public final class ByteBuddy2 {
     if (t == null) {
       return null;
     }
-    synchronized (CompletionLock.monitor()) {
+    CompletionLock.acquire();
+    try {
       return switch (t.getKind()) {
       case NONE -> null;
 
@@ -77,6 +78,8 @@ public final class ByteBuddy2 {
 
       default -> throw new IllegalArgumentException("t: " + t + "; kind: " + t.getKind());
       };
+    } finally {
+      CompletionLock.release();
     }
   }
 
@@ -92,7 +95,8 @@ public final class ByteBuddy2 {
     if (t == null) {
       return null;
     }
-    synchronized (CompletionLock.monitor()) {
+    CompletionLock.acquire();
+    try {
       return switch (t.getKind()) {
 
       case NONE -> null;
@@ -176,6 +180,8 @@ public final class ByteBuddy2 {
 
       case ERROR, EXECUTABLE, INTERSECTION, MODULE, NULL, OTHER, PACKAGE, UNION -> throw new IllegalArgumentException("t: " + t + "; kind: " + t.getKind());
       };
+    } finally {
+      CompletionLock.release();
     }
   }
 
