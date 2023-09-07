@@ -1581,7 +1581,8 @@ public final class Lang {
     if (c.isPrimitive() || c.isArray() || c.isLocalClass() || c.isAnonymousClass()) {
       throw new IllegalArgumentException("c: " + c);
     }
-    return declaredType(c.getEnclosingClass() == null ? null : declaredType(c.getEnclosingClass()), typeElement(c));
+    final Class<?> ec = c.getEnclosingClass();
+    return declaredType(ec == null ? null : declaredType(ec), typeElement(c));
   }
 
   public static final DeclaredType declaredType(final ParameterizedType pt) {
@@ -1858,17 +1859,16 @@ public final class Lang {
     CompletionLock.acquire();
     try {
       rv = elements.getTypeElement(canonicalName);
-      if (rv != null && !rv.getKind().isDeclaredType() && LOGGER.isLoggable(WARNING)) {
+      if (rv == null) {
+        if (LOGGER.isLoggable(DEBUG)) {
+          LOGGER.log(DEBUG, "null TypeElement for canonicalName " + canonicalName);
+        }
+        return null;
+      } else if (!rv.getKind().isDeclaredType() && LOGGER.isLoggable(WARNING)) {
         LOGGER.log(WARNING, "rv.getKind(): " + rv.getKind() + "; rv: " + rv);
       }
     } finally {
       CompletionLock.release();
-    }
-    if (rv == null) {
-      if (LOGGER.isLoggable(DEBUG)) {
-        LOGGER.log(DEBUG, "null TypeElement for canonicalName " + canonicalName);
-      }
-      return null;
     }
     return wrap(rv);
   }
@@ -1896,11 +1896,11 @@ public final class Lang {
       //
       // modules is an instance of com.sun.tools.javac.comp.Modules. It only sets defaultModule to syms.noModule if
       // modules are not allowed by the current source level, which would seem to be impossible in this case.
-      String message = "moduleElement; canonicalName: " + canonicalName;
       final Elements elements = pe().getElementUtils();
+      String message = "moduleElement";
       CompletionLock.acquire();
       try {
-        message += "; defaultModule: " + getDefaultModuleMethod.invoke(modulesField.get(elements));
+        message += "; canonicalName: " + canonicalName + "; defaultModule: " + getDefaultModuleMethod.invoke(modulesField.get(elements));
       } catch (final ReflectiveOperationException x) {
         x.printStackTrace();
       } finally {
@@ -1915,14 +1915,14 @@ public final class Lang {
     CompletionLock.acquire();
     try {
       rv = elements.getTypeElement(moduleElement, canonicalName);
+      if (rv == null) {
+        if (LOGGER.isLoggable(DEBUG)) {
+          LOGGER.log(DEBUG, "null TypeElement for ModuleElement " + moduleElement + " and canonicalName " + canonicalName);
+        }
+        return null;
+      }
     } finally {
       CompletionLock.release();
-    }
-    if (rv == null) {
-      if (LOGGER.isLoggable(DEBUG)) {
-        LOGGER.log(DEBUG, "null TypeElement for ModuleElement " + moduleElement + " and canonicalName " + canonicalName);
-      }
-      return null;
     }
     return wrap(rv);
   }
@@ -2262,7 +2262,13 @@ public final class Lang {
       final ModuleElement m = Lang.moduleElement(moduleName);
       if (m == null) {
         if (LOGGER.isLoggable(DEBUG)) {
-          LOGGER.log(DEBUG, "null ModuleElement for module name " + moduleName);
+          // moduleName might be a javax.lang.element.Name and the shared name table might be in effect
+          CompletionLock.acquire();
+          try {
+            LOGGER.log(DEBUG, "null ModuleElement for module name " + moduleName);
+          } finally {
+            CompletionLock.release();
+          }
         }
       }
       return Lang.typeElement(m, canonicalName);
@@ -2337,7 +2343,16 @@ public final class Lang {
 
         // This turns out to be rather important. The default name table in javac is shared and unsynchronized. The
         // unshared name table seems to be thread-safe.
-        options.add("-XDuseUnsharedTable"); // TODO: experimental
+        if (Boolean.getBoolean("useSharedNameTable")) {
+          if (LOGGER.isLoggable(DEBUG)) {
+            LOGGER.log(DEBUG, "Using shared name table");
+          }
+        } else {
+          options.add("-XDuseUnsharedTable"); // TODO: experimental
+          if (LOGGER.isLoggable(DEBUG)) {
+            LOGGER.log(DEBUG, "Using unshared name table");
+          }
+        }
         
         if (Boolean.getBoolean(Lang.class.getName() + ".verbose")) {
           options.add("-verbose");
