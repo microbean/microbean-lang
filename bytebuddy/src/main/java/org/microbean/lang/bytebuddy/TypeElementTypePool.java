@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -40,6 +41,7 @@ import net.bytebuddy.dynamic.ClassFileLocator;
 import net.bytebuddy.pool.TypePool;
 
 import org.microbean.lang.Lang;
+import org.microbean.lang.TypeAndElementSource;
 
 import org.microbean.lang.element.DelegatingElement;
 
@@ -47,29 +49,39 @@ import org.microbean.lang.type.DelegatingTypeMirror;
 
 import static org.microbean.lang.Lang.wrap;
 
+// TODO: should we be using CompletionLock throughout? Or at least wrapping?
 public final class TypeElementTypePool extends TypePool.Default {
 
   private final ClassFileVersion classFileVersion;
 
+  private final TypeAndElementSource tes;
+
   public TypeElementTypePool() {
-    this(ClassFileVersion.ofThisVm(), new TypePool.CacheProvider.Simple());
+    this(ClassFileVersion.ofThisVm(), new TypePool.CacheProvider.Simple(), Lang.typeAndElementSource());
   }
 
   public TypeElementTypePool(final TypePool.CacheProvider cacheProvider) {
-    this(ClassFileVersion.ofThisVm(), cacheProvider);
+    this(ClassFileVersion.ofThisVm(), cacheProvider, Lang.typeAndElementSource());
   }
-  
-  public TypeElementTypePool(final ClassFileVersion classFileVersion, final TypePool.CacheProvider cacheProvider) {
+
+  public TypeElementTypePool(final TypeAndElementSource tes) {
+    this(ClassFileVersion.ofThisVm(), new TypePool.CacheProvider.Simple(), tes);
+  }
+
+  public TypeElementTypePool(final ClassFileVersion classFileVersion,
+                             final TypePool.CacheProvider cacheProvider,
+                             final TypeAndElementSource tes) {
     super(cacheProvider == null ? new TypePool.CacheProvider.Simple() : cacheProvider,
           ClassFileLocator.NoOp.INSTANCE,
           TypePool.Default.ReaderMode.FAST /* actually irrelevant */);
     this.classFileVersion = classFileVersion == null ? ClassFileVersion.ofThisVm() : classFileVersion;
+    this.tes = Objects.requireNonNull(tes, "tes");
   }
 
   @Override
   protected final Resolution doDescribe(final String name) {
-    final TypeElement e = Lang.typeElement(name);
-    return e == null ? new Resolution.Illegal(name) : new Resolution.Simple(new TypeDescription(Lang.typeElement(name)));
+    final TypeElement e = this.tes.typeElement(name);
+    return e == null ? new Resolution.Illegal(name) : new Resolution.Simple(new TypeDescription(e));
   }
 
   private final class TypeDescription extends LazyTypeDescription {
@@ -112,7 +124,7 @@ public final class TypeElementTypePool extends TypePool.Default {
       default -> throw new IllegalArgumentException("t: " + t);
       };
     }
-      
+
     private static final int actualModifiers(Element e) {
       assert e instanceof DelegatingElement;
       return (int)Lang.modifiers(e);
@@ -172,7 +184,7 @@ public final class TypeElementTypePool extends TypePool.Default {
     private static final List<String> declaredTypeDescriptors(Element e) {
       assert e instanceof DelegatingElement;
       final ArrayList<String> l = new ArrayList<>();
-      for (final Element ee : e.getEnclosedElements()) {          
+      for (final Element ee : e.getEnclosedElements()) {
         if (ee.getKind().isDeclaredType()) {
           l.add(Lang.descriptor(ee.asType()));
         }
@@ -363,11 +375,11 @@ public final class TypeElementTypePool extends TypePool.Default {
         private ParameterTokenSubclass(final String name, final Integer modifiers) {
           super(name, modifiers);
         }
-          
+
       }
-        
+
     }
-      
+
   }
-  
+
 }

@@ -78,6 +78,7 @@ final class TestByteBuddy2 {
   @Test
   final void testListThisClassArray() {
     final TypeMirror t = arrayTypeOf(declaredType(null, typeElement(List.class), declaredType(this.getClass())));
+    assertNotNull(t);
     final TypeDescription.Generic tdg = this.bb.typeDescriptionGeneric(t);
     assertSame(TypeDefinition.Sort.GENERIC_ARRAY, tdg.getSort());
   }

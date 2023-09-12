@@ -53,9 +53,6 @@ public final class ByteBuddy2 {
   }
 
   public final TypeDescription typeDescription(final TypeMirror t) {
-    if (t == null) {
-      return null;
-    }
     CompletionLock.acquire();
     try {
       return switch (t.getKind()) {
@@ -84,17 +81,19 @@ public final class ByteBuddy2 {
   }
 
   public final TypeDescription typeDescription(final QualifiedNameable qn) {
-    return qn == null ? null : this.typeDescription(qn.getQualifiedName().toString());
+    CompletionLock.acquire();
+    try {
+      return this.typeDescription(qn.getQualifiedName().toString());
+    } finally {
+      CompletionLock.release();
+    }
   }
 
   public final TypeDescription typeDescription(final String name) { // TODO: better named name; maybe canonical name following JLS?
-    return name == null ? null : this.typePool.describe(name).resolve();
+    return this.typePool.describe(name).resolve();
   }
 
   public final TypeDescription.Generic typeDescriptionGeneric(final TypeMirror t) {
-    if (t == null) {
-      return null;
-    }
     CompletionLock.acquire();
     try {
       return switch (t.getKind()) {
@@ -111,19 +110,20 @@ public final class ByteBuddy2 {
       case LONG -> TypeDefinition.Sort.describe(long.class);
       case SHORT -> TypeDefinition.Sort.describe(short.class);
 
-      // void is easy.
+      // void is easy. ByteBuddy caches it.
       case VOID -> TypeDefinition.Sort.describe(void.class);
 
       // Arrays are easy.
       case ARRAY -> Builder.of(typeDescriptionGeneric(((ArrayType)t).getComponentType())).asArray().build();
 
-      // Certain declared types are easy because ByteBuddy caches them, so the classes are loaded already. We add a few
-      // simple ones to the list.
+      // Declared types:
       case DECLARED -> {
         final DeclaredType dt = (DeclaredType)t;
         final TypeElement te = (TypeElement)dt.asElement();
         final String n = te.getQualifiedName().toString();
         yield switch (n) {
+          // Certain declared types are easy because ByteBuddy also caches them, so the classes are loaded already. We
+          // add a few simple ones to the list.
         case "java.lang.Boolean" -> TypeDefinition.Sort.describe(Boolean.class);
         case "java.lang.Byte" -> TypeDefinition.Sort.describe(Byte.class);
         case "java.lang.Character" -> TypeDefinition.Sort.describe(Character.class);
@@ -142,20 +142,24 @@ public final class ByteBuddy2 {
         default -> {
           // Some other declared type
           final TypeDescription rawType = typeDescription(n);
-          if (generic(te)) {
-            final TypeDescription.Generic enclosingType = typeDescriptionGeneric(dt.getEnclosingType());
-            final List<? extends TypeMirror> typeArgumentMirrors = dt.getTypeArguments();
-            if (typeArgumentMirrors.isEmpty()) {
-              yield Builder.parameterizedType(rawType, enclosingType == null ? TypeDescription.Generic.UNDEFINED : enclosingType).build();
-            }
-            final List<TypeDefinition> typeArguments = new ArrayList<>(typeArgumentMirrors.size());
-            for (final TypeMirror typeArgumentMirror : typeArgumentMirrors) {
-              typeArguments.add(typeDescriptionGeneric(typeArgumentMirror));
-            }
-            yield Builder.parameterizedType(rawType, enclosingType == null ? TypeDescription.Generic.UNDEFINED : enclosingType, typeArguments).build();
-          } else {
+          if (!generic(te)) {
             yield rawType.asGenericType();
           }
+          final TypeMirror dtEnclosingType = dt.getEnclosingType();
+          final TypeDescription.Generic enclosingType =
+            dtEnclosingType == null ? TypeDescription.Generic.UNDEFINED : typeDescriptionGeneric(dtEnclosingType);
+          final List<? extends TypeMirror> typeArgumentMirrors = dt.getTypeArguments();
+          if (typeArgumentMirrors.isEmpty()) {
+            yield Builder.parameterizedType(rawType, enclosingType).build();
+          }
+          final List<TypeDefinition> typeArguments = new ArrayList<>(typeArgumentMirrors.size());
+          for (final TypeMirror typeArgumentMirror : typeArgumentMirrors) {
+            typeArguments.add(typeDescriptionGeneric(typeArgumentMirror));
+          }
+          yield Builder.parameterizedType(rawType,
+                                          enclosingType == null ? TypeDescription.Generic.UNDEFINED : enclosingType,
+                                          typeArguments)
+            .build();
         }
         };
       }
@@ -178,7 +182,10 @@ public final class ByteBuddy2 {
         }
       }
 
-      case ERROR, EXECUTABLE, INTERSECTION, MODULE, NULL, OTHER, PACKAGE, UNION -> throw new IllegalArgumentException("t: " + t + "; kind: " + t.getKind());
+      case ERROR, EXECUTABLE, INTERSECTION, MODULE, NULL, OTHER, PACKAGE, UNION -> throw new IllegalArgumentException("t: "
+                                                                                                                      + t +
+                                                                                                                      "; kind: " +
+                                                                                                                      t.getKind());
       };
     } finally {
       CompletionLock.release();
