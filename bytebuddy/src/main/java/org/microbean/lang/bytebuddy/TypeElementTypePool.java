@@ -65,6 +65,11 @@ public final class TypeElementTypePool extends TypePool.Default {
     this(ClassFileVersion.ofThisVm(), new TypePool.CacheProvider.Simple(), tes);
   }
 
+  public TypeElementTypePool(final TypePool.CacheProvider cacheProvider,
+                             final TypeAndElementSource tes) {
+    this(ClassFileVersion.ofThisVm(), cacheProvider, tes);
+  }
+
   public TypeElementTypePool(final ClassFileVersion classFileVersion,
                              final TypePool.CacheProvider cacheProvider,
                              final TypeAndElementSource tes) {
