@@ -47,9 +47,6 @@ import org.microbean.lang.element.DelegatingElement;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
 
-import static org.microbean.lang.Lang.wrap;
-
-// TODO: should we be using CompletionLock throughout? Or at least wrapping?
 public final class TypeElementTypePool extends TypePool.Default {
 
   private final ClassFileVersion classFileVersion;
@@ -88,7 +85,8 @@ public final class TypeElementTypePool extends TypePool.Default {
 
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
-    // Binary names in this mess are JVM binary names, not JLS binary names. Raph calls them "internal names" which isn't a thing.
+    // Binary names in this mess are JVM binary names, not JLS binary names. Raph calls them "internal names" which
+    // isn't a thing.
     private TypeDescription(TypeElement e) {
       super(TypeElementTypePool.this,
             actualModifiers(e),
@@ -115,7 +113,7 @@ public final class TypeElementTypePool extends TypePool.Default {
             classFileVersion);
     }
 
-    private static final String binaryName(TypeMirror t) {
+    private static final String binaryName(final TypeMirror t) {
       assert t instanceof DelegatingTypeMirror;
       return switch (t.getKind()) {
       case DECLARED -> Lang.binaryName((TypeElement)((DeclaredType)t).asElement()).toString();
@@ -125,17 +123,17 @@ public final class TypeElementTypePool extends TypePool.Default {
       };
     }
 
-    private static final int actualModifiers(Element e) {
+    private static final int actualModifiers(final Element e) {
       assert e instanceof DelegatingElement;
       return (int)Lang.modifiers(e);
     }
 
-    private static final int modifiers(Element e) {
+    private static final int modifiers(final Element e) {
       assert e instanceof DelegatingElement;
       return (int)Lang.modifiers(e);
     }
 
-    private static final String[] interfaceBinaryNames(TypeElement e) {
+    private static final String[] interfaceBinaryNames(final TypeElement e) {
       assert e instanceof DelegatingElement;
       final List<? extends TypeMirror> ifaces = e.getInterfaces();
       if (ifaces.isEmpty()) {
@@ -148,30 +146,30 @@ public final class TypeElementTypePool extends TypePool.Default {
       return rv;
     }
 
-    private static final String genericSignature(Element e) {
+    private static final String genericSignature(final Element e) {
       return Lang.elementSignature(e);
     }
 
-    private static final TypeContainment typeContainment(Element e) {
+    private static final TypeContainment typeContainment(final Element e) {
       assert e instanceof DelegatingElement;
-      final Element ee = e.getEnclosingElement();
+      final TypeElement ee = (TypeElement)e.getEnclosingElement();
       if (ee == null) {
         return TypeContainment.SelfContained.INSTANCE;
       }
       return switch (ee.getKind()) {
       case METHOD ->
-        new TypeContainment.WithinMethod(Lang.binaryName(wrap((TypeElement)ee.getEnclosingElement())).toString(),
+        new TypeContainment.WithinMethod(Lang.binaryName((TypeElement)ee.getEnclosingElement()).toString(),
                                          ee.getSimpleName().toString(), // TODO: maybe? needs to be method's "internal name" which I think is just its "unqualified name" (4.2.2 JVM)
                                          Lang.descriptor(ee.asType())) {};
       case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD ->
-        new TypeContainment.WithinType(Lang.binaryName((TypeElement)ee).toString(),
-                                       ((TypeElement)ee).getNestingKind() == NestingKind.LOCAL) {}; // TODO: this is for the enclosing element, yes?
+        new TypeContainment.WithinType(Lang.binaryName(ee).toString(),
+                                       ee.getNestingKind() == NestingKind.LOCAL) {}; // TODO: this is for the enclosing element, yes?
       case PACKAGE -> TypeContainment.SelfContained.INSTANCE;
       default -> throw new IllegalStateException(); // I guess?
       };
     }
 
-    private static final String declaringTypeBinaryName(TypeElement e) {
+    private static final String declaringTypeBinaryName(final TypeElement e) {
       assert e instanceof DelegatingElement;
       // TODO: triple check: getEnclosingType()? or getEnclosingElement.asType()?
       final TypeMirror t = ((DeclaredType)e.asType()).getEnclosingType();
@@ -181,7 +179,7 @@ public final class TypeElementTypePool extends TypePool.Default {
       return Lang.binaryName((TypeElement)((DeclaredType)t).asElement()).toString();
     }
 
-    private static final List<String> declaredTypeDescriptors(Element e) {
+    private static final List<String> declaredTypeDescriptors(final Element e) {
       assert e instanceof DelegatingElement;
       final ArrayList<String> l = new ArrayList<>();
       for (final Element ee : e.getEnclosedElements()) {
@@ -193,35 +191,35 @@ public final class TypeElementTypePool extends TypePool.Default {
       return Collections.unmodifiableList(l);
     }
 
-    private static final String nestHostBinaryName(Element e) {
+    private static final String nestHostBinaryName(final Element e) {
       return null;
     }
 
-    private static final List<String> nestMemberBinaryNames(Element e) {
+    private static final List<String> nestMemberBinaryNames(final Element e) {
       return List.of();
     }
 
-    private static final Map<String, List<AnnotationToken>> superclassAnnotationTokens(Element e) {
+    private static final Map<String, List<AnnotationToken>> superclassAnnotationTokens(final Element e) {
       return Map.of();
     }
 
-    private static final Map<Integer, Map<String, List<AnnotationToken>>> interfaceAnnotationTokens(Element e) {
+    private static final Map<Integer, Map<String, List<AnnotationToken>>> interfaceAnnotationTokens(final Element e) {
       return Map.of();
     }
 
-    private static final Map<Integer, Map<String, List<AnnotationToken>>> typeVariableAnnotationTokens(Element e) {
+    private static final Map<Integer, Map<String, List<AnnotationToken>>> typeVariableAnnotationTokens(final Element e) {
       return Map.of();
     }
 
-    private static final Map<Integer, Map<Integer, Map<String, List<AnnotationToken>>>> typeVariableBoundsAnnotationTokens(Element e) {
+    private static final Map<Integer, Map<Integer, Map<String, List<AnnotationToken>>>> typeVariableBoundsAnnotationTokens(final Element e) {
       return Map.of();
     }
 
-    private static final List<AnnotationToken> annotationTokens(Element e) {
+    private static final List<AnnotationToken> annotationTokens(final Element e) {
       return List.of();
     }
 
-    private static final List<FieldToken> fieldTokens(Element e) {
+    private static final List<FieldToken> fieldTokens(final Element e) {
       assert e instanceof DelegatingElement;
       final ArrayList<FieldToken> l = new ArrayList<>();
       for (final Element ee : e.getEnclosedElements()) {
@@ -233,7 +231,7 @@ public final class TypeElementTypePool extends TypePool.Default {
       return Collections.unmodifiableList(l);
     }
 
-    private static final List<MethodToken> methodTokens(Element e) {
+    private static final List<MethodToken> methodTokens(final Element e) {
       assert e instanceof DelegatingElement;
       final ArrayList<MethodToken> l = new ArrayList<>();
       for (final Element ee : e.getEnclosedElements()) {
@@ -245,7 +243,7 @@ public final class TypeElementTypePool extends TypePool.Default {
       return Collections.unmodifiableList(l);
     }
 
-    private static final List<RecordComponentToken> recordComponentTokens(Element e) {
+    private static final List<RecordComponentToken> recordComponentTokens(final Element e) {
       assert e instanceof DelegatingElement;
       final ArrayList<RecordComponentToken> l = new ArrayList<>();
       for (final Element ee : e.getEnclosedElements()) {
@@ -257,7 +255,7 @@ public final class TypeElementTypePool extends TypePool.Default {
       return Collections.unmodifiableList(l);
     }
 
-    private static final List<String> permittedSubclassBinaryNames(TypeElement e) {
+    private static final List<String> permittedSubclassBinaryNames(final TypeElement e) {
       assert e instanceof DelegatingElement;
       final List<? extends TypeMirror> ts = e.getPermittedSubclasses();
       if (ts.isEmpty()) {
@@ -270,7 +268,7 @@ public final class TypeElementTypePool extends TypePool.Default {
       return Collections.unmodifiableList(l);
     }
 
-    private static final FieldToken fieldToken(VariableElement e) {
+    private static final FieldToken fieldToken(final VariableElement e) {
       assert e instanceof DelegatingElement;
       if (!e.getKind().isField()) {
         throw new IllegalArgumentException("e: " + e);
@@ -284,7 +282,7 @@ public final class TypeElementTypePool extends TypePool.Default {
                        List.of()) {}; // TODO: annotationTokens
     }
 
-    private static final MethodToken methodToken(ExecutableElement e) {
+    private static final MethodToken methodToken(final ExecutableElement e) {
       assert e instanceof DelegatingElement;
       final List<? extends TypeMirror> thrownTypes = e.getThrownTypes();
       final String[] exceptionBinaryNames;
@@ -319,13 +317,13 @@ public final class TypeElementTypePool extends TypePool.Default {
                                 null); // defaultValue
     }
 
-    private static final MethodTokenSubclass.ParameterTokenSubclass parameterToken(VariableElement e) {
+    private static final MethodTokenSubclass.ParameterTokenSubclass parameterToken(final VariableElement e) {
       assert e instanceof DelegatingElement;
       final int modifiers = (int)Lang.modifiers(e);
       return new MethodTokenSubclass.ParameterTokenSubclass(e.getSimpleName().toString(), modifiers == 0 ? null : Integer.valueOf(modifiers));
     }
 
-    private static final RecordComponentToken recordComponentToken(RecordComponentElement e) {
+    private static final RecordComponentToken recordComponentToken(final RecordComponentElement e) {
       assert e instanceof DelegatingElement;
       return
         new RecordComponentToken(e.getSimpleName().toString(),
