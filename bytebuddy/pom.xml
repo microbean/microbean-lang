@@ -65,7 +65,6 @@
             <argLine>
               --add-opens jdk.compiler/com.sun.tools.javac.comp=org.microbean.lang
               --add-opens jdk.compiler/com.sun.tools.javac.model=org.microbean.lang
-              --enable-preview
             </argLine>
           </configuration>
         </plugin>

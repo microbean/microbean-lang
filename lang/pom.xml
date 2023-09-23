@@ -81,7 +81,6 @@
               --add-exports jdk.compiler/com.sun.tools.javac.comp=org.microbean.lang
               --add-exports jdk.compiler/com.sun.tools.javac.util=org.microbean.lang
               --add-opens jdk.compiler/com.sun.tools.javac.model=org.microbean.lang
-              --enable-preview
             </argLine>
             <systemPropertyVariables>
               <java.util.logging.config.file>src/test/java/logging.properties</java.util.logging.config.file>
