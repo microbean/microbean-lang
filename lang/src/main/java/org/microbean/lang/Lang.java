@@ -2341,8 +2341,25 @@ public final class Lang {
           }
         }
 
-        // This turns out to be rather important. The default name table in javac is shared and unsynchronized. The
-        // unshared name table seems to be thread-safe.
+        // See
+        // https://github.com/openjdk/jdk/blob/jdk-21%2B35/src/jdk.compiler/share/classes/com/sun/tools/javac/util/Names.java#L430-L436
+        // in JDK 21; JDK 22+ changes things dramatically.
+        //
+        // This turns out to be rather important. The default name table in javac (21 and earlier) is shared and
+        // unsynchronized such that, given a Name, calling its toString() method may involve reading a shared byte array
+        // that is being updated in another thread. By contrast, the unshared name table creates Names whose contents
+        // are not shared, so toString() invocations on them are not problematic.
+        //
+        // In JDK 22+, there is a String-based name table that is used by default; see
+        // https://github.com/openjdk/jdk/pull/15470. However note that this is also not thread-safe:
+        // https://github.com/archiecobbs/jdk/blob/1dcafc70c2969093b0c59cf637a982697b05030b/src/jdk.compiler/share/classes/com/sun/tools/javac/util/StringNameTable.java#L65
+        //
+        // TODO: It *seems* that the thread safety issues we sometimes see are due to the shared name table's Name
+        // implementation's toString() method, which can read a portion of the shared byte[] array in which all name
+        // content is stored at the same time that the same byte array is being updated. It does not appear to me that
+        // any of the other Name.Table implementations suffer from this, so the string table may be good enough. That
+        // is, except for the shared name table situation, any time you have a Name in your hand you should be able to
+        // call toString() on it without any problems.
         if (Boolean.getBoolean("useSharedNameTable")) {
           if (LOGGER.isLoggable(DEBUG)) {
             LOGGER.log(DEBUG, "Using shared name table");
