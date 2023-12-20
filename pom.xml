@@ -396,14 +396,6 @@
         <plugin>
           <artifactId>maven-source-plugin</artifactId>
           <version>3.3.0</version>
-          <executions>
-            <execution>
-              <id>attach-sources</id>
-              <goals>
-                <goal>jar-no-fork</goal>
-              </goals>
-            </execution>
-          </executions>
         </plugin>
 
         <plugin>
@@ -612,6 +604,18 @@
                 </goals>
               </execution>
             </executions>
+          </plugin>
+          <plugin>
+            <artifactId>maven-source-plugin</artifactId>            
+            <executions>
+              <execution>
+                <id>attach-aggregate-sources</id>
+                <goals>
+                  <goal>aggregate</goal>
+                </goals>
+              </execution>
+            </executions>
+            <inherited>false</inherited>
           </plugin>
         </plugins>
       </build>
