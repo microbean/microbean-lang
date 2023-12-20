@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <artifactId>microbean-lang</artifactId>
+
+  <parent>
+    <groupId>org.microbean</groupId>
+    <artifactId>microbean-lang-parent</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+  </parent>
+
+  <name>microBean™ Lang: Core</name>
+  <description>microBean™ Lang: Core: An implementation of the Java language model.</description>
+
+  <dependencies>
+
+    <!-- Test-scoped dependencies. -->
+
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest</artifactId>
+      <type>jar</type>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <type>jar</type>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <type>jar</type>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>default-compile</id>
+              <configuration>
+                <compilerArgs combine.children="append">
+                  <arg>--add-exports</arg>
+                  <arg>jdk.compiler/com.sun.tools.javac.comp=org.microbean.lang</arg>
+                  <arg>--add-exports</arg>
+                  <arg>jdk.compiler/com.sun.tools.javac.model=org.microbean.lang</arg>
+                </compilerArgs>
+              </configuration>
+            </execution>
+            <execution>
+              <id>default-testCompile</id>
+              <configuration>
+                <compilerArgs combine.children="append">
+                  <arg>--add-exports</arg>
+                  <arg>jdk.compiler/com.sun.tools.javac.code=org.microbean.lang</arg>
+                  <arg>--add-exports</arg>
+                  <arg>jdk.compiler/com.sun.tools.javac.model=org.microbean.lang</arg>
+                  <arg>--add-exports</arg>
+                  <arg>jdk.compiler/com.sun.tools.javac.util=org.microbean.lang</arg>
+                  <arg>-Xlint:-exports</arg>
+                </compilerArgs>
+              </configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <configuration>
+            <argLine>
+              --add-exports jdk.compiler/com.sun.tools.javac.code=org.microbean.lang
+              --add-exports jdk.compiler/com.sun.tools.javac.comp=org.microbean.lang
+              --add-exports jdk.compiler/com.sun.tools.javac.util=org.microbean.lang
+              --add-opens jdk.compiler/com.sun.tools.javac.model=org.microbean.lang
+            </argLine>
+            <systemPropertyVariables>
+              <java.util.logging.config.file>src/test/java/logging.properties</java.util.logging.config.file>
+              <org.microbean.lang.Lang.verbose>${org.microbean.lang.Lang.verbose}</org.microbean.lang.Lang.verbose>
+            </systemPropertyVariables>
+            <!-- See https://junit.org/junit5/docs/snapshot/user-guide/#running-tests-build-maven-config-params -->
+            <!-- See https://github.com/apache/maven-surefire/blob/eb48f1b59ca5ccf6954ef33ecab03dbaf93214cd/surefire-providers/surefire-junit-platform/src/main/java/org/apache/maven/surefire/junitplatform/JUnitPlatformProvider.java#L242-L262 -->
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
+  <properties>
+    <org.microbean.lang.Lang.verbose>false</org.microbean.lang.Lang.verbose>
+  </properties>
+
+</project>

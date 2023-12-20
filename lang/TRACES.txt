@@ -1,0 +1,8 @@
+[ERROR] org.microbean.lang.TestModuleRelatedIssues.testModuleRelatedIssues  Time elapsed: 0.003 s  <<< FAILURE!
+org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.NullPointerException> but was: <java.lang.IllegalAccessError>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:67)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3083)
+	at org.microbean.lang@0.0.1-SNAPSHOT/org.microbean.lang.TestModuleRelatedIssues.testModuleRelatedIssues(TestModuleRelatedIssues.java:77)
+

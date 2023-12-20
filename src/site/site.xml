@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<site
+    xmlns="http://maven.apache.org/SITE/2.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/SITE/2.0.0
+                        http://maven.apache.org/xsd/site-2.0.0.xsd"
+    name="${this.name}"
+    combine.self="merge">
+  <bannerLeft name="${this.name}"/>
+  <bannerRight href="${this.url}">
+    <image src="https://avatars0.githubusercontent.com/u/25515632?s=60"/>
+  </bannerRight>
+  <version position="right"/>
+  <skin>
+    <groupId>org.apache.maven.skins</groupId>
+    <artifactId>maven-fluido-skin</artifactId>
+    <version>2.0.0-M8</version>
+  </skin>
+
+  <body>
+    <menu name="Documentation" inherit="top">
+      <item name="Overview" href="index.html"/>
+      <item name="JavaDocs" href="apidocs/index.html"/>
+      <item name="Github Repository" href="${this.scm.url}"/>
+    </menu>
+    <menu ref="reports" inherit="top"/>
+    <menu ref="parent" inherit="top"/>
+  </body>
+
+  <custom>
+    <fluidoSkin>
+      <sideBarEnabled>true</sideBarEnabled>
+      <topBarEnabled>false</topBarEnabled>
+    </fluidoSkin>
+  </custom>
+
+</site>

@@ -1,0 +1,41 @@
+/* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
+ *
+ * Copyright © 2022–2023 microBean™.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+package org.microbean.lang;
+
+import java.util.Comparator;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.QualifiedNameable;
+
+public final class NameElementComparator implements Comparator<Element> {
+
+  public static final NameElementComparator INSTANCE = new NameElementComparator();
+
+  private NameElementComparator() {
+    super();
+  }
+
+  public final int compare(final Element e, final Element f) {
+    return
+      e == f ? 0 :
+      e == null ? 1 :
+      f == null ? -1 :
+      CharSequence.compare(name(e), name(f));
+  }
+
+  private static final CharSequence name(final Element e) {
+    return e instanceof QualifiedNameable qn ? qn.getQualifiedName() : e.getSimpleName();
+  }
+
+}
