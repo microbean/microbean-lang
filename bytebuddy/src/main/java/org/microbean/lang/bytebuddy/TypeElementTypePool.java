@@ -92,14 +92,14 @@ public final class TypeElementTypePool extends TypePool.Default {
 
     // Binary names in this mess are JVM binary names, not JLS binary names. Raph calls them "internal names" which
     // isn't a thing.
-    private TypeDescription(TypeElement e) {
+    private TypeDescription(final TypeElement e) {
       super(TypeElementTypePool.this,
             actualModifiers(e),
             modifiers(e),
             Lang.binaryName(e).toString(), // "internalName"
             binaryName(e.getSuperclass()), // "superClassName"
             interfaceBinaryNames(e), // "interfaceName" (yes, singular for some reason)
-            genericSignature(e), // "genericSignature" whatever that is; ASM just calls it a "signature" and seems to be expecting a *type* signature in the JVM parlance
+            genericSignature(e), // "genericSignature"; ASM just calls it a "signature" and seems to be expecting a *type* signature in the JVM parlance
             typeContainment(e),
             declaringTypeBinaryName(e),
             declaredTypeDescriptors(e),
@@ -164,7 +164,7 @@ public final class TypeElementTypePool extends TypePool.Default {
       return switch (ee.getKind()) {
       case METHOD ->
         new TypeContainment.WithinMethod(Lang.binaryName((TypeElement)ee.getEnclosingElement()).toString(),
-                                         ee.getSimpleName().toString(), // TODO: maybe? needs to be method's "internal name" which I think is just its "unqualified name" (4.2.2 JVM)
+                                         ee.getSimpleName().toString(), // TODO: maybe? needs to be method's "internal name" which is just its "unqualified name" (4.2.2 JVM)
                                          Lang.descriptor(ee.asType())) {};
       case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD ->
         new TypeContainment.WithinType(Lang.binaryName(ee).toString(),

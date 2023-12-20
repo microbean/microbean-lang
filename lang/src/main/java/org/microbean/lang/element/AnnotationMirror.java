@@ -83,7 +83,7 @@ public class AnnotationMirror implements javax.lang.model.element.AnnotationMirr
   public final void putElementValue(final ExecutableElement ee, final AnnotationValue av) {
     this.elementValues.put(ee, av);
   }
-  
+
   public final void setElementValues(final Map<? extends ExecutableElement, ? extends AnnotationValue> evs) {
     this.elementValues.putAll(evs);
   }

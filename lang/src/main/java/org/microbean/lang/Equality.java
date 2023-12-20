@@ -80,7 +80,7 @@ import static java.lang.constant.ConstantDescs.TRUE;
 public class Equality implements Constable {
 
   private static final ClassDesc CD_Equality = ClassDesc.of("org.microbean.lang.Equality");
-  
+
   private final boolean ia;
 
   /**
@@ -106,7 +106,7 @@ public class Equality implements Constable {
                                               MethodHandleDesc.ofConstructor(CD_Equality, CD_boolean),
                                               this.ia ? TRUE : FALSE));
   }
-  
+
   public int hashCode(final Object o1) {
     return hashCode(o1, this.ia);
   }

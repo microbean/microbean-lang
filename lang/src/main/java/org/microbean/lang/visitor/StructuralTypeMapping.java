@@ -21,8 +21,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import javax.lang.model.element.TypeElement;
-
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
@@ -33,8 +31,6 @@ import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.SimpleTypeVisitor14;
 
 import org.microbean.lang.TypeAndElementSource;
-
-import org.microbean.lang.type.Types;
 
 // See https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L244
 class StructuralTypeMapping<S> extends SimpleTypeVisitor14<TypeMirror, S> {

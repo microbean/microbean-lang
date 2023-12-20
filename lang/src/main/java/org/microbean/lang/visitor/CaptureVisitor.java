@@ -193,7 +193,7 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
     final TypeClosure tc = this.typeClosureVisitor.visit(t);
     tc.union(this.typeClosureVisitor.visit(s));
 
-    List<? extends TypeMirror> minimumTypes = tc.toMinimumTypes(this.subtypeVisitor);
+    final List<? extends TypeMirror> minimumTypes = tc.toMinimumTypes(this.subtypeVisitor);
     final int size = minimumTypes.size();
     switch (size) {
     case 0:

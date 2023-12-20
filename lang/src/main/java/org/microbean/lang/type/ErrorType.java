@@ -16,10 +16,7 @@
  */
 package org.microbean.lang.type;
 
-import java.util.List;
-
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.TypeElement;
 
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeVisitor;
@@ -31,7 +28,7 @@ public final class ErrorType extends DeclaredType implements javax.lang.model.ty
   }
 
   @Override // DeclaredType
-  public final <R, P> R accept(final TypeVisitor<R, P> v, P p) {
+  public final <R, P> R accept(final TypeVisitor<R, P> v, final P p) {
     return v.visitError(this, p);
   }
 

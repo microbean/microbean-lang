@@ -1,21 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<project
-    xmlns="http://maven.apache.org/DECORATION/1.8.0"
+<site
+    xmlns="http://maven.apache.org/SITE/2.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/DECORATION/1.8.0
-                        http://maven.apache.org/xsd/decoration-1.8.0.xsd"
+    xsi:schemaLocation="http://maven.apache.org/SITE/2.0.0
+                        http://maven.apache.org/xsd/site-2.0.0.xsd"
     name="${this.name}"
     combine.self="merge">
-  <bannerRight>
-    <name>μb ${this.artifactId}</name>
-    <src>https://avatars0.githubusercontent.com/u/25515632?s=60</src>
-    <href>${this.url}</href>
+  <bannerLeft name="${this.name}"/>
+  <bannerRight href="${this.url}">
+    <image src="https://avatars0.githubusercontent.com/u/25515632?s=60"/>
   </bannerRight>
   <version position="right"/>
   <skin>
     <groupId>org.apache.maven.skins</groupId>
     <artifactId>maven-fluido-skin</artifactId>
-    <version>2.0.0-M2</version>
+    <version>2.0.0-M8</version>
   </skin>
 
   <body>
@@ -25,6 +24,7 @@
       <item name="Github Repository" href="${this.scm.url}"/>
     </menu>
     <menu ref="reports"/>
+    <menu ref="parent"/>
   </body>
 
   <custom>
@@ -34,4 +34,4 @@
     </fluidoSkin>
   </custom>
 
-</project>
+</site>

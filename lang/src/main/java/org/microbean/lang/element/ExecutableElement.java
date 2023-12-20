@@ -56,7 +56,7 @@ public final class ExecutableElement extends Parameterizable implements javax.la
       this.setSimpleName("<init>");
     }
   }
-  
+
   public ExecutableElement(final boolean varArgs,
                            final boolean isDefault,
                            final AnnotationValue defaultValue) {
@@ -64,7 +64,7 @@ public final class ExecutableElement extends Parameterizable implements javax.la
     this.setDefault(isDefault);
     this.setDefaultValue(defaultValue);
   }
-  
+
   public ExecutableElement(final ElementKind kind,
                            final boolean varArgs,
                            final boolean isDefault,

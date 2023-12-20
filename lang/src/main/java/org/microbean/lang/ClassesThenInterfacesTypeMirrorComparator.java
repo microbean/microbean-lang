@@ -40,7 +40,7 @@ public final class ClassesThenInterfacesTypeMirrorComparator implements Comparat
       iface(t) ? iface(s) ? 0 : 1 :
       iface(s) ? -1 : 0;
   }
-  
+
   private static final boolean iface(final TypeMirror t) {
     return switch (t.getKind()) {
     case ARRAY -> false;

@@ -84,7 +84,7 @@ public final class AnnotationValue implements javax.lang.model.element.Annotatio
    * Static methods.
    */
 
-  
+
   public static final AnnotationValue of(final Object value) {
     return new AnnotationValue(value);
   }

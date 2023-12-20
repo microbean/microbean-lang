@@ -25,7 +25,7 @@ import javax.lang.model.type.TypeKind;
 public final class NullType extends TypeMirror implements javax.lang.model.type.NullType {
 
   public static final NullType INSTANCE = new NullType();
-  
+
   private NullType() {
     super(TypeKind.NULL);
   }
@@ -39,5 +39,5 @@ public final class NullType extends TypeMirror implements javax.lang.model.type.
   public final List<? extends AnnotationMirror> getAnnotationMirrors() {
     return List.of();
   }
-  
+
 }

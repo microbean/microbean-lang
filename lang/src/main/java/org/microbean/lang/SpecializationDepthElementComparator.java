@@ -21,12 +21,12 @@ import javax.lang.model.element.Element;
 public final class SpecializationDepthElementComparator implements Comparator<Element> {
 
   private final SpecializationDepthTypeMirrorComparator c;
-  
+
   public SpecializationDepthElementComparator(final SpecializationDepthTypeMirrorComparator c) {
     super();
     this.c = Objects.requireNonNull(c, "c");
   }
-  
+
   public final int compare(final Element e, final Element f) {
     return
       e == f ? 0 :
@@ -34,5 +34,5 @@ public final class SpecializationDepthElementComparator implements Comparator<El
       f == null ? -1 :
       this.c.compare(e.asType(), f.asType());
   }
-  
+
 }

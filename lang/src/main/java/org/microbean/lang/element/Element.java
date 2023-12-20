@@ -18,13 +18,10 @@ package org.microbean.lang.element;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-
-import java.util.function.Function;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ElementVisitor;
@@ -38,8 +35,6 @@ import org.microbean.lang.AnnotatedConstruct;
 
 import org.microbean.lang.type.NoType;
 
-import org.microbean.lang.type.Types;
-
 // NOT thread safe
 public abstract sealed class Element
   extends AnnotatedConstruct
@@ -49,8 +44,7 @@ public abstract sealed class Element
           Parameterizable,
           RecordComponentElement,
           TypeParameterElement,
-          VariableElement
-{
+          VariableElement {
 
   private final List<javax.lang.model.element.Element> enclosedElements;
 
@@ -60,7 +54,7 @@ public abstract sealed class Element
   private javax.lang.model.element.Element enclosingElement;
 
   private Runnable enclosedElementsGenerator;
-  
+
   private final ElementKind kind;
 
   private final Set<Modifier> modifiers;
@@ -130,7 +124,7 @@ public abstract sealed class Element
     }
     return this.unmodifiableEnclosedElements;
   }
-  
+
   public final void setEnclosedElementsGenerator(final Runnable f) {
     if (this.enclosedElementsGenerator == null) {
       this.enclosedElementsGenerator = Objects.requireNonNull(f, "f");
@@ -158,7 +152,7 @@ public abstract sealed class Element
     }
     return e;
   }
-  
+
   @Override // Element
   public final ElementKind getKind() {
     return this.kind;
@@ -213,7 +207,7 @@ public abstract sealed class Element
     case 0:
       // Anonymous class. Should we even be defining an element here?
       break;
-    default:      
+    default:
       if (n.charAt(0) == '.' || n.charAt(n.length() - 1) == '.') {
         throw new IllegalArgumentException("n: " + n);
       }
@@ -262,7 +256,7 @@ public abstract sealed class Element
     return this.isUnnamed() ? "<unnamed>" : n == null ? "<unknown>" : n.length() <= 0 ? "<unnamed>" : n.toString();
   }
 
-  
+
   /*
    * Static methods.
    */

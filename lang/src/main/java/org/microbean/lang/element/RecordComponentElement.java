@@ -16,7 +16,6 @@
  */
 package org.microbean.lang.element;
 
-import java.util.Objects;
 import java.util.Set;
 
 import javax.lang.model.element.ElementKind;
@@ -30,7 +29,7 @@ import javax.lang.model.type.TypeMirror;
 public final class RecordComponentElement extends Element implements javax.lang.model.element.RecordComponentElement {
 
   private ExecutableElement accessor;
-  
+
   public RecordComponentElement() {
     super(ElementKind.RECORD_COMPONENT);
     // Record components are always public and nothing else.
@@ -67,7 +66,7 @@ public final class RecordComponentElement extends Element implements javax.lang.
   protected final <E extends javax.lang.model.element.Element> E validateEnclosedElement(final E e) {
     throw new IllegalArgumentException("record components cannot enclose Elements");
   }
-  
+
   @Override
   protected final ElementKind validateKind(final ElementKind kind) {
     switch (kind) {

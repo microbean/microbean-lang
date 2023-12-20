@@ -20,8 +20,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Parameterizable;
 import javax.lang.model.element.TypeElement;
 
 import javax.lang.model.type.TypeKind;
@@ -79,7 +77,7 @@ public sealed class DeclaredType extends DefineableType<TypeElement> implements 
 
 
   @Override // TypeMirror
-  public <R, P> R accept(final TypeVisitor<R, P> v, P p) {
+  public <R, P> R accept(final TypeVisitor<R, P> v, final P p) {
     return v.visitDeclared(this, p);
   }
 

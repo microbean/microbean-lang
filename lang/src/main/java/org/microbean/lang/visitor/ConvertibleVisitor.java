@@ -28,11 +28,11 @@ import org.microbean.lang.type.Types;
 public final class ConvertibleVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
   private final Types types;
-  
+
   private final SubtypeUncheckedVisitor subtypeUncheckedVisitor;
 
   private final SubtypeVisitor subtypeVisitor;
-  
+
   public ConvertibleVisitor(final Types types,
                             final SubtypeUncheckedVisitor subtypeUncheckedVisitor,
                             final SubtypeVisitor subtypeVisitor) {

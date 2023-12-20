@@ -20,16 +20,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ElementVisitor;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
-
-import javax.lang.model.type.NoType;
 
 public final class ModuleElement extends org.microbean.lang.element.Element implements javax.lang.model.element.ModuleElement {
 
@@ -54,7 +50,7 @@ public final class ModuleElement extends org.microbean.lang.element.Element impl
   public ModuleElement() {
     this(false);
   }
-  
+
   public ModuleElement(final boolean open) {
     super(ElementKind.MODULE);
     this.open = open;
@@ -123,7 +119,7 @@ public final class ModuleElement extends org.microbean.lang.element.Element impl
    * Static methods.
    */
 
-  
+
   private static final Directive validateDirective(final Directive directive) {
     return Objects.requireNonNull(directive, "directive");
   }

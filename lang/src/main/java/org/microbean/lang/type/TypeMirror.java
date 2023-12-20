@@ -65,7 +65,7 @@ public abstract sealed class TypeMirror
   }
 
   @Override // TypeMirror
-  public <R, P> R accept(final TypeVisitor<R, P> v, P p) {
+  public <R, P> R accept(final TypeVisitor<R, P> v, final P p) {
     return switch (this.getKind()) {
     case ARRAY -> v.visitArray((javax.lang.model.type.ArrayType)this, p);
     case DECLARED -> v.visitDeclared((javax.lang.model.type.DeclaredType)this, p);

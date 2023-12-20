@@ -45,7 +45,7 @@ import static org.microbean.lang.type.Types.isStatic;
 public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
   private final TypeAndElementSource elementSource;
-  
+
   private final Equality equality;
 
   private final Types types;
@@ -77,7 +77,7 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
     }
     return new MemberTypeVisitor(this.elementSource, this.equality, this.types, asSuperVisitor, this.eraseVisitor, this.supertypeVisitor);
   }
-  
+
   // Only affects substitution
   public final MemberTypeVisitor withSupertypeVisitor(final SupertypeVisitor supertypeVisitor) {
     if (supertypeVisitor == this.supertypeVisitor) {
@@ -85,7 +85,7 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
     }
     return new MemberTypeVisitor(this.elementSource, this.equality, this.types, this.asSuperVisitor, this.eraseVisitor, supertypeVisitor);
   }
-  
+
   @Override
   protected final TypeMirror defaultAction(final TypeMirror t, final Element e) {
     return e.asType();

@@ -14,11 +14,9 @@
 package org.microbean.lang.bytebuddy;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import javax.lang.model.element.Name;
 import javax.lang.model.element.QualifiedNameable;
 import javax.lang.model.element.TypeElement;
 
@@ -100,7 +98,7 @@ public final class ByteBuddy2 {
 
       case NONE -> null;
 
-        // Primitives are easy. ByteBuddy caches them.
+      // Primitives are easy. ByteBuddy caches them.
       case BOOLEAN -> TypeDefinition.Sort.describe(boolean.class);
       case BYTE -> TypeDefinition.Sort.describe(byte.class);
       case CHAR -> TypeDefinition.Sort.describe(char.class);
@@ -122,8 +120,8 @@ public final class ByteBuddy2 {
         final TypeElement te = (TypeElement)dt.asElement();
         final String n = te.getQualifiedName().toString();
         yield switch (n) {
-          // Certain declared types are easy because ByteBuddy also caches them, so the classes are loaded already. We
-          // add a few simple ones to the list.
+        // Certain declared types are easy because ByteBuddy also caches them, so the classes are loaded already. We add
+        // a few simple ones to the list.
         case "java.lang.Boolean" -> TypeDefinition.Sort.describe(Boolean.class);
         case "java.lang.Byte" -> TypeDefinition.Sort.describe(Byte.class);
         case "java.lang.Character" -> TypeDefinition.Sort.describe(Character.class);

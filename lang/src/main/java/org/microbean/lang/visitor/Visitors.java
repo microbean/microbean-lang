@@ -26,7 +26,7 @@ import org.microbean.lang.type.Types;
 public final class Visitors {
 
   private final TypeAndElementSource elementSource;
-  
+
   private final EraseVisitor eraseVisitor;
 
   private final SupertypeVisitor supertypeVisitor;

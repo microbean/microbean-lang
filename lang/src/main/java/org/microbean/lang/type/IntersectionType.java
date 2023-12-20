@@ -56,7 +56,7 @@ public final class IntersectionType extends TypeMirror implements javax.lang.mod
   }
 
   @Override // TypeMirror
-  public final <R, P> R accept(final TypeVisitor<R, P> v, P p) {
+  public final <R, P> R accept(final TypeVisitor<R, P> v, final P p) {
     return v.visitIntersection(this, p);
   }
 

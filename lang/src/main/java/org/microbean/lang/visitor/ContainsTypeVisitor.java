@@ -63,7 +63,7 @@ import org.microbean.lang.type.Types;
 public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
   private final TypeAndElementSource elementSource;
-  
+
   private final Types types;
 
   private SameTypeVisitor sameTypeVisitor;
@@ -98,20 +98,20 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
     }
     final ContainsTypeVisitor v = new ContainsTypeVisitor(this.elementSource, this.types);
     v.setSameTypeVisitor(sameTypeVisitor);
-    return v;    
+    return v;
   }
-  
+
   public final ContainsTypeVisitor withSubtypeVisitor(final SubtypeVisitor subtypeVisitor) {
     if (subtypeVisitor == this.subtypeVisitor) {
       return this;
     }
     final ContainsTypeVisitor v = new ContainsTypeVisitor(this.elementSource, this.types);
     v.setSubtypeVisitor(this.subtypeVisitor);
-    return v;    
+    return v;
   }
-  
+
   // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1524-L1531
-  final boolean visit(final List<? extends TypeMirror> t, final List<? extends TypeMirror> s) {    
+  final boolean visit(final List<? extends TypeMirror> t, final List<? extends TypeMirror> s) {
     final int size = t.size();
     if (size <= 0 || size != s.size()) {
       return false;
@@ -123,7 +123,7 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
     }
     return true;
   }
-  
+
   @Override
   protected final Boolean defaultAction(final TypeMirror t, final TypeMirror s) {
     return this.sameTypeVisitor.visit(t, s);

@@ -484,8 +484,8 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
   private final TypeMirror rewriteSupers(final TypeMirror t) {
     // I guess t could be an ArrayType (i.e. generic array type)
     if (!allTypeArguments(t).isEmpty()) {
-      List<TypeVariable> from = new ArrayList<>();
-      List<TypeMirror> to = new ArrayList<>();
+      final List<TypeVariable> from = new ArrayList<>();
+      final List<TypeMirror> to = new ArrayList<>();
       new AdaptingVisitor(this.elementSource, this.types, this.sameTypeVisitor, this, from, to).adaptSelf((DeclaredType)t);
       if (!from.isEmpty()) {
         final List<TypeMirror> rewrite = new ArrayList<>();

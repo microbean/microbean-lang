@@ -181,7 +181,7 @@ public final class Name implements javax.lang.model.element.Name {
     if (cs == null) {
       return EMPTY;
     }
-    String s;
+    final String s;
     if (cs instanceof javax.lang.model.element.Name) {
       CompletionLock.acquire();
       try {

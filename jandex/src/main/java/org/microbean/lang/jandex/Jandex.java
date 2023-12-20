@@ -19,10 +19,6 @@ package org.microbean.lang.jandex;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import java.util.function.BiFunction;
@@ -49,35 +45,25 @@ import javax.lang.model.type.WildcardType;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationTarget;
-import org.jboss.jandex.ArrayType;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.ClassInfo.EnclosingMethodInfo;
 import org.jboss.jandex.ClassInfo.NestingType;
 import org.jboss.jandex.ClassType;
 import org.jboss.jandex.DotName;
-import org.jboss.jandex.EmptyTypeTarget;
-import org.jboss.jandex.EquivalenceKey;
 import org.jboss.jandex.FieldInfo;
 import org.jboss.jandex.IndexView;
 import org.jboss.jandex.MethodInfo;
 import org.jboss.jandex.MethodParameterInfo;
-import org.jboss.jandex.MethodParameterTypeTarget;
 import org.jboss.jandex.ModuleInfo;
 import org.jboss.jandex.ModuleInfo.ExportedPackageInfo;
 import org.jboss.jandex.ModuleInfo.OpenedPackageInfo;
 import org.jboss.jandex.ModuleInfo.ProvidedServiceInfo;
 import org.jboss.jandex.ModuleInfo.RequiredModuleInfo;
 import org.jboss.jandex.ParameterizedType;
-import org.jboss.jandex.PositionBasedTypeTarget;
 import org.jboss.jandex.PrimitiveType;
 import org.jboss.jandex.RecordComponentInfo;
-import org.jboss.jandex.ThrowsTypeTarget;
 import org.jboss.jandex.Type;
-import org.jboss.jandex.TypeParameterBoundTypeTarget;
 import org.jboss.jandex.TypeParameterTypeTarget;
-import org.jboss.jandex.TypeTarget;
-import org.jboss.jandex.TypeVariableReference;
-import org.jboss.jandex.VoidType;
 
 import org.microbean.lang.Modeler;
 
@@ -90,7 +76,9 @@ public final class Jandex extends Modeler {
   private final BiFunction<? super String, ? super IndexView, ? extends ClassInfo> unindexedClassnameFunction;
 
   public Jandex(final IndexView i) {
-    this(i, (n, j) -> { throw new IllegalArgumentException("class " + n + " not found in IndexView " + j); });
+    this(i, (n, j) -> {
+        throw new IllegalArgumentException("class " + n + " not found in IndexView " + j);
+      });
   }
 
   public Jandex(final IndexView i, final BiFunction<? super String, ? super IndexView, ? extends ClassInfo> unindexedClassnameFunction) {
@@ -527,7 +515,8 @@ public final class Jandex extends Modeler {
     case CLASS, PARAMETERIZED_TYPE -> this.type(k, org.microbean.lang.type.DeclaredType::new, this::build);
     case PRIMITIVE -> this.type(type.asPrimitiveType(), () -> new org.microbean.lang.type.PrimitiveType(kind(type.asPrimitiveType())), this::build);
     case TYPE_VARIABLE -> this.type(this.typeParameterInfoFor(k));
-    case TYPE_VARIABLE_REFERENCE -> this.type(new TypeContext(k.context(), type.asTypeVariableReference().follow(), k.position(), k.kind())); // k.kind() had better be TYPE_ARGUMENT?
+    // k.kind() had better be TYPE_ARGUMENT below?
+    case TYPE_VARIABLE_REFERENCE -> this.type(new TypeContext(k.context(), type.asTypeVariableReference().follow(), k.position(), k.kind()));
     case UNRESOLVED_TYPE_VARIABLE -> throw new AssertionError();
     case VOID -> org.microbean.lang.type.NoType.VOID;
     case WILDCARD_TYPE -> this.type(k, org.microbean.lang.type.WildcardType::new, this::build);
@@ -632,7 +621,9 @@ public final class Jandex extends Modeler {
     e.setType(org.microbean.lang.type.NoType.MODULE);
 
     for (final RequiredModuleInfo rmi : mi.requires()) {
-      e.addDirective(new org.microbean.lang.element.ModuleElement.RequiresDirective(this.element(this.i.getModuleByName(rmi.name())), rmi.isStatic(), rmi.isTransitive()));
+      e.addDirective(new org.microbean.lang.element.ModuleElement.RequiresDirective(this.element(this.i.getModuleByName(rmi.name())),
+                                                                                    rmi.isStatic(),
+                                                                                    rmi.isTransitive()));
     }
 
     for (final ExportedPackageInfo epi : mi.exports()) {
@@ -705,15 +696,15 @@ public final class Jandex extends Modeler {
     t.setDefiningElement(e);
 
     e.setEnclosingElement(switch (e.getNestingKind()) {
-      // Anonymous and local classes are effectively ignored in the javax.lang.model.* hierarchy. The documentation for
-      // javax.lang.model.element.Element#getEnclosedElements() says, in part: "A class or interface is considered to
-      // enclose the fields, methods, constructors, record components, and member classes and interfaces that it
-      // directly declares. A package encloses the top-level classes and interfaces within it, but is not considered to
-      // enclose subpackages. A module encloses packages within it. Enclosed elements may include implicitly declared
-      // mandated elements. Other kinds of elements are not currently considered to enclose any elements; however, that
-      // may change as this API or the programming language evolves."
-      //
-      // Additionally, Jandex provides no access to local or anonymous classes at all.
+    // Anonymous and local classes are effectively ignored in the javax.lang.model.* hierarchy. The documentation for
+    // javax.lang.model.element.Element#getEnclosedElements() says, in part: "A class or interface is considered to
+    // enclose the fields, methods, constructors, record components, and member classes and interfaces that it directly
+    // declares. A package encloses the top-level classes and interfaces within it, but is not considered to enclose
+    // subpackages. A module encloses packages within it. Enclosed elements may include implicitly declared mandated
+    // elements. Other kinds of elements are not currently considered to enclose any elements; however, that may change
+    // as this API or the programming language evolves."
+    //
+    // Additionally, Jandex provides no access to local or anonymous classes at all.
     case ANONYMOUS, LOCAL -> null;
     case MEMBER -> this.element(this.classInfoFor(ci.enclosingClass()));
     case TOP_LEVEL -> this.packageElement(ci.name().prefix());
@@ -994,7 +985,7 @@ public final class Jandex extends Modeler {
 
   }
 
-  private final void build(final FieldInfo fi, org.microbean.lang.type.ArrayType t) {
+  private final void build(final FieldInfo fi, final org.microbean.lang.type.ArrayType t) {
     final org.jboss.jandex.ArrayType ft = fi.type().asArrayType();
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(fi);
     e.setType(t);
@@ -1004,7 +995,7 @@ public final class Jandex extends Modeler {
     }
   }
 
-  private final void build(final FieldInfo fi, org.microbean.lang.type.DeclaredType t) {
+  private final void build(final FieldInfo fi, final org.microbean.lang.type.DeclaredType t) {
     final org.jboss.jandex.Type ft = fi.type();
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(fi);
     e.setType(t);
@@ -1014,13 +1005,13 @@ public final class Jandex extends Modeler {
     }
   }
 
-  private final void build(final FieldInfo fi, org.microbean.lang.type.PrimitiveType t) {
+  private final void build(final FieldInfo fi, final org.microbean.lang.type.PrimitiveType t) {
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(fi);
     e.setType(t);
     // Primitive types cannot bear annotations.
   }
 
-  private final void build(final FieldInfo fi, org.microbean.lang.type.TypeVariable t) {
+  private final void build(final FieldInfo fi, final org.microbean.lang.type.TypeVariable t) {
     final org.jboss.jandex.TypeVariable ft = fi.type().asTypeVariable();
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(fi);
     e.setType(t);
@@ -1057,7 +1048,7 @@ public final class Jandex extends Modeler {
     }
   }
 
-  private final void build(final MethodParameterInfo mpi, org.microbean.lang.type.ArrayType t) {
+  private final void build(final MethodParameterInfo mpi, final org.microbean.lang.type.ArrayType t) {
     final org.jboss.jandex.ArrayType mpit = mpi.type().asArrayType();
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(mpi);
     e.setType(t);
@@ -1067,7 +1058,7 @@ public final class Jandex extends Modeler {
     }
   }
 
-  private final void build(final MethodParameterInfo mpi, org.microbean.lang.type.DeclaredType t) {
+  private final void build(final MethodParameterInfo mpi, final org.microbean.lang.type.DeclaredType t) {
     final org.jboss.jandex.Type mpit = mpi.type();
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(mpi);
     e.setType(t);
@@ -1077,13 +1068,13 @@ public final class Jandex extends Modeler {
     }
   }
 
-  private final void build(final MethodParameterInfo mpi, org.microbean.lang.type.PrimitiveType t) {
+  private final void build(final MethodParameterInfo mpi, final org.microbean.lang.type.PrimitiveType t) {
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(mpi);
     e.setType(t);
     // Primitive types cannot bear annotations.
   }
 
-  private final void build(final MethodParameterInfo mpi, org.microbean.lang.type.TypeVariable t) {
+  private final void build(final MethodParameterInfo mpi, final org.microbean.lang.type.TypeVariable t) {
     final org.jboss.jandex.TypeVariable mpit = mpi.type().asTypeVariable();
     final org.microbean.lang.element.VariableElement e = (org.microbean.lang.element.VariableElement)this.element(mpi);
     e.setType(t);
@@ -1093,7 +1084,7 @@ public final class Jandex extends Modeler {
     }
   }
 
-  private final void build(final RecordComponentInfo rci, org.microbean.lang.type.ArrayType t) {
+  private final void build(final RecordComponentInfo rci, final org.microbean.lang.type.ArrayType t) {
     final org.jboss.jandex.ArrayType rcit = rci.type().asArrayType();
     final org.microbean.lang.element.RecordComponentElement e = (org.microbean.lang.element.RecordComponentElement)this.element(rci);
     e.setType(t);
@@ -1103,7 +1094,7 @@ public final class Jandex extends Modeler {
     }
   }
 
-  private final void build(final RecordComponentInfo rci, org.microbean.lang.type.DeclaredType t) {
+  private final void build(final RecordComponentInfo rci, final org.microbean.lang.type.DeclaredType t) {
     final org.jboss.jandex.Type rcit = rci.type();
     final org.microbean.lang.element.RecordComponentElement e = (org.microbean.lang.element.RecordComponentElement)this.element(rci);
     e.setType(t);
@@ -1113,13 +1104,13 @@ public final class Jandex extends Modeler {
     }
   }
 
-  private final void build(final RecordComponentInfo rci, org.microbean.lang.type.PrimitiveType t) {
+  private final void build(final RecordComponentInfo rci, final org.microbean.lang.type.PrimitiveType t) {
     final org.microbean.lang.element.RecordComponentElement e = (org.microbean.lang.element.RecordComponentElement)this.element(rci);
     e.setType(t);
     // Primitive types cannot bear annotations.
   }
 
-  private final void build(final RecordComponentInfo rci, org.microbean.lang.type.TypeVariable t) {
+  private final void build(final RecordComponentInfo rci, final org.microbean.lang.type.TypeVariable t) {
     final org.jboss.jandex.TypeVariable rcit = rci.type().asTypeVariable();
     final org.microbean.lang.element.RecordComponentElement e = (org.microbean.lang.element.RecordComponentElement)this.element(rci);
     e.setType(t);
@@ -1481,7 +1472,7 @@ public final class Jandex extends Modeler {
     }
 
     // See relevant type contexts from https://docs.oracle.com/javase/specs/jls/se19/html/jls-4.html#jls-4.11
-    private enum Kind {
+    private static enum Kind {
 
       // See also https://github.com/openjdk/jdk/blob/jdk-21%2B13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/TargetType.java
 
@@ -1491,7 +1482,7 @@ public final class Jandex extends Modeler {
       THROWS, // (method) throws type
       RECEIVER, // method receiver type
       TYPE_ARGUMENT, // e.g. the "String" in "public class Foo extends Bar<@Baz String> {}"
-      COMPONENT_TYPE; // e.g. "@Baz"-annotated "[]" in "@Qux String @Bar [] @Baz []"
+      COMPONENT_TYPE // e.g. "@Baz"-annotated "[]" in "@Qux String @Bar [] @Baz []"
 
     }
 

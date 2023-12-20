@@ -44,7 +44,7 @@ import static org.microbean.lang.type.Types.isInterface;
 public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends TypeMirror>, Void> {
 
   private final TypeAndElementSource elementSource;
-  
+
   private final Equality equality;
 
   private final Types types;

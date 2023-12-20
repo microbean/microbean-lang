@@ -50,7 +50,7 @@ public final class PackageElement extends Element implements javax.lang.model.el
   public final javax.lang.model.element.Name getQualifiedName() {
     return this.getSimpleName();
   }
-  
+
   @Override // Element
   protected final TypeMirror validateType(final TypeMirror type) {
     if (type.getKind() == TypeKind.PACKAGE && type instanceof NoType) {

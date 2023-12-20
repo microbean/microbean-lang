@@ -57,7 +57,7 @@ public non-sealed class UnionType extends TypeMirror implements javax.lang.model
   }
 
   @Override // TypeMirror
-  public <R, P> R accept(final TypeVisitor<R, P> v, P p) {
+  public <R, P> R accept(final TypeVisitor<R, P> v, final P p) {
     return v.visitUnion(this, p);
   }
 

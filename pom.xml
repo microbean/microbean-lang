@@ -41,8 +41,8 @@
   </developers>
 
   <scm>
-    <connection>scm:git:git@github.com:microbean/microbean-lang.git</connection>
-    <developerConnection>scm:git:git@github.com:microbean/microbean-lang.git</developerConnection>
+    <connection>${scm.url}</connection>
+    <developerConnection>${scm.url}</developerConnection>
     <url>https://github.com/microbean/microbean-lang/</url>
     <tag>HEAD</tag>
   </scm>
@@ -53,6 +53,11 @@
   </issueManagement>
 
   <distributionManagement>
+    <repository>
+      <id>sonatype-oss-repository-hosting</id>
+      <!-- See https://central.sonatype.org/publish/publish-maven/#distribution-management-and-authentication -->
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
     <site>
       <id>Github Pages</id>
       <name>microBean™ Lang Site</name>
@@ -78,14 +83,14 @@
       <dependency>
         <groupId>io.smallrye</groupId>
         <artifactId>jandex</artifactId>
-        <version>3.1.5</version>
+        <version>3.1.6</version>
         <type>jar</type>
       </dependency>
 
       <dependency>
         <groupId>net.bytebuddy</groupId>
         <artifactId>byte-buddy</artifactId>
-        <version>1.14.8</version>
+        <version>1.14.10</version>
         <type>jar</type>
       </dependency>
 
@@ -99,14 +104,14 @@
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-api</artifactId>
-        <version>5.10.0</version>
+        <version>5.10.1</version>
         <type>jar</type>
       </dependency>
 
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-engine</artifactId>
-        <version>5.10.0</version>
+        <version>5.10.1</version>
         <type>jar</type>
       </dependency>
 
@@ -144,17 +149,128 @@
           <artifactId>maven-antrun-plugin</artifactId>
           <version>3.1.0</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-assembly-plugin</artifactId>
           <version>3.4.2</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-checkstyle-plugin</artifactId>
-          <version>3.1.2</version>
+          <version>3.3.1</version>
+          <configuration>
+            <checkstyleRules>
+              <module name="Checker">
+                <module name="BeforeExecutionExclusionFileFilter">
+                  <property name="fileNamePattern" value="module\-info\.java$" />
+                </module>
+                <module name="FileTabCharacter">
+                  <property name="eachLine" value="true" />
+                </module>
+                <module name="JavadocPackage" />
+                <module name="LineLength">
+                  <property name="max" value="160" />
+                </module>
+                <module name="NewlineAtEndOfFile">
+                  <property name="lineSeparator" value="lf" />
+                </module>
+                <module name="TreeWalker">
+                  <module name="AnnotationLocation">
+                    <property name="allowSamelineSingleParameterlessAnnotation" value="false" />
+                  </module>
+                  <module name="AnnotationUseStyle" />
+                  <module name="ArrayTypeStyle" />
+                  <module name="AvoidNestedBlocks" />
+                  <module name="AvoidStarImport" />
+                  <module name="ClassMemberImpliedModifier" />
+                  <module name="CommentsIndentation" />
+                  <module name="DeclarationOrder" />
+                  <module name="DefaultComesLast" />
+                  <module name="EmptyBlock" />
+                  <module name="EmptyCatchBlock" />
+                  <module name="EmptyStatement" />
+                  <module name="EqualsHashCode" />
+                  <module name="ExplicitInitialization" />
+                  <module name="FinalClass" />
+                  <module name="FinalLocalVariable">
+                    <property name="tokens" value="VARIABLE_DEF,PARAMETER_DEF" />
+                  </module>
+                  <module name="HideUtilityClassConstructor" />
+                  <module name="InnerAssignment" />
+                  <module name="InnerTypeLast" />
+                  <module name="InterfaceIsType" />
+                  <module name="InterfaceMemberImpliedModifier">
+                    <property name="violateImpliedAbstractMethod" value="false" />
+                  </module>
+                  <module name="InvalidJavadocPosition" />
+                  <module name="JavadocContentLocationCheck" />
+                  <module name="JavadocMissingWhitespaceAfterAsterisk" />
+                  <module name="JavadocParagraph" />
+                  <module name="JavadocStyle" />
+                  <module name="JavadocVariable">
+                    <property name="scope" value="protected" />
+                  </module>
+                  <module name="LeftCurly" />
+                  <module name="MethodTypeParameterName" />
+                  <module name="MissingCtor" />
+                  <module name="MissingDeprecated" />
+                  <module name="MissingJavadocMethod" />
+                  <module name="MissingJavadocPackage" />
+                  <module name="MissingJavadocType">
+                    <property name="scope" value="protected" />
+                  </module>
+                  <module name="MissingOverride" />
+                  <module name="MultipleVariableDeclarations" />
+                  <module name="ModifierOrder" />
+                  <module name="NeedBraces" />
+                  <module name="NoArrayTrailingComma" />
+                  <module name="NoFinalizer" />
+                  <module name="NonEmptyAtclauseDescription" />
+                  <module name="OneStatementPerLine" />
+                  <module name="OneTopLevelClass" />
+                  <module name="OuterTypeFilename" />
+                  <module name="OverloadMethodsDeclarationOrder" />
+                  <module name="PackageDeclaration" />
+                  <module name="RedundantImport" />
+                  <module name="RegexpSinglelineJava">
+                    <property name="format" value="\s+$" />
+                    <property name="message" value="File contains trailing whitespace." />
+                  </module>
+                  <module name="RequireEmptyLineBeforeBlockTagGroup" />
+                  <module name="RequireThis" />
+                  <module name="RightCurly" />
+                  <module name="SummaryJavadocCheck" />
+                  <module name="SuppressWarningsHolder" />
+                  <module name="UnnecessarySemicolonAfterOuterTypeDeclaration" />
+                  <module name="UnnecessarySemicolonAfterTypeMemberDeclaration" />
+                  <module name="UnnecessarySemicolonInEnumeration" />
+                  <module name="UnnecessarySemicolonInTryWithResources" />
+                  <module name="UnusedImports" />
+                  <module name="UnusedLocalVariable" />
+                  <module name="UpperEll" />
+                  <module name="VariableDeclarationUsageDistance" />
+                </module>
+                <property name="charset" value="${project.build.sourceEncoding}" />
+                <property name="tabWidth" value="2" />
+              </module>
+            </checkstyleRules>
+            <propertyExpansion>
+              project.basedir=${project.basedir}
+              project.build.sourceEncoding=${project.build.sourceEncoding}
+            </propertyExpansion>
+          </configuration>
+          <dependencies>
+            <dependency>
+              <groupId>com.puppycrawl.tools</groupId>
+              <artifactId>checkstyle</artifactId>
+              <version>10.12.6</version>
+            </dependency>
+          </dependencies>
         </plugin>
+
         <plugin>
           <artifactId>maven-clean-plugin</artifactId>
-          <version>3.3.1</version>
+          <version>3.3.2</version>
           <configuration>
             <filesets>
               <fileset>
@@ -167,9 +283,10 @@
             </filesets>
           </configuration>
         </plugin>
+
         <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.11.0</version>
+          <version>3.12.0</version>
           <configuration>
             <compilerArgs>
               <arg>-parameters</arg>
@@ -179,33 +296,40 @@
             </compilerArgs>
           </configuration>
         </plugin>
+
         <plugin>
           <artifactId>maven-dependency-plugin</artifactId>
-          <version>3.6.0</version>
+          <version>3.6.1</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-deploy-plugin</artifactId>
           <version>3.1.1</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-enforcer-plugin</artifactId>
           <version>3.4.1</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-gpg-plugin</artifactId>
           <version>3.0.1</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-install-plugin</artifactId>
           <version>3.1.1</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
           <version>3.3.0</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>3.6.0</version>
+          <version>3.6.3</version>
           <configuration>
             <additionalJOptions combine.children="append">
               <additionalJOption>-J-Dhttp.agent=maven-javadoc-plugin</additionalJOption>
@@ -217,34 +341,48 @@
             <docfilessubdirs>true</docfilessubdirs>
           </configuration>
         </plugin>
+
         <plugin>
           <artifactId>maven-plugin-plugin</artifactId>
-          <version>3.9.0</version>
+          <version>3.10.2</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-project-info-reports-plugin</artifactId>
-          <version>3.4.5</version>
+          <version>3.5.0</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-release-plugin</artifactId>
-          <version>3.0.0</version> <!-- see https://issues.apache.org/jira/browse/MRELEASE-1038 -->
+          <version>3.0.1</version> <!-- see https://issues.apache.org/jira/browse/MRELEASE-1038 -->
         </plugin>
+
         <plugin>
           <artifactId>maven-resources-plugin</artifactId>
           <version>3.3.1</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-scm-plugin</artifactId>
           <version>2.0.1</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-scm-publish-plugin</artifactId>
           <version>3.2.1</version>
         </plugin>
+
         <plugin>
           <artifactId>maven-site-plugin</artifactId>
-          <version>4.0.0-M8</version>
+          <version>4.0.0-M13</version>
           <executions>
+            <execution>
+              <id>Attach site descriptor</id>
+              <goals>
+                <goal>attach-descriptor</goal>
+              </goals>
+              <phase>package</phase>
+            </execution>
             <execution>
               <id>Stage site</id>
               <goals>
@@ -254,6 +392,7 @@
             </execution>
           </executions>
         </plugin>
+
         <plugin>
           <artifactId>maven-source-plugin</artifactId>
           <version>3.3.0</version>
@@ -266,9 +405,10 @@
             </execution>
           </executions>
         </plugin>
+
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.1.2</version>
+          <version>3.2.3</version>
           <configuration>
             <properties>
               <configurationParameters>
@@ -291,47 +431,54 @@
             </dependency>
           </dependencies>
         </plugin>
+
         <plugin>
           <artifactId>maven-toolchains-plugin</artifactId>
           <version>3.1.0</version>
         </plugin>
+
         <plugin>
           <groupId>com.github.spotbugs</groupId>
           <artifactId>spotbugs-maven-plugin</artifactId>
-          <version>4.7.3.5</version>
+          <version>4.8.2.0</version>
         </plugin>
+
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>versions-maven-plugin</artifactId>
-          <version>2.16.1</version>
+          <version>2.16.2</version>
         </plugin>
+
         <plugin>
           <groupId>io.smallrye</groupId>
           <artifactId>jandex-maven-plugin</artifactId>
-          <version>3.1.5</version>
+          <version>3.1.6</version>
         </plugin>
+
         <plugin>
           <groupId>org.sonatype.plugins</groupId>
           <artifactId>nexus-staging-maven-plugin</artifactId>
-          <version>1.6.8</version>
+          <version>1.6.13</version>
           <extensions>true</extensions>
           <dependencies>
             <!-- https://issues.sonatype.org/browse/NEXUS-26993?focusedCommentId=1098136&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-1098136 -->
             <dependency>
               <groupId>com.thoughtworks.xstream</groupId>
               <artifactId>xstream</artifactId>
-              <version>1.4.15</version>
+              <version>1.4.20</version>
             </dependency>
           </dependencies>
           <configuration>
             <serverId>sonatype-oss-repository-hosting</serverId>
-            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+            <nexusUrl>${nexusUrl}</nexusUrl>
+            <autoReleaseAfterClose>${autoReleaseAfterClose}</autoReleaseAfterClose>
           </configuration>
         </plugin>
+
       </plugins>
     </pluginManagement>
     <plugins>
+
       <plugin>
         <groupId>io.smallrye</groupId>
         <artifactId>jandex-maven-plugin</artifactId>
@@ -341,10 +488,12 @@
           </execution>
         </executions>
       </plugin>
+
       <plugin>
         <groupId>org.sonatype.plugins</groupId>
         <artifactId>nexus-staging-maven-plugin</artifactId>
       </plugin>
+
     </plugins>
   </build>
 
@@ -369,6 +518,8 @@
     <tagNameFormat>v@{project.version}</tagNameFormat>
     <useReleaseProfile>false</useReleaseProfile>
 
+    <scm.url>scm:git:git@github.com:microbean/microbean-lang.git</scm.url>
+
     <!-- maven-scm-publish-plugin properties;
          see https://maven.apache.org/plugins/maven-scm-publish-plugin/publish-scm-mojo.html -->
     <scmpublish.content>${project.reporting.outputDirectory}</scmpublish.content>
@@ -387,6 +538,9 @@
 
     <!-- nexus-staging-maven-plugin properties -->
     <!-- See https://github.com/sonatype/nexus-maven-plugins/blob/0aee3defb33cb133ff536aba59b11d32a368b1e6/staging/maven-plugin/src/main/java/org/sonatype/nexus/maven/staging/AbstractStagingMojo.java#L169-L175 -->
+    <autoReleaseAfterClose>true</autoReleaseAfterClose>
+    <!-- <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl> -->
+    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
     <stagingProgressTimeoutMinutes>10</stagingProgressTimeoutMinutes>
 
     <!-- Other properties -->
@@ -397,6 +551,18 @@
 
   <reporting>
     <plugins>
+      <plugin>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <reportSets>
+          <reportSet>
+            <id>aggregate</id>
+            <inherited>false</inherited>
+            <reports>
+              <report>checkstyle-aggregate</report>
+            </reports>
+          </reportSet>
+        </reportSets>
+      </plugin>
       <plugin>
         <artifactId>maven-javadoc-plugin</artifactId>
         <reportSets>

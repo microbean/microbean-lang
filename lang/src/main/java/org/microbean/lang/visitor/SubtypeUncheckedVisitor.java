@@ -93,7 +93,7 @@ public final class SubtypeUncheckedVisitor extends SimpleTypeVisitor14<Boolean, 
                                   this.sameTypeVisitor,
                                   this.capture);
   }
-  
+
   final SubtypeUncheckedVisitor withCapture(final boolean capture) {
     if (capture) {
       if (this.withCaptureVariant == null) {

@@ -17,7 +17,6 @@
 package org.microbean.lang.visitor;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,17 +41,15 @@ import org.microbean.lang.Equality;
 
 import org.microbean.lang.element.DelegatingElement;
 
-import org.microbean.lang.type.Types;
-
 // Basically done
 // isSameType() in javac's Types.java
 public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
+  final ContainsTypeVisitor containsTypeVisitor;
+
   private final TypeAndElementSource elementSource;
 
   private final Equality equality;
-
-  final ContainsTypeVisitor containsTypeVisitor;
 
   private final SupertypeVisitor supertypeVisitor;
 
@@ -85,7 +82,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
     }
     return
       new SameTypeVisitor(this.elementSource, this.equality, this.containsTypeVisitor(), supertypeVisitor, this.wildcardsComparable);
-      
+
   }
 
   final ContainsTypeVisitor containsTypeVisitor() {

@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -32,11 +31,11 @@ import javax.lang.model.type.TypeMirror;
 public abstract class Modeler implements TypeAndElementSource {
 
   private final Map<Object, AnnotationMirror> annotations;
-  
+
   private final Map<Object, Element> elements;
 
   private final Map<Object, TypeMirror> types;
-  
+
   protected Modeler() {
     super();
     this.annotations = new HashMap<>();
@@ -59,7 +58,7 @@ public abstract class Modeler implements TypeAndElementSource {
     }
     return r;
   }
-  
+
   @SuppressWarnings("unchecked")
   protected final <K, E extends Element> E element(final K k,
                                                    final Supplier<? extends E> s,
@@ -91,5 +90,5 @@ public abstract class Modeler implements TypeAndElementSource {
     }
     return r;
   }
-  
+
 }

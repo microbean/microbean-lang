@@ -55,11 +55,11 @@ public final class ExecutableType extends TypeMirror implements javax.lang.model
     this.unmodifiableTypeVariables = Collections.unmodifiableList(this.typeVariables);
   }
 
-  public ExecutableType(javax.lang.model.type.ExecutableType t) {
+  public ExecutableType(final javax.lang.model.type.ExecutableType t) {
     this(t, t.getTypeVariables());
   }
 
-  public ExecutableType(javax.lang.model.type.ExecutableType t, final Iterable<? extends javax.lang.model.type.TypeVariable> typeVariables) {
+  public ExecutableType(final javax.lang.model.type.ExecutableType t, final Iterable<? extends javax.lang.model.type.TypeVariable> typeVariables) {
     this();
     if (t.getKind() != TypeKind.EXECUTABLE) {
       throw new IllegalArgumentException();
@@ -82,7 +82,7 @@ public final class ExecutableType extends TypeMirror implements javax.lang.model
   }
 
   @Override // TypeMirror
-  public final <R, P> R accept(final TypeVisitor<R, P> v, P p) {
+  public final <R, P> R accept(final TypeVisitor<R, P> v, final P p) {
     return v.visitExecutable(this, p);
   }
 

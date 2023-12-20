@@ -17,8 +17,6 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import java.util.function.Predicate;
-
 import javax.lang.model.element.Element;
 
 import javax.lang.model.type.ArrayType;
@@ -36,14 +34,14 @@ import org.microbean.lang.Equality;
 
 import org.microbean.lang.element.DelegatingElement;
 
-import org.microbean.lang.type.NoType;
 import org.microbean.lang.type.Types;
 
 import static org.microbean.lang.type.Types.asElement;
 
 /**
- * Given a {@link TypeMirror} and an {@link Element}, attempts to find a supertype of that {@link TypeMirror} whose
- * defining element is equal to (normally is identical to) the supplied {@link Element}.
+ * A {@link SimpleTypeVisitor14} that, given a {@link TypeMirror} and an {@link Element}, attempts to find a supertype
+ * of that {@link TypeMirror} whose defining element is equal to (normally is identical to) the supplied {@link
+ * Element}.
  *
  * <p>For example, given a type denoted by {@code List<String>}, and a {@link javax.lang.model.element.TypeElement}
  * denoted by {@code Collection}, the result of visitation will be the type denoted by {@code Collection<String>}.</p>
@@ -109,7 +107,7 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
     v.setSubtypeVisitor(subtypeVisitor);
     return v;
   }
-  
+
   final void setSubtypeVisitor(final SubtypeVisitor subtypeVisitor) {
     if (subtypeVisitor.asSuperVisitor() != this) {
       throw new IllegalArgumentException("subtypeVisitor");

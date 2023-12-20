@@ -37,11 +37,11 @@ import static org.microbean.lang.type.Types.asElement;
 final class TypeMirrorPair {
 
   private final Types types;
-  
+
   private final SameTypeVisitor sameTypeVisitor;
-  
+
   private final TypeMirror t;
-  
+
   private final TypeMirror s;
 
   TypeMirrorPair(final Types types,
@@ -56,11 +56,6 @@ final class TypeMirrorPair {
   }
 
   @Override
-  public final int hashCode() {
-    return 127 * hashCode(this.t) + hashCode(this.s);
-  }
-
-  @Override
   public final boolean equals(final Object other) {
     if (this == other) {
       return true;
@@ -72,6 +67,11 @@ final class TypeMirrorPair {
     } else {
       return false;
     }
+  }
+
+  @Override
+  public final int hashCode() {
+    return 127 * hashCode(this.t) + hashCode(this.s);
   }
 
   private final int hashCode(final TypeMirror t) {
@@ -192,7 +192,7 @@ final class TypeMirrorPair {
     if (enclosingElement == null) {
       return e.getSimpleName();
     }
-    char separator;
+    final char separator;
     switch (enclosingElement.getKind()) {
     case ANNOTATION_TYPE:
     case CLASS:
@@ -234,5 +234,5 @@ final class TypeMirrorPair {
     default -> List.of();
     };
   }
-  
+
 }

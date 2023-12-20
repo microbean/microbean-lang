@@ -16,8 +16,6 @@
  */
 package org.microbean.lang.type;
 
-import java.util.List;
-
 import javax.lang.model.element.AnnotationMirror;
 
 import javax.lang.model.type.TypeKind;
@@ -104,7 +102,7 @@ public non-sealed class PrimitiveType extends TypeMirror implements javax.lang.m
 
 
   @Override // TypeMirror
-  public final <R, P> R accept(final TypeVisitor<R, P> v, P p) {
+  public final <R, P> R accept(final TypeVisitor<R, P> v, final P p) {
     return v.visitPrimitive(this, p);
   }
 

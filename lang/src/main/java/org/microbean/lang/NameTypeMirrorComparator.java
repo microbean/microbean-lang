@@ -30,8 +30,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
-import org.microbean.lang.TestingTypeMirrorComparator;
-
 // Totally ordering (I hope!) Comparator inconsistent with equals that uses names internally to compare types. The names
 // used are deliberately undefined but incorporate fully qualified names where possible as well as type argument and
 // bound information.
@@ -42,7 +40,7 @@ import org.microbean.lang.TestingTypeMirrorComparator;
 public final class NameTypeMirrorComparator implements Comparator<TypeMirror> {
 
   public static final NameTypeMirrorComparator INSTANCE = new NameTypeMirrorComparator();
-  
+
   private NameTypeMirrorComparator() {
     super();
   }
@@ -69,7 +67,7 @@ public final class NameTypeMirrorComparator implements Comparator<TypeMirror> {
       if (typeParameters.isEmpty()) {
         yield e.getQualifiedName();
       }
-      List<? extends TypeMirror> typeArguments = dt.getTypeArguments();
+      final List<? extends TypeMirror> typeArguments = dt.getTypeArguments();
       if (typeArguments.isEmpty()) {
         yield e.getQualifiedName();
       }
@@ -128,8 +126,8 @@ public final class NameTypeMirrorComparator implements Comparator<TypeMirror> {
       throw new IllegalArgumentException("t: " + t);
     }
     case ERROR -> throw new AssertionError("t.getKind() == TypeKind.ERROR; t: " + t);
-    default -> throw new IllegalArgumentException("t: " + t);    
+    default -> throw new IllegalArgumentException("t: " + t);
     };
   }
-  
+
 }

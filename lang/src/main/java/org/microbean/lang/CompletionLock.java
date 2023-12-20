@@ -21,7 +21,7 @@ public final class CompletionLock {
   private static final long serialVersionUID = 1L;
 
   private static final Lock LOCK = new ReentrantLock();
-  
+
   private CompletionLock() {
     super();
   }

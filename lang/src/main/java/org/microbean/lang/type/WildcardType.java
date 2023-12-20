@@ -16,10 +16,6 @@
  */
 package org.microbean.lang.type;
 
-import java.util.List;
-
-import javax.lang.model.element.AnnotationMirror;
-
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeVisitor;
 
@@ -44,12 +40,12 @@ public final class WildcardType extends TypeMirror implements javax.lang.model.t
   public WildcardType() {
     super(TypeKind.WILDCARD);
   }
-  
+
   public WildcardType(final javax.lang.model.type.TypeMirror extendsBound) {
     this();
     this.setExtendsBound(extendsBound);
   }
-  
+
   public WildcardType(final javax.lang.model.type.TypeMirror extendsBound, final javax.lang.model.type.TypeMirror superBound) {
     this();
     this.setExtendsBound(extendsBound);
@@ -63,7 +59,7 @@ public final class WildcardType extends TypeMirror implements javax.lang.model.t
 
 
   @Override // TypeMirror
-  public final <R, P> R accept(final TypeVisitor<R, P> v, P p) {
+  public final <R, P> R accept(final TypeVisitor<R, P> v, final P p) {
     return v.visitWildcard(this, p);
   }
 
@@ -105,10 +101,10 @@ public final class WildcardType extends TypeMirror implements javax.lang.model.t
     }
     if (extendsBound != null) {
       switch (extendsBound.getKind()) {
-        // See
-        // https://docs.oracle.com/javase/specs/jls/se18/html/jls-4.html#jls-WildcardBounds
-        // and
-        // https://docs.oracle.com/javase/specs/jls/se18/html/jls-4.html#jls-ReferenceType
+      // See
+      // https://docs.oracle.com/javase/specs/jls/se18/html/jls-4.html#jls-WildcardBounds
+      // and
+      // https://docs.oracle.com/javase/specs/jls/se18/html/jls-4.html#jls-ReferenceType
       case ARRAY:
       case DECLARED:
       case TYPEVAR:
@@ -126,10 +122,10 @@ public final class WildcardType extends TypeMirror implements javax.lang.model.t
     }
     if (superBound != null) {
       switch (superBound.getKind()) {
-        // See
-        // https://docs.oracle.com/javase/specs/jls/se18/html/jls-4.html#jls-WildcardBounds
-        // and
-        // https://docs.oracle.com/javase/specs/jls/se18/html/jls-4.html#jls-ReferenceType
+      // See
+      // https://docs.oracle.com/javase/specs/jls/se18/html/jls-4.html#jls-WildcardBounds
+      // and
+      // https://docs.oracle.com/javase/specs/jls/se18/html/jls-4.html#jls-ReferenceType
       case ARRAY:
       case DECLARED:
       case TYPEVAR:
@@ -151,7 +147,7 @@ public final class WildcardType extends TypeMirror implements javax.lang.model.t
 
   public static WildcardType unboundedWildcardType() {
     return new WildcardType(null, null);
-  }  
+  }
 
   public static WildcardType of(final javax.lang.model.type.TypeMirror extendsBound,
                                 final javax.lang.model.type.TypeMirror superBound) {

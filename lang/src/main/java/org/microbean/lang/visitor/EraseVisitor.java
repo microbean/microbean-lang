@@ -16,7 +16,6 @@
  */
 package org.microbean.lang.visitor;
 
-import java.util.List;
 import java.util.Objects;
 
 import javax.lang.model.element.TypeElement;
@@ -29,7 +28,6 @@ import javax.lang.model.type.WildcardType;
 
 import org.microbean.lang.TypeAndElementSource;
 
-import org.microbean.lang.type.DefineableType;
 import org.microbean.lang.type.Types;
 
 // Basically done.

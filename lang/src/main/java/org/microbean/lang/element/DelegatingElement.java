@@ -254,8 +254,9 @@ public final class DelegatingElement
   @Override // ModuleElement, PackageElement, TypeElement
   public final Name getQualifiedName() {
     return switch (this.getKind()) {
-      // case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, MODULE, PACKAGE, RECORD -> ((QualifiedNameable)this.delegate).getQualifiedName();
-    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, MODULE, PACKAGE, RECORD -> org.microbean.lang.element.Name.of(((QualifiedNameable)this.delegate).getQualifiedName());
+    // case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, MODULE, PACKAGE, RECORD -> ((QualifiedNameable)this.delegate).getQualifiedName();
+    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, MODULE, PACKAGE, RECORD ->
+      org.microbean.lang.element.Name.of(((QualifiedNameable)this.delegate).getQualifiedName());
     default -> org.microbean.lang.element.Name.of();
     };
   }

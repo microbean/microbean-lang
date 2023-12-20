@@ -29,8 +29,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import java.util.concurrent.locks.Lock;
-
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 

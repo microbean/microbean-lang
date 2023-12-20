@@ -25,7 +25,6 @@ import javax.lang.model.element.TypeParameterElement;
 
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
@@ -36,7 +35,7 @@ public abstract sealed class Parameterizable extends Element implements javax.la
 
   private final List<TypeParameterElement> unmodifiableTypeParameters;
 
-  protected Parameterizable(ElementKind kind) {
+  protected Parameterizable(final ElementKind kind) {
     super(kind); // no need to validate; sealed class; subclasses already validate
     this.typeParameters = new ArrayList<>(5);
     this.unmodifiableTypeParameters = Collections.unmodifiableList(this.typeParameters);
@@ -47,17 +46,17 @@ public abstract sealed class Parameterizable extends Element implements javax.la
     return this.unmodifiableTypeParameters;
   }
 
-  public final <TP extends TypeParameterElement & Encloseable> void addTypeParameter(final TP tp) {
+  public final <P extends TypeParameterElement & Encloseable> void addTypeParameter(final P tp) {
     this.typeParameters.add(validateAndEncloseTypeParameter(tp));
   }
 
-  public final <TP extends TypeParameterElement & Encloseable> void addTypeParameters(final Iterable<? extends TP> tps) {
-    for (final TP tp : tps) {
+  public final <P extends TypeParameterElement & Encloseable> void addTypeParameters(final Iterable<? extends P> tps) {
+    for (final P tp : tps) {
       this.addTypeParameter(tp);
     }
   }
 
-  private final <TP extends TypeParameterElement & Encloseable> TP validateAndEncloseTypeParameter(final TP tp) {
+  private final <P extends TypeParameterElement & Encloseable> P validateAndEncloseTypeParameter(final P tp) {
     switch (tp.getKind()) {
     case TYPE_PARAMETER:
       final TypeMirror t = tp.asType();
@@ -66,7 +65,7 @@ public abstract sealed class Parameterizable extends Element implements javax.la
         tp.setEnclosingElement(this); // idempotent
         assert tp.getGenericElement() == this;
         assert tp.getEnclosingElement() == this;
-        assert tp.asType() == t;        
+        assert tp.asType() == t;
         assert t instanceof TypeVariable tv ? tv.asElement() == tp : true;
         return tp;
       default:

@@ -18,13 +18,12 @@ import java.util.Objects;
 
 import java.util.function.Predicate;
 
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 public class TestingTypeMirrorComparator implements Comparator<TypeMirror> {
 
   private final Predicate<? super TypeMirror> p;
-  
+
   public TestingTypeMirrorComparator(final Predicate<? super TypeMirror> p) {
     super();
     this.p = Objects.requireNonNull(p, "p");

@@ -28,7 +28,7 @@ public final class VariableElement extends Element implements javax.lang.model.e
   public VariableElement(final ElementKind kind) {
     super(kind);
   }
-  
+
   public VariableElement(final ElementKind kind, final Object constantValue) {
     super(kind);
     if (constantValue != null) {

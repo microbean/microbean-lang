@@ -29,7 +29,6 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ElementVisitor;
 
@@ -59,7 +58,7 @@ public final class Types {
     switch (t.getKind()) {
     case WILDCARD:
       final javax.lang.model.type.WildcardType w = (javax.lang.model.type.WildcardType)t;
-      javax.lang.model.type.TypeMirror superBound = w.getSuperBound();
+      final javax.lang.model.type.TypeMirror superBound = w.getSuperBound();
       if (superBound == null) {
         // Unbounded or upper-bounded.
         final javax.lang.model.type.TypeMirror extendsBound = w.getExtendsBound();
@@ -418,14 +417,14 @@ public final class Types {
   }
 
   public static final javax.lang.model.type.WildcardType unboundedWildcardType(final List<? extends AnnotationMirror> annotationMirrors) {
-    org.microbean.lang.type.WildcardType t = new org.microbean.lang.type.WildcardType();
+    final org.microbean.lang.type.WildcardType t = new org.microbean.lang.type.WildcardType();
     t.addAnnotationMirrors(annotationMirrors);
     return t;
   }
 
   public static final javax.lang.model.type.WildcardType upperBoundedWildcardType(final javax.lang.model.type.TypeMirror upperBound,
                                                                                   final List<? extends AnnotationMirror> annotationMirrors) {
-    org.microbean.lang.type.WildcardType t = new org.microbean.lang.type.WildcardType(upperBound);
+    final org.microbean.lang.type.WildcardType t = new org.microbean.lang.type.WildcardType(upperBound);
     t.addAnnotationMirrors(annotationMirrors);
     return t;
   }
@@ -436,7 +435,7 @@ public final class Types {
    */
 
 
-  private static abstract class AbstractSyntheticElement implements javax.lang.model.element.Element {
+  private abstract static class AbstractSyntheticElement implements javax.lang.model.element.Element {
 
     private final javax.lang.model.type.TypeMirror type;
 

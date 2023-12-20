@@ -243,7 +243,7 @@ public final class Lang {
       throw (Error)new ExceptionInInitializerError(x.getMessage()).initCause(x);
     }
   }
-  
+
   private static volatile ProcessingEnvironment pe;
 
 
@@ -675,7 +675,7 @@ public final class Lang {
     return wrap(rv);
   }
 
-  public static final TypeMirror box(TypeMirror t) {
+  public static final TypeMirror box(final TypeMirror t) {
     final TypeKind k;
     CompletionLock.acquire();
     try {
@@ -747,7 +747,7 @@ public final class Lang {
    */
 
 
-  public static final String elementSignature(Element e) {
+  public static final String elementSignature(final Element e) {
     CompletionLock.acquire();
     try {
       return switch (e.getKind()) {
@@ -761,7 +761,7 @@ public final class Lang {
     }
   }
 
-  private static final String classSignature(TypeElement e) {
+  private static final String classSignature(final TypeElement e) {
     CompletionLock.acquire();
     try {
       return switch (e.getKind()) {
@@ -789,7 +789,7 @@ public final class Lang {
     }
   }
 
-  private static final void classSignature(TypeElement e, final StringBuilder sb) {
+  private static final void classSignature(final TypeElement e, final StringBuilder sb) {
     CompletionLock.acquire();
     try {
       switch (e.getKind()) {
@@ -820,7 +820,7 @@ public final class Lang {
     }
   }
 
-  private static final String methodSignature(ExecutableElement e) {
+  private static final String methodSignature(final ExecutableElement e) {
     CompletionLock.acquire();
     try {
       if (e.getKind().isExecutable()) {
@@ -858,7 +858,7 @@ public final class Lang {
     }
   }
 
-  private static final void methodSignature(ExecutableElement e, final StringBuilder sb, final boolean throwsClauseRequired) {
+  private static final void methodSignature(final ExecutableElement e, final StringBuilder sb, final boolean throwsClauseRequired) {
     CompletionLock.acquire();
     try {
       if (e.getKind().isExecutable()) {
@@ -883,7 +883,7 @@ public final class Lang {
     }
   }
 
-  private static final String fieldSignature(Element e) {
+  private static final String fieldSignature(final Element e) {
     CompletionLock.acquire();
     try {
       return switch (e.getKind()) {
@@ -906,7 +906,7 @@ public final class Lang {
     }
   }
 
-  private static final void fieldSignature(Element e, final StringBuilder sb) {
+  private static final void fieldSignature(final Element e, final StringBuilder sb) {
     CompletionLock.acquire();
     try {
       switch (e.getKind()) {
@@ -972,7 +972,7 @@ public final class Lang {
     sb.append('>');
   }
 
-  private static final void typeParameter(TypeParameterElement e, final StringBuilder sb) {
+  private static final void typeParameter(final TypeParameterElement e, final StringBuilder sb) {
     CompletionLock.acquire();
     try {
       if (e.getKind() != ElementKind.TYPE_PARAMETER) {
@@ -992,7 +992,7 @@ public final class Lang {
     }
   }
 
-  private static final void classBound(TypeMirror t, final StringBuilder sb) {
+  private static final void classBound(final TypeMirror t, final StringBuilder sb) {
     CompletionLock.acquire();
     try {
       if (t.getKind() != TypeKind.DECLARED) {
@@ -1019,7 +1019,7 @@ public final class Lang {
   }
 
   @SuppressWarnings("fallthrough")
-  private static final void interfaceBound(TypeMirror t, final StringBuilder sb) {
+  private static final void interfaceBound(final TypeMirror t, final StringBuilder sb) {
     CompletionLock.acquire();
     try {
       switch (t.getKind()) {
@@ -1038,7 +1038,7 @@ public final class Lang {
     }
   }
 
-  private static final void superclassSignature(TypeMirror t, final StringBuilder sb) {
+  private static final void superclassSignature(final TypeMirror t, final StringBuilder sb) {
     classTypeSignature(t, sb);
   }
 
@@ -1057,7 +1057,7 @@ public final class Lang {
   }
 
   @SuppressWarnings("fallthrough")
-  private static final void superinterfaceSignature(TypeMirror t, final StringBuilder sb) {
+  private static final void superinterfaceSignature(final TypeMirror t, final StringBuilder sb) {
     CompletionLock.acquire();
     try {
       switch (t.getKind()) {
@@ -1075,13 +1075,13 @@ public final class Lang {
     }
   }
 
-  public static final String typeSignature(TypeMirror t) {
+  public static final String typeSignature(final TypeMirror t) {
     final StringBuilder sb = new StringBuilder();
     typeSignature(t, sb);
     return sb.toString();
   }
 
-  private static final void typeSignature(TypeMirror t, final StringBuilder sb) {
+  private static final void typeSignature(final TypeMirror t, final StringBuilder sb) {
     CompletionLock.acquire();
     try {
       switch (t.getKind()) {
@@ -1106,7 +1106,7 @@ public final class Lang {
     }
   }
 
-  private static final void classTypeSignature(TypeMirror t, final StringBuilder sb) {
+  private static final void classTypeSignature(final TypeMirror t, final StringBuilder sb) {
     CompletionLock.acquire();
     try {
       switch (t.getKind()) {
@@ -1190,13 +1190,13 @@ public final class Lang {
     }
   }
 
-  public static final String descriptor(TypeMirror t) {
+  public static final String descriptor(final TypeMirror t) {
     final StringBuilder sb = new StringBuilder();
     descriptor(t, sb);
     return sb.toString();
   }
 
-  private static final void descriptor(TypeMirror t, final StringBuilder sb) {
+  private static final void descriptor(final TypeMirror t, final StringBuilder sb) {
     CompletionLock.acquire();
     try {
       switch (t.getKind()) {
@@ -1223,7 +1223,7 @@ public final class Lang {
     }
   }
 
-  private static final void descriptor(ExecutableType t, final StringBuilder sb) {
+  private static final void descriptor(final ExecutableType t, final StringBuilder sb) {
     CompletionLock.acquire();
     try {
       if (t.getKind() != TypeKind.EXECUTABLE) {
@@ -1240,7 +1240,7 @@ public final class Lang {
     }
   }
 
-  public static final String jvmBinaryName(TypeElement te) {
+  public static final String jvmBinaryName(final TypeElement te) {
     CompletionLock.acquire();
     try {
       if (!te.getKind().isDeclaredType()) {
@@ -1301,7 +1301,7 @@ public final class Lang {
     return ConstableTypeAndElementSource.INSTANCE;
   }
 
-  public static final long modifiers(Element e) {
+  public static final long modifiers(final Element e) {
     // modifiers is declared long because there are javac-specific modifiers that *might* be used later
     long modifiers;
     CompletionLock.acquire();
@@ -1462,7 +1462,7 @@ public final class Lang {
   }
 
   public static final Name name(final CharSequence name) {
-    String s;
+    final String s;
     if (name instanceof String) {
       s = (String)name;
     } else {
@@ -1476,7 +1476,7 @@ public final class Lang {
     }
     return name(s);
   }
-  
+
   public static final Name name(final String name) {
     return pe().getElementUtils().getName(Objects.requireNonNull(name, "name"));
   }
@@ -1525,7 +1525,7 @@ public final class Lang {
     return packageElement(moduleElement, pkg.getName());
   }
 
-  public static final PackageElement packageElement(ModuleElement moduleElement, final CharSequence fullyQualifiedName) {
+  public static final PackageElement packageElement(final ModuleElement moduleElement, final CharSequence fullyQualifiedName) {
     final Elements elements = pe().getElementUtils();
     final PackageElement rv;
     CompletionLock.acquire();
@@ -1911,7 +1911,7 @@ public final class Lang {
     Objects.requireNonNull(canonicalName, "canonicalName");
     moduleElement = unwrap(moduleElement);
     final Elements elements = pe().getElementUtils();
-    TypeElement rv;
+    final TypeElement rv;
     CompletionLock.acquire();
     try {
       rv = elements.getTypeElement(moduleElement, canonicalName);
@@ -1944,7 +1944,7 @@ public final class Lang {
     Objects.requireNonNull(gd, "gd");
     Objects.requireNonNull(name, "name");
     while (gd != null) {
-      java.lang.reflect.TypeVariable<?>[] typeParameters = gd.getTypeParameters();
+      final java.lang.reflect.TypeVariable<?>[] typeParameters = gd.getTypeParameters();
       for (int i = 0; i < typeParameters.length; i++) {
         if (typeParameters[i].getName().equals(name)) {
           return parameterizable(gd).getTypeParameters().get(i);
@@ -2115,7 +2115,8 @@ public final class Lang {
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      if ((pe = Lang.pe) == null) { // volatile read
+      pe = Lang.pe; // volatile read
+      if (pe == null) {
         throw new IllegalStateException();
       }
     }
@@ -2142,22 +2143,22 @@ public final class Lang {
     return DelegatingTypeMirror.unwrap(Objects.requireNonNull(ts, "ts"));
   }
 
-  @SuppressWarnings("unchecked")
-  public static final <T extends TypeMirror> T wrap(final T t) {
-    return (T)DelegatingTypeMirror.of(Objects.requireNonNull(t, "t"), typeAndElementSource(), null);
-  }
-
-  public static final List<? extends TypeMirror> wrapTypes(final Collection<? extends TypeMirror> ts) {
-    return DelegatingTypeMirror.of(Objects.requireNonNull(ts, "ts"), typeAndElementSource(), null);
-  }
-
   public static final <E extends Element> E unwrap(final E e) {
     return DelegatingElement.unwrap(Objects.requireNonNull(e, "e"));
   }
 
   @SuppressWarnings("unchecked")
+  public static final <T extends TypeMirror> T wrap(final T t) {
+    return (T)DelegatingTypeMirror.of(Objects.requireNonNull(t, "t"), typeAndElementSource(), null);
+  }
+
+  @SuppressWarnings("unchecked")
   public static final <E extends Element> E wrap(final E e) {
     return (E)DelegatingElement.of(Objects.requireNonNull(e, "e"), typeAndElementSource(), null);
+  }
+
+  public static final List<? extends TypeMirror> wrapTypes(final Collection<? extends TypeMirror> ts) {
+    return DelegatingTypeMirror.of(Objects.requireNonNull(ts, "ts"), typeAndElementSource(), null);
   }
 
   public static final List<? extends Element> wrapElements(final Collection<? extends Element> es) {
@@ -2197,9 +2198,9 @@ public final class Lang {
 
   public static final class ConstableTypeAndElementSource implements Constable, TypeAndElementSource {
 
-    private static final ClassDesc CD_ConstableTypeAndElementSource = ClassDesc.of(ConstableTypeAndElementSource.class.getName());
-
     public static final ConstableTypeAndElementSource INSTANCE = new ConstableTypeAndElementSource();
+
+    private static final ClassDesc CD_ConstableTypeAndElementSource = ClassDesc.of(ConstableTypeAndElementSource.class.getName());
 
     private ConstableTypeAndElementSource() {
       super();
@@ -2370,11 +2371,11 @@ public final class Lang {
             LOGGER.log(DEBUG, "Using unshared name table");
           }
         }
-        
+
         if (Boolean.getBoolean(Lang.class.getName() + ".verbose")) {
           options.add("-verbose");
         }
-        
+
         final List<String> classes = new ArrayList<>();
         classes.add("java.lang.annotation.RetentionPolicy"); // arbitrary, but loads the least amount of stuff up front
 
@@ -2699,7 +2700,11 @@ public final class Lang {
       return JavaFileObject.Kind.OTHER;
     }
 
-    private static final Iterable<JavaFileObject> list(final ModuleReader mr, final String packageName, final Set<JavaFileObject.Kind> kinds, final boolean recurse) throws IOException {
+    private static final Iterable<JavaFileObject> list(final ModuleReader mr,
+                                                       final String packageName,
+                                                       final Set<JavaFileObject.Kind> kinds,
+                                                       final boolean recurse)
+      throws IOException {
       final String p = packageName.replace('.', '/');
       final int packagePrefixLength = p.length() + 1;
       try (final Stream<String> ss = mr.list()) {

@@ -14,14 +14,12 @@
 package org.microbean.lang;
 
 import java.util.Comparator;
-import java.util.List;
 import java.util.Objects;
 
 import java.util.function.Function;
 
 import javax.lang.model.element.QualifiedNameable;
 
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import org.microbean.lang.type.DelegatingTypeMirror;

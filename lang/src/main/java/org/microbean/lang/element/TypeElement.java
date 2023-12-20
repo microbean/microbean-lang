@@ -20,19 +20,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ElementVisitor;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.lang.model.element.QualifiedNameable;
 import javax.lang.model.element.RecordComponentElement;
 
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
-
-import org.microbean.lang.type.DefineableType;
 
 public final class TypeElement extends Parameterizable implements javax.lang.model.element.TypeElement {
 
@@ -49,7 +45,7 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
   private final List<TypeMirror> unmodifiablePermittedSubclasses;
 
   private final List<RecordComponentElement> recordComponents;
-  
+
   private final List<RecordComponentElement> unmodifiableRecordComponents;
 
   public TypeElement(final ElementKind kind) {
@@ -109,7 +105,7 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
   public final javax.lang.model.element.Name getQualifiedName() {
     final QualifiedNameable qn;
     switch (this.getNestingKind()) {
-    case ANONYMOUS:      
+    case ANONYMOUS:
     case LOCAL:
       qn = null;
       break;
@@ -179,7 +175,7 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
       return e;
     }
   }
-  
+
   @Override // Element
   protected ElementKind validateKind(final ElementKind kind) {
     switch (kind) {
@@ -216,7 +212,7 @@ public final class TypeElement extends Parameterizable implements javax.lang.mod
       return n.toString();
     }
   }
-  
+
   private static final <T extends TypeMirror> T validateSuperclass(final T superclass) {
     return superclass;
   }

@@ -16,10 +16,7 @@
  */
 package org.microbean.lang.element;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ElementVisitor;
@@ -30,7 +27,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
 import org.microbean.lang.type.DefineableType;
-import org.microbean.lang.type.Types;
 
 public final class TypeParameterElement extends Element implements javax.lang.model.element.TypeParameterElement {
 
@@ -118,7 +114,7 @@ public final class TypeParameterElement extends Element implements javax.lang.mo
     }
   }
 
-  
+
   /*
    * Static methods.
    */

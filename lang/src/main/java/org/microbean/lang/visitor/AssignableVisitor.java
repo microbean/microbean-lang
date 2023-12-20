@@ -28,9 +28,9 @@ import org.microbean.lang.type.Types;
 public final class AssignableVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
   private final Types types;
-  
+
   private final ConvertibleVisitor convertibleVisitor;
-  
+
   public AssignableVisitor(final Types types,
                            final ConvertibleVisitor convertibleVisitor) {
     super();
@@ -56,5 +56,5 @@ public final class AssignableVisitor extends SimpleTypeVisitor14<Boolean, TypeMi
     // it is actually possible to implement this
     return super.visitPrimitive(t, s);
   }
-  
+
 }

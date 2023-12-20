@@ -16,8 +16,6 @@
  */
 package org.microbean.lang.type;
 
-import javax.lang.model.element.AnnotationMirror;
-
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeVisitor;
 
@@ -28,7 +26,7 @@ public final class ArrayType extends TypeMirror implements javax.lang.model.type
   public ArrayType() {
     super(TypeKind.ARRAY);
   }
-  
+
   public ArrayType(final javax.lang.model.type.TypeMirror componentType) {
     this();
     this.setComponentType(componentType);
@@ -41,7 +39,7 @@ public final class ArrayType extends TypeMirror implements javax.lang.model.type
 
 
   @Override // TypeMirror
-  public final <R, P> R accept(final TypeVisitor<R, P> v, P p) {
+  public final <R, P> R accept(final TypeVisitor<R, P> v, final P p) {
     return v.visitArray(this, p);
   }
 
