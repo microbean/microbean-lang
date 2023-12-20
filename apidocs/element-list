@@ -1,0 +1,9 @@
+module:org.microbean.lang
+org.microbean.lang
+org.microbean.lang.element
+org.microbean.lang.type
+org.microbean.lang.visitor
+module:org.microbean.lang.bytebuddy
+org.microbean.lang.bytebuddy
+module:org.microbean.lang.jandex
+org.microbean.lang.jandex

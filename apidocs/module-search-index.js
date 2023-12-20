@@ -1,0 +1,1 @@
+moduleSearchIndex = [{"l":"org.microbean.lang"},{"l":"org.microbean.lang.bytebuddy"},{"l":"org.microbean.lang.jandex"}];updateSearchResults();
