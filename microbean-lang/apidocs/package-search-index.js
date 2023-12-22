@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"m":"org.microbean.lang","l":"org.microbean.lang"},{"m":"org.microbean.lang","l":"org.microbean.lang.element"},{"m":"org.microbean.lang","l":"org.microbean.lang.type"},{"m":"org.microbean.lang","l":"org.microbean.lang.visitor"}];updateSearchResults();

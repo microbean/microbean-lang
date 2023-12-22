@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"org.microbean.lang.bytebuddy","l":"ByteBuddy2"},{"p":"org.microbean.lang.bytebuddy","l":"TypeElementTypePool"}];updateSearchResults();

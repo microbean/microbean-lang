@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"org.microbean.lang.jandex","l":"Jandex"},{"p":"org.microbean.lang.jandex","l":"Jandex.PackageInfo"},{"p":"org.microbean.lang.jandex","l":"Jandex.TypeContext"},{"p":"org.microbean.lang.jandex","l":"Jandex.TypeParameterInfo"}];updateSearchResults();
