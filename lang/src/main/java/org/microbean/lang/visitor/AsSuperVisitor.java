@@ -47,7 +47,7 @@ import static org.microbean.lang.type.Types.asElement;
  * denoted by {@code Collection}, the result of visitation will be the type denoted by {@code Collection<String>}.</p>
  *
  * <p>{@code javac} does odd things with this and arrays and it is not clear that its documentation matches its
- * code. Consequently I don't have a lot of faith in the {@link visitArray(ArrayType, Element)} method as of this
+ * code. Consequently I don't have a lot of faith in the {@link #visitArray(ArrayType, Element)} method as of this
  * writing.</p>
  *
  * <p>The compiler's {@code asSuper} method documentation says, in part:</p>

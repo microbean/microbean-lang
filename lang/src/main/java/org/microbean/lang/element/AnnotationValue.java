@@ -27,14 +27,44 @@ import javax.lang.model.type.TypeMirror;
 
 import org.microbean.lang.Equality;
 
+/**
+ * A simple implementation of the {@link javax.lang.model.element.AnnotationValue} interface.
+ *
+ * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
+ */
 public final class AnnotationValue implements javax.lang.model.element.AnnotationValue {
+
+
+  /*
+   * Instance fields.
+   */
+
 
   private final Object value;
 
+
+  /*
+   * Constructors.
+   */
+
+
+  /**
+   * Creates a new {@link AnnotationValue}.
+   *
+   * @param value the value to be returned by the {@link #getValue()} method; may be {@code null}
+   *
+   * @see #getValue()
+   */
   public AnnotationValue(final Object value) {
     super();
     this.value = Objects.requireNonNull(value, "value");
   }
+
+
+  /*
+   * Instance methods.
+   */
+
 
   @Override // AnnotationValue
   @SuppressWarnings("unchecked")
@@ -85,6 +115,16 @@ public final class AnnotationValue implements javax.lang.model.element.Annotatio
    */
 
 
+  /**
+   * Returns an {@link AnnotationValue} whose {@link #getValue()} method will return the supplied {@code value}.
+   *
+   * @param value the value; may be {@code null}
+   *
+   * @return an {@link AnnotationValue} whose {@link #getValue()} method will return the supplied {@code value}; never
+   * {@code null}
+   *
+   * @see #getValue()
+   */
   public static final AnnotationValue of(final Object value) {
     return new AnnotationValue(value);
   }

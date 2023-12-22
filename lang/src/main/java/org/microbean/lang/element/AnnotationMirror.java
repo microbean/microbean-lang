@@ -27,6 +27,11 @@ import javax.lang.model.type.DeclaredType;
 
 import org.microbean.lang.Equality;
 
+/**
+ * A mutable implementation of the {@link javax.lang.model.element.AnnotationMirror} interface.
+ *
+ * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
+ */
 public class AnnotationMirror implements javax.lang.model.element.AnnotationMirror {
 
 
@@ -47,6 +52,9 @@ public class AnnotationMirror implements javax.lang.model.element.AnnotationMirr
    */
 
 
+  /**
+   * Creates a new {@link AnnotationMirror}.
+   */
   public AnnotationMirror() {
     super();
     this.elementValues = new HashMap<>();
@@ -64,6 +72,18 @@ public class AnnotationMirror implements javax.lang.model.element.AnnotationMirr
     return this.annotationType;
   }
 
+  /**
+   * Sets this {@link AnnotationMirror}'s associated {@link DeclaredType}.
+   *
+   * @param annotationType the type; must not be {@code null}; must return {@link
+   * javax.lang.model.type.TypeKind#DECLARED DECLARED} from its {@link javax.lang.model.type.DeclaredType#getKind()
+   * getKind()} method
+   *
+   * @exception NullPointerException if the affiliated type has already been set and the supplied {@code annotationType}
+   * is {@code null}
+   *
+   * @exception IllegalStateException if the supplied {@link annotationType} is not identical to the one already set
+   */
   public final void setAnnotationType(final DeclaredType annotationType) {
     final DeclaredType old = this.getAnnotationType();
     if (old == null) {
@@ -80,10 +100,24 @@ public class AnnotationMirror implements javax.lang.model.element.AnnotationMirr
     return this.unmodifiableElementValues;
   }
 
+  /**
+   * Installs an {@link AnnotationValue} that corresponds to the supplied {@link ExecutableElement}.
+   *
+   * @param ee the {@link ExecutableElement}; may (uselessly) be {@code null}
+   *
+   * @param av the {@link AnnotationValue}; may be {@code null}
+   */
   public final void putElementValue(final ExecutableElement ee, final AnnotationValue av) {
     this.elementValues.put(ee, av);
   }
 
+  /**
+   * Bulk installs {@link AnnotationValue}s corresponding to {@link ExecutableElement}s.
+   *
+   * @param evs the new element values; must not be {@code null}
+   *
+   * @exception NullPointerException if {@code evs} is {@code null}
+   */
   public final void setElementValues(final Map<? extends ExecutableElement, ? extends AnnotationValue> evs) {
     this.elementValues.putAll(evs);
   }
@@ -119,7 +153,16 @@ public class AnnotationMirror implements javax.lang.model.element.AnnotationMirr
     }
   }
 
-
+  /**
+   * Returns an {@link AnnotationMirror} representing the supplied {@link javax.lang.model.element.AnnotationMirror}.
+   *
+   * @param am the {@link javax.lang.model.element.AnnotationMirror} to convert or otherwise represent; if it is already
+   * an {@link AnnotationMirror} it is simply returned; must not be {@code null}
+   *
+   * @return an {@link AnnotationMirror}; never {@code null}
+   *
+   * @exception NullPointerException if {@code am} is {@code null}
+   */
   public static final AnnotationMirror of(final javax.lang.model.element.AnnotationMirror am) {
     if (am instanceof AnnotationMirror mam) {
       return mam;
