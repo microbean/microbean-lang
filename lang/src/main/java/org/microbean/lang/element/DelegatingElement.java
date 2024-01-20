@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2022–2023 microBean™.
+ * Copyright © 2022–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -50,6 +50,15 @@ import org.microbean.lang.Equality;
 import org.microbean.lang.type.DelegatingTypeMirror;
 import org.microbean.lang.type.NoType;
 
+/**
+ * An {@link Element} that implements all known {@link Element} subinterfaces and delegates to an underlying {@link
+ * Element} for all operations.
+ *
+ * <p>This class is safe for concurrent use by multiple threads.</p>
+ *
+ * @author <a href="https://about.me/lairdnelson" target="_top">Laird Nelson</a>
+ */
+@SuppressWarnings("preview")
 public final class DelegatingElement
   implements ExecutableElement,
              ModuleElement,
@@ -68,7 +77,7 @@ public final class DelegatingElement
 
   private final Element delegate;
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   private final Equality ehc;
 
@@ -79,11 +88,11 @@ public final class DelegatingElement
 
 
   private DelegatingElement(final Element delegate,
-                            final TypeAndElementSource elementSource,
+                            final TypeAndElementSource tes,
                             final Equality ehc) {
     super();
     this.delegate = unwrap(Objects.requireNonNull(delegate, "delegate"));
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.ehc = ehc == null ? new Equality(true) : ehc;
   }
 
@@ -109,7 +118,7 @@ public final class DelegatingElement
 
   @Override // Element
   public final TypeMirror asType() {
-    return DelegatingTypeMirror.of(this.delegate.asType(), this.elementSource, this.ehc);
+    return DelegatingTypeMirror.of(this.delegate.asType(), this.tes, this.ehc);
   }
 
   public final Element delegate() {
@@ -149,7 +158,7 @@ public final class DelegatingElement
   public final List<? extends TypeMirror> getBounds() {
     return switch (this.getKind()) {
     case TYPE_PARAMETER ->
-      DelegatingTypeMirror.of(((TypeParameterElement)this.delegate).getBounds(), this.elementSource, this.ehc);
+      DelegatingTypeMirror.of(((TypeParameterElement)this.delegate).getBounds(), this.tes, this.ehc);
     default -> List.of();
     };
   }
@@ -210,7 +219,7 @@ public final class DelegatingElement
   public final List<? extends TypeMirror> getInterfaces() {
     return switch (this.getKind()) {
     case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD ->
-      DelegatingTypeMirror.of(((TypeElement)this.delegate).getInterfaces(), this.elementSource, this.ehc);
+      DelegatingTypeMirror.of(((TypeElement)this.delegate).getInterfaces(), this.tes, this.ehc);
     default -> List.of();
     };
   }
@@ -227,7 +236,7 @@ public final class DelegatingElement
 
   @Override // Element
   public final Set<Modifier> getModifiers() {
-    CompletionLock.acquire(); // CRITICAL;
+    CompletionLock.acquire(); // CRITICAL!
     try {
       return this.delegate.getModifiers();
     } finally {
@@ -265,7 +274,7 @@ public final class DelegatingElement
   public final TypeMirror getReceiverType() {
     return
       this.getKind().isExecutable() ?
-      DelegatingTypeMirror.of(this.asType(), this.elementSource, this.ehc).getReceiverType() :
+      DelegatingTypeMirror.of(this.asType(), this.tes, this.ehc).getReceiverType() :
       null;
   }
 
@@ -279,7 +288,7 @@ public final class DelegatingElement
 
   @Override // ExecutableElement
   public final TypeMirror getReturnType() {
-    return DelegatingTypeMirror.of(this.asType(), this.elementSource, this.ehc).getReturnType();
+    return DelegatingTypeMirror.of(this.asType(), this.tes, this.ehc).getReturnType();
   }
 
   @Override // Element
@@ -292,7 +301,7 @@ public final class DelegatingElement
   public final TypeMirror getSuperclass() {
     return switch (this.getKind()) {
     case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD ->
-      DelegatingTypeMirror.of(((TypeElement)this.delegate).getSuperclass(), this.elementSource, this.ehc);
+      DelegatingTypeMirror.of(((TypeElement)this.delegate).getSuperclass(), this.tes, this.ehc);
     default -> NoType.NONE;
     };
   }
@@ -301,7 +310,7 @@ public final class DelegatingElement
   public final List<? extends TypeMirror> getThrownTypes() {
     return
       this.getKind().isExecutable() ?
-      DelegatingTypeMirror.of(((ExecutableElement)this.delegate).getThrownTypes(), this.elementSource, this.ehc) :
+      DelegatingTypeMirror.of(((ExecutableElement)this.delegate).getThrownTypes(), this.tes, this.ehc) :
       List.of();
   }
 
@@ -368,11 +377,11 @@ public final class DelegatingElement
   }
 
   private final DelegatingElement wrap(final Element e) {
-    return of(e, this.elementSource, this.ehc);
+    return of(e, this.tes, this.ehc);
   }
 
   private final List<DelegatingElement> wrap(final Collection<? extends Element> es) {
-    return of(es, this.elementSource, this.ehc);
+    return of(es, this.tes, this.ehc);
   }
 
 
@@ -381,29 +390,29 @@ public final class DelegatingElement
    */
 
 
-  public static final List<DelegatingElement> of(final Collection<? extends Element> es, final TypeAndElementSource elementSource) {
-    return of(es, elementSource, null);
+  public static final List<DelegatingElement> of(final Collection<? extends Element> es, final TypeAndElementSource tes) {
+    return of(es, tes, null);
   }
 
-  public static final List<DelegatingElement> of(final Collection<? extends Element> es, final TypeAndElementSource elementSource, final Equality ehc) {
+  public static final List<DelegatingElement> of(final Collection<? extends Element> es, final TypeAndElementSource tes, final Equality ehc) {
     final List<DelegatingElement> newEs = new ArrayList<>(es.size());
     for (final Element e : es) {
-      newEs.add(of(e, elementSource, ehc));
+      newEs.add(of(e, tes, ehc));
     }
     return Collections.unmodifiableList(newEs);
   }
 
-  public static final DelegatingElement of(final Element e, final TypeAndElementSource elementSource) {
-    return of(e, elementSource, null);
+  public static final DelegatingElement of(final Element e, final TypeAndElementSource tes) {
+    return of(e, tes, null);
   }
 
   public static final DelegatingElement of(final Element e,
-                                           final TypeAndElementSource elementSource,
+                                           final TypeAndElementSource tes,
                                            final Equality ehc) {
     return
       e == null ? null :
       e instanceof DelegatingElement d ? d :
-      new DelegatingElement(e, elementSource, ehc);
+      new DelegatingElement(e, tes, ehc);
   }
 
   @SuppressWarnings("unchecked")

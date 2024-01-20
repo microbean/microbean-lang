@@ -6,3 +6,19 @@ org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected:
 	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3083)
 	at org.microbean.lang@0.0.1-SNAPSHOT/org.microbean.lang.TestModuleRelatedIssues.testModuleRelatedIssues(TestModuleRelatedIssues.java:77)
 
+# may or may not be relevant:
+[INFO] Running org.microbean.lang.TestModuleRelatedIssues
+Jan 19, 2024 8:54:23 PM org.microbean.lang.Lang moduleElement
+FINE: null ModuleElement for module name org.junit.jupiter.api
+Jan 19, 2024 8:54:23 PM org.microbean.lang.Lang moduleElement
+FINE: default module: unnamed module
+Jan 19, 2024 8:54:23 PM org.microbean.lang.Lang typeElement
+FINE: null TypeElement for ModuleElement java.base and canonicalName org.junit.jupiter.api.Test
+
+[INFO] Running org.microbean.lang.TestJavaLanguageModel
+Jan 19, 2024 8:54:23 PM org.microbean.lang.Lang typeElement
+FINE: null TypeElement for canonicalName org.microbean.lang.TestJavaLanguageModel$1Charlie
+Jan 19, 2024 8:54:23 PM org.microbean.lang.Lang moduleElement
+FINE: null ModuleElement for module name org.junit.jupiter.api
+Jan 19, 2024 8:54:23 PM org.microbean.lang.Lang moduleElement
+FINE: default module: unnamed module

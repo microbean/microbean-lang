@@ -1,8 +1,8 @@
 # microBean™ Lang
 
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.microbean/microbean-lang/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.microbean/microbean-lang)
+[![Maven Central](https://img.shields.io/maven-central/v/org.microbean/microbean-lang.svg?label=Maven%20Central)](https://search.maven.org/artifact/org.microbean/microbean-lang)
 
-The microBean™ Lang project provides classes and interfaces that implement the Java language model.
+The microBean™ Lang project provides classes and interfaces that implement and help with the Java language model.
 
 # Status
 
@@ -15,11 +15,11 @@ changes, regardless of project version and without notice.**
 
 # Requirements
 
-microBean™ Lang requires a Java runtime of version 19 or higher.
+microBean™ Lang requires a Java runtime of version 21 or higher.
 
 # Installation
 
-microBean™ Lang is or will be available on [Maven Central](https://search.maven.org/).  Include microBean™ Lang as a
+microBean™ Lang is or will be available on [Maven Central](https://search.maven.org/). Include microBean™ Lang as a
 Maven dependency:
 
 ```xml
@@ -27,7 +27,7 @@ Maven dependency:
   <groupId>org.microbean</groupId>
   <artifactId>microbean-lang</artifactId>
   <!-- Always check https://search.maven.org/artifact/org.microbean/microbean-lang for up-to-date available versions. -->
-  <version>0.0.7</version>
+  <version>0.0.9</version>
 </dependency>
 ```
 
