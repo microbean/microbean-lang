@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2022–2023 microBean™.
+ * Copyright © 2022–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -16,6 +16,16 @@ package org.microbean.lang;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * A utility class logically containing a single {@link Lock} that is used to guard against concurrent symbol
+ * completion.
+ *
+ * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
+ *
+ * @see #acquire()
+ *
+ * @see #release()
+ */
 public final class CompletionLock {
 
   private static final long serialVersionUID = 1L;
@@ -26,11 +36,25 @@ public final class CompletionLock {
     super();
   }
 
+  /**
+   * Calls {@link Lock#lock() lock()} on the global {@link Lock} and returns it.
+   *
+   * @return the locked {@link Lock}; never {@code null}
+   *
+   * @see #release()
+   */
   public static final Lock acquire() {
     LOCK.lock();
     return LOCK;
   }
 
+  /**
+   * Calls {@link Lock#unlock() unlock()} on the global {@link Lock} and returns it.
+   *
+   * @return the unlocked {@link Lock}; never {@code null}
+   *
+   * @see #acquire()
+   */
   public static final Lock release() {
     LOCK.unlock();
     return LOCK;

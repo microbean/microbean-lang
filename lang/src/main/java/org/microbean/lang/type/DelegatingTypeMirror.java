@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -59,6 +59,18 @@ import org.microbean.lang.type.Types;
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
 
+import static org.microbean.lang.ConstantDescs.CD_Equality;
+import static org.microbean.lang.ConstantDescs.CD_TypeAndElementSource;
+import static org.microbean.lang.ConstantDescs.CD_TypeMirror;
+
+/**
+ * A {@link TypeMirror} that implements all known {@link TypeMirror} subinterfaces and delegates to an underlying {@link
+ * TypeMirror} for all operations.
+ *
+ * <p>This class is safe for concurrent use by multiple threads.</p>
+ *
+ * @author <a href="https://about.me/lairdnelson" target="_top">Laird Nelson</a>
+ */
 public final class DelegatingTypeMirror
   implements ArrayType,
              Constable,
@@ -72,13 +84,19 @@ public final class DelegatingTypeMirror
              UnionType,
              WildcardType {
 
+
+  /*
+   * Static fields.
+   */
+
+
   private static final ClassDesc CD_DelegatingTypeMirror = ClassDesc.of("org.microbean.lang.type.DelegatingTypeMirror");
 
-  private static final ClassDesc CD_TypeAndElementSource = ClassDesc.of("org.microbean.lang.TypeAndElementSource");
 
-  private static final ClassDesc CD_Equality = ClassDesc.of("org.microbean.lang.Equality");
+  /*
+   * Instance fields.
+   */
 
-  private static final ClassDesc CD_TypeMirror = ClassDesc.of("javax.lang.model.type.TypeMirror");
 
   private final TypeAndElementSource elementSource;
 
@@ -86,12 +104,24 @@ public final class DelegatingTypeMirror
 
   private final Equality ehc;
 
+
+  /*
+   * Constructors.
+   */
+
+
   private DelegatingTypeMirror(final TypeMirror delegate, final TypeAndElementSource elementSource, final Equality ehc) {
     super();
     this.delegate = unwrap(Objects.requireNonNull(delegate, "delegate"));
     this.elementSource = elementSource == null ? Lang.typeAndElementSource() : elementSource;
     this.ehc = ehc == null ? new Equality(true) : ehc;
   }
+
+
+  /*
+   * Instance methods.
+   */
+
 
   @Override // TypeMirror
   public final <R, P> R accept(final TypeVisitor<R, P> v, final P p) {

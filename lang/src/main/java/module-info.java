@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2022–2023 microBean™.
+ * Copyright © 2022–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -19,8 +19,10 @@
  */
 module org.microbean.lang {
 
-  requires static jdk.compiler;
+  requires static jdk.compiler; // for debugging only; slated for eventual removal
   requires transitive java.compiler;
+
+  requires org.microbean.constant;
 
   exports org.microbean.lang.element;
   exports org.microbean.lang.type;

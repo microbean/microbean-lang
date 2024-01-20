@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -114,6 +114,8 @@ import javax.tools.ToolProvider;
 
 import javax.lang.model.SourceVersion;
 
+import org.microbean.constant.Constables;
+
 import org.microbean.lang.element.DelegatingElement;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
@@ -121,6 +123,7 @@ import org.microbean.lang.type.DelegatingTypeMirror;
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
+import static java.lang.constant.ConstantDescs.CD_List;
 import static java.lang.constant.ConstantDescs.CD_String;
 import static java.lang.constant.ConstantDescs.NULL;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
@@ -130,6 +133,28 @@ import static javax.lang.model.util.ElementFilter.constructorsIn;
 import static javax.lang.model.util.ElementFilter.fieldsIn;
 import static javax.lang.model.util.ElementFilter.methodsIn;
 
+import static org.microbean.lang.ConstantDescs.CD_ArrayType;
+import static org.microbean.lang.ConstantDescs.CD_CharSequence;
+import static org.microbean.lang.ConstantDescs.CD_DeclaredType;
+import static org.microbean.lang.ConstantDescs.CD_ExecutableElement;
+import static org.microbean.lang.ConstantDescs.CD_Lang;
+import static org.microbean.lang.ConstantDescs.CD_ModuleElement;
+import static org.microbean.lang.ConstantDescs.CD_Name;
+import static org.microbean.lang.ConstantDescs.CD_NoType;
+import static org.microbean.lang.ConstantDescs.CD_NullType;
+import static org.microbean.lang.ConstantDescs.CD_PackageElement;
+import static org.microbean.lang.ConstantDescs.CD_PrimitiveType;
+import static org.microbean.lang.ConstantDescs.CD_TypeElement;
+import static org.microbean.lang.ConstantDescs.CD_TypeKind;
+import static org.microbean.lang.ConstantDescs.CD_TypeMirror;
+import static org.microbean.lang.ConstantDescs.CD_WildcardType;
+
+/**
+ * A utility class for working with the {@link javax.lang.model.AnnotatedConstruct javax.lang.model.*} packages at
+ * runtime.
+ *
+ * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
+ */
 public final class Lang {
 
 
@@ -137,36 +162,6 @@ public final class Lang {
    * Static fields.
    */
 
-
-  private static final ClassDesc CD_ArrayType = ClassDesc.of("javax.lang.model.type.ArrayType");
-
-  private static final ClassDesc CD_CharSequence = ClassDesc.of("java.lang.CharSequence");
-
-  private static final ClassDesc CD_DeclaredType = ClassDesc.of("javax.lang.model.type.DeclaredType");
-
-  private static final ClassDesc CD_Element = ClassDesc.of("javax.lang.model.element.Element");
-
-  private static final ClassDesc CD_Lang = ClassDesc.of("org.microbean.lang.Lang");
-
-  private static final ClassDesc CD_ModuleElement = ClassDesc.of("javax.lang.model.element.ModuleElement");
-
-  private static final ClassDesc CD_Name = ClassDesc.of("javax.lang.model.element.Name");
-
-  private static final ClassDesc CD_NoType = ClassDesc.of("javax.lang.model.type.NoType");
-
-  private static final ClassDesc CD_NullType = ClassDesc.of("javax.lang.model.type.NullType");
-
-  private static final ClassDesc CD_PackageElement = ClassDesc.of("javax.lang.model.element.PackageElement");
-
-  private static final ClassDesc CD_PrimitiveType = ClassDesc.of("javax.lang.model.type.PrimitiveType");
-
-  private static final ClassDesc CD_TypeElement = ClassDesc.of("javax.lang.model.element.TypeElement");
-
-  private static final ClassDesc CD_TypeKind = ClassDesc.of("javax.lang.model.type.TypeKind");
-
-  private static final ClassDesc CD_TypeMirror = ClassDesc.of("javax.lang.model.type.TypeMirror");
-
-  private static final ClassDesc CD_WildcardType = ClassDesc.of("javax.lang.model.type.WildcardType");
 
   private static final TypeMirror[] EMPTY_TYPEMIRROR_ARRAY = new TypeMirror[0];
 
@@ -323,12 +318,54 @@ public final class Lang {
     }
     final ElementKind k = e.getKind();
     return switch (k) {
+    case CONSTRUCTOR, METHOD -> describeConstable((ExecutableElement)e);
     case MODULE -> describeConstable((ModuleElement)e);
     case PACKAGE -> describeConstable((PackageElement)e);
+    case PARAMETER -> describeConstable((VariableElement)e);
     // TODO: others probably need to be handled but not as urgently
     case ElementKind ek when ek.isDeclaredType() -> describeConstable((TypeElement)e);
     default -> Optional.empty();
     };
+  }
+
+  public static final Optional<? extends ConstantDesc> describeConstable(final ExecutableElement e) {
+    if (e == null) {
+      return Optional.of(NULL);
+    } else if (e instanceof Constable c) {
+      return c.describeConstable();
+    } else if (e instanceof ConstantDesc cd) {
+      // Future proofing?
+      return Optional.of(cd);
+    }
+    switch (e.getKind()) {
+    case CONSTRUCTOR:
+      return Constables.describeConstable(e.getParameters(), Lang::describeConstable)
+        .flatMap(parametersDesc -> describeConstable(e.getEnclosingElement())
+                 .map(declaringElementDesc -> DynamicConstantDesc.of(BSM_INVOKE,
+                                                                     MethodHandleDesc.ofMethod(STATIC,
+                                                                                               CD_Lang,
+                                                                                               "executableElement",
+                                                                                               MethodTypeDesc.of(CD_TypeElement,
+                                                                                                                 CD_List)),
+                                                                     declaringElementDesc,
+                                                                     parametersDesc)));
+    case METHOD:
+      return Constables.describeConstable(e.getParameters())
+        .flatMap(parametersDesc -> describeConstable(e.getEnclosingElement())
+                 .flatMap(declaringElementDesc -> describeConstable(e.getSimpleName())
+                          .map(nameDesc -> DynamicConstantDesc.of(BSM_INVOKE,
+                                                                  MethodHandleDesc.ofMethod(STATIC,
+                                                                                            CD_Lang,
+                                                                                            "executableElement",
+                                                                                            MethodTypeDesc.of(CD_TypeElement,
+                                                                                                              CD_CharSequence,
+                                                                                                              CD_List)),
+                                                                  declaringElementDesc,
+                                                                  nameDesc,
+                                                                  parametersDesc))));
+    default:
+      return Optional.empty();
+    }
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final ModuleElement e) {
@@ -392,6 +429,44 @@ public final class Lang {
                                                                                                    CD_CharSequence)),
                                                        moduleDesc,
                                                        nameDesc)));
+  }
+
+  public static final Optional<? extends ConstantDesc> describeConstable(final VariableElement e) {
+    if (e == null) {
+      return Optional.of(NULL);
+    } else if (e instanceof Constable c) {
+      return c.describeConstable();
+    } else if (e instanceof ConstantDesc cd) {
+      // Future proofing?
+      return Optional.of(cd);
+    }
+    switch (e.getKind()) {
+    case FIELD:
+      return describeConstable(e.getSimpleName())
+        .flatMap(nameDesc -> describeConstable(e.getEnclosingElement())
+                 .map(declaringClassDesc -> DynamicConstantDesc.of(BSM_INVOKE,
+                                                                   MethodHandleDesc.ofMethod(STATIC,
+                                                                                             CD_Lang,
+                                                                                             "variableElement",
+                                                                                             MethodTypeDesc.of(CD_TypeElement,
+                                                                                                               CD_CharSequence)),
+                                                                   declaringClassDesc,
+                                                                   nameDesc)));
+    case PARAMETER:
+      return describeConstable(e.getSimpleName())
+        .flatMap(nameDesc -> describeConstable(e.getEnclosingElement())
+                 .map(declaringExecutableDesc -> DynamicConstantDesc.of(BSM_INVOKE,
+                                                                        MethodHandleDesc.ofMethod(STATIC,
+                                                                                                  CD_Lang,
+                                                                                                  "variableElement",
+                                                                                                  MethodTypeDesc.of(CD_ExecutableElement,
+                                                                                                                    CD_CharSequence)),
+                                                                        declaringExecutableDesc,
+                                                                        nameDesc)));
+    default:
+      break;
+    }
+    return Optional.empty();
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final TypeMirror t) {
@@ -1468,7 +1543,7 @@ public final class Lang {
     } else {
       CompletionLock.acquire();
       try {
-        // Name.toString() is not thread-safe.
+        // Name.toString() is not necessarily thread-safe.
         s = name.toString();
       } finally {
         CompletionLock.release();
@@ -1676,9 +1751,10 @@ public final class Lang {
       executableElement(typeElement(m.getDeclaringClass()), m.getName(), typeArray(m.getParameterTypes())); // deliberate erasure
   }
 
+  // (Constructor.)
   public static final ExecutableElement executableElement(TypeElement declaringClass,
                                                           final List<? extends TypeMirror> parameterTypes) {
-    declaringClass = unwrap(declaringClass);
+    declaringClass = unwrap(declaringClass); // needed because types.erasure() is used on its children
     final Types types = pe().getTypeUtils();
     ExecutableElement rv = null;
     final int parameterTypesSize = parameterTypes == null ? 0 : parameterTypes.size();
@@ -1704,6 +1780,7 @@ public final class Lang {
     return rv == null ? null : wrap(rv);
   }
 
+  // (Constructor.)
   public static final ExecutableElement executableElement(TypeElement declaringClass,
                                                           final TypeMirror... parameterTypes) {
     declaringClass = unwrap(declaringClass);
@@ -1732,10 +1809,13 @@ public final class Lang {
     return rv == null ? null : wrap(rv);
   }
 
+  // (Method.)
   public static final ExecutableElement executableElement(TypeElement declaringClass,
                                                           final CharSequence name,
                                                           final List<? extends TypeMirror> parameterTypes) {
-    Objects.requireNonNull(name, "name");
+    if ("<init>".equals(name)) {
+      return executableElement(declaringClass, parameterTypes);
+    }
     declaringClass = unwrap(declaringClass);
     final Types types = pe().getTypeUtils();
     ExecutableElement rv = null;
@@ -1764,10 +1844,13 @@ public final class Lang {
     return rv == null ? null : wrap(rv);
   }
 
+  // (Method.)
   public static final ExecutableElement executableElement(TypeElement declaringClass,
                                                           final CharSequence name,
                                                           final TypeMirror... parameterTypes) {
-    Objects.requireNonNull(name, "name");
+    if ("<init>".equals(name)) {
+      return executableElement(declaringClass, parameterTypes);
+    }
     declaringClass = unwrap(declaringClass);
     final Types types = pe().getTypeUtils();
     ExecutableElement rv = null;
@@ -1966,14 +2049,53 @@ public final class Lang {
   }
 
   public static final VariableElement variableElement(final Field f) {
-    Objects.requireNonNull(f, "f");
+    return variableElement(typeElement(f.getDeclaringClass()), f.getName());
+  }
+
+  // (Field.)
+  public static final VariableElement variableElement(final TypeElement declaringClass, final CharSequence fieldName) {
+    Objects.requireNonNull(fieldName, "fieldName");
     CompletionLock.acquire();
     try {
-      // Conveniently, fieldsIn() doesn't use internal javac constructs so we can just skip the unwrapping.
-      for (final VariableElement ve : (Iterable<? extends VariableElement>)fieldsIn(typeElement(f.getDeclaringClass()).getEnclosedElements())) {
-        if (ve.getSimpleName().contentEquals(f.getName())) {
-          return ve;
+      for (final Element e : declaringClass.getEnclosedElements()) {
+        if (e.getKind() == ElementKind.FIELD && e.getSimpleName().contentEquals(fieldName)) {
+          return wrap((VariableElement)e);
         }
+      }
+    } finally {
+      CompletionLock.release();
+    }
+    return null;
+  }
+
+  // (Parameter.)
+  public static final VariableElement variableElement(ExecutableElement declaringExecutable, final CharSequence parameterName) {
+    Objects.requireNonNull(parameterName, "parameterName");
+    CompletionLock.acquire();
+    try {
+      for (final Element e : declaringExecutable.getEnclosedElements()) {
+        if (e.getKind() == ElementKind.PARAMETER && e.getSimpleName().contentEquals(parameterName)) {
+          // In the javax.lang.model.* classes, a VariableElement serving as a parameter always has a name, and that
+          // name is unique within the executable.
+          return wrap((VariableElement)e);
+        }
+      }
+    } finally {
+      CompletionLock.release();
+    }
+    return null;
+  }
+
+  // (Parameter.)
+  public static final VariableElement variableElement(final ExecutableElement declaringExecutable, final int position) {
+    CompletionLock.acquire();
+    try {
+      switch (declaringExecutable.getKind()) {
+      case CONSTRUCTOR:
+      case METHOD:
+        return wrap((VariableElement)declaringExecutable.getEnclosedElements().get(position));
+      default:
+        break;
       }
     } finally {
       CompletionLock.release();

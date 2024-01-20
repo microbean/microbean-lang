@@ -115,6 +115,13 @@
         <type>jar</type>
       </dependency>
 
+      <dependency>
+        <groupId>org.microbean</groupId>
+        <artifactId>microbean-constant</artifactId>
+        <version>0.0.7</version>
+        <type>jar</type>
+      </dependency>
+      
       <!-- Module dependencies. -->
 
       <dependency>
@@ -286,12 +293,12 @@
 
         <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.12.0</version>
+          <version>3.12.1</version>
           <configuration>
             <compilerArgs>
               <arg>-parameters</arg>
               <arg>-Xlint:all</arg>
-              <arg>-Xlint:-preview</arg>
+              <!-- <arg>-Xlint:-preview</arg> -->
               <arg>-Xpkginfo:always</arg>
             </compilerArgs>
           </configuration>
