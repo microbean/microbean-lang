@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -27,9 +27,29 @@ import javax.lang.model.util.SimpleTypeVisitor14;
 
 import org.microbean.lang.TypeAndElementSource;
 
+/**
+ * A {@link SimpleTypeVisitor14} that produces a {@link TypeClosure} for a {@linkplain TypeKind#DECLARED class or
+ * interface} type, emulating {@code javac}'s <a
+ * href="https://github.com/openjdk/jdk/blob/jdk-21%2B35/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3701-L3724">{@code
+ * closure(Type)}</a> operation.
+ *
+ * <p>Visiting a {@link TypeMirror} that {@linkplain TypeMirror#getKind() is} neither a {@linkplain TypeKind#DECLARED
+ * declared} type, an {@linkplain TypeKind#INTERSECTION intersection} type, nor a {@linkplain TypeKind#TYPEVAR type
+ * variable} type will result in an {@link IllegalArgumentException}.</p>
+ *
+ * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
+ *
+ * @see TypeClosure
+ */
 public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, Void> {
 
-  private final TypeAndElementSource elementSource;
+
+  /*
+   * Instance fields.
+   */
+
+
+  private final TypeAndElementSource tes;
 
   // @GuardedBy("itself")
   private final WeakHashMap<TypeMirror, TypeClosure> closureCache;
@@ -38,39 +58,59 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
 
   private final PrecedesPredicate precedesPredicate;
 
-  public TypeClosureVisitor(final TypeAndElementSource elementSource,
+
+  /*
+   * Constructors.
+   */
+
+
+  /**
+   * Creates a new {@link TypeClosureVisitor}.
+   *
+   * @param tes a {@link TypeAndElementSource}; must not be {@code null}
+   *
+   * @param supertypeVisitor a {@link SupertypeVisitor}; must not be {@code null}
+   *
+   * @param precedesPredicate a {@link PrecedesPredicate}; must not be {@code null}
+   *
+   * @exception NullPointerException if any argument is {@code null}
+   */
+  public TypeClosureVisitor(final TypeAndElementSource tes,
                             final SupertypeVisitor supertypeVisitor,
                             final PrecedesPredicate precedesPredicate) {
     super();
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
     this.precedesPredicate = Objects.requireNonNull(precedesPredicate, "precedesPredicate");
     this.closureCache = new WeakHashMap<>();
   }
+
+
+  /*
+   * Instance methods.
+   */
+
 
   @Override
   protected final TypeClosure defaultAction(final TypeMirror t, final Void x) {
     // Interestingly, javac's Types#closure(Type) method returns a single-element list containing t if t is not a class
     // or interface type.  Nevertheless the intention seems to be that only class or interface types should be supplied,
     // so we enforce that here.
-    throw new IllegalArgumentException("t: " + t + "; t.getKind(): " + t.getKind() + (t instanceof DeclaredType dt ? "; element: " + dt.asElement() + "; element kind: " + dt.asElement().getKind() : ""));
+    throw new IllegalArgumentException("t: " + t + "; t.getKind(): " + t.getKind());
   }
 
   @Override
   public final TypeClosure visitDeclared(final DeclaredType t, final Void x) {
-    assert t.getKind() == TypeKind.DECLARED;
     return this.visitDeclaredOrIntersectionOrTypeVariable(t, x);
   }
 
   @Override
   public final TypeClosure visitIntersection(final IntersectionType t, final Void x) {
-    assert t.getKind() == TypeKind.INTERSECTION;
     return this.visitDeclaredOrIntersectionOrTypeVariable(t, x);
   }
 
   @Override
   public final TypeClosure visitTypeVariable(final TypeVariable t, final Void x) {
-    assert t.getKind() == TypeKind.TYPEVAR;
     return this.visitDeclaredOrIntersectionOrTypeVariable(t, x);
   }
 
@@ -108,6 +148,8 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
           // optimization?  I don't know. I reproduce the behavior here, for better or for worse. This permits two equal
           // type variables in the closure, which otherwise would be filtered out.
           //
+          // I guess since st is t's supertype, they'll never be equal, and we know that the most specialized type comes first?
+          //
           // (The only time a supertype can be a type variable is if the subtype is also a type variable.)
           assert t.getKind() == TypeKind.TYPEVAR : "Expected " + TypeKind.TYPEVAR + "; got DECLARED; t: " + t + "; st: " + st;
           closure = this.visit(st);
@@ -115,7 +157,7 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
           break;
 
         case NONE:
-          closure = new TypeClosure(this.elementSource, this.precedesPredicate);
+          closure = new TypeClosure(this.tes, this.precedesPredicate);
           closure.union(t); // reflexive
           break;
 
@@ -136,7 +178,7 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
         }
         break;
       default:
-        throw new IllegalArgumentException("t: " + t);
+        throw new IllegalArgumentException("t: " + t + "; t.getKind(): " + t.getKind());
       }
       for (final TypeMirror iface : this.supertypeVisitor.interfacesVisitor().visit(t)) {
         closure.union(this.visit(iface));

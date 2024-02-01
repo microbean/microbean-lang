@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -23,9 +23,25 @@ import org.microbean.lang.Lang;
 
 import org.microbean.lang.type.Types;
 
+/**
+ * A hub of sorts for visitors of various kinds designed to reproduce the innards of certain aspects of the {@code
+ * javac} compiler at runtime.
+ *
+ * <p>A spiritually faithful port of the compiler's operations and constructs results in circular dependencies, just as
+ * the compiler itself contains such circular dependencies. This class makes it easier to set up the intricate network
+ * of visitors that depend on each other.</p>
+ *
+ * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
+ */
 public final class Visitors {
 
-  private final TypeAndElementSource elementSource;
+
+  /*
+   * Instance fields.
+   */
+
+  
+  private final TypeAndElementSource tes;
 
   private final EraseVisitor eraseVisitor;
 
@@ -55,41 +71,40 @@ public final class Visitors {
 
   private final AssignableVisitor assignableVisitor;
 
-  public Visitors(final TypeAndElementSource es) {
-    this(es, false, true, t -> true);
+
+  /*
+   * Constructors.
+   */
+
+  
+  public Visitors(final TypeAndElementSource tes) {
+    this(tes, false, true);
   }
 
-  public Visitors(final TypeAndElementSource es,
+  public Visitors(TypeAndElementSource tes,
                   final boolean subtypeCapture /* false by default */,
                   final boolean wildcardsCompatible /* true by default */) {
-    this(es, subtypeCapture, wildcardsCompatible, t -> true);
-  }
-
-  public Visitors(TypeAndElementSource es,
-                  final boolean subtypeCapture /* false by default */,
-                  final boolean wildcardsCompatible /* true by default */,
-                  final Predicate<? super TypeMirror> supertypeFilter) {
     super();
-    if (es == null) {
-      es = Lang.typeAndElementSource();
+    if (tes == null) {
+      tes = Lang.typeAndElementSource();
     }
-    this.elementSource = es;
-    final Types types = new Types(es);
-    this.eraseVisitor = new EraseVisitor(es, types);
-    this.supertypeVisitor = new SupertypeVisitor(es, types, this.eraseVisitor, supertypeFilter);
+    this.tes = tes;
+    final Types types = new Types(tes);
+    this.eraseVisitor = new EraseVisitor(tes, types);
+    this.supertypeVisitor = new SupertypeVisitor(tes, types, this.eraseVisitor);
     this.boundingClassVisitor = new BoundingClassVisitor(this.supertypeVisitor);
-    this.asSuperVisitor = new AsSuperVisitor(es, null, types, this.supertypeVisitor);
+    this.asSuperVisitor = new AsSuperVisitor(tes, null, types, this.supertypeVisitor);
     this.memberTypeVisitor =
-      new MemberTypeVisitor(es, null, types, this.asSuperVisitor, this.eraseVisitor, this.supertypeVisitor);
+      new MemberTypeVisitor(tes, null, types, this.asSuperVisitor, this.eraseVisitor, this.supertypeVisitor);
 
-    this.containsTypeVisitor = new ContainsTypeVisitor(es, types);
+    this.containsTypeVisitor = new ContainsTypeVisitor(tes, types);
 
-    this.sameTypeVisitor = new SameTypeVisitor(es, this.containsTypeVisitor, this.supertypeVisitor, wildcardsCompatible);
+    this.sameTypeVisitor = new SameTypeVisitor(tes, this.containsTypeVisitor, this.supertypeVisitor, wildcardsCompatible);
 
-    this.captureVisitor = new CaptureVisitor(es, null, types, this.supertypeVisitor, this.memberTypeVisitor);
+    this.captureVisitor = new CaptureVisitor(tes, null, types, this.supertypeVisitor, this.memberTypeVisitor);
 
     this.subtypeVisitor =
-      new SubtypeVisitor(es,
+      new SubtypeVisitor(tes,
                          null,
                          types,
                          this.asSuperVisitor,
@@ -106,14 +121,20 @@ public final class Visitors {
 
     final PrecedesPredicate precedesPredicate = new PrecedesPredicate(null, this.supertypeVisitor, this.subtypeVisitor);
     this.precedesPredicate = precedesPredicate;
-    this.typeClosureVisitor = new TypeClosureVisitor(es, this.supertypeVisitor, precedesPredicate);
+    this.typeClosureVisitor = new TypeClosureVisitor(tes, this.supertypeVisitor, precedesPredicate);
     this.captureVisitor.setTypeClosureVisitor(this.typeClosureVisitor);
 
     assert this.initialized();
   }
 
+
+  /*
+   * Instance methods.
+   */
+  
+
   public final TypeAndElementSource typeAndElementSource() {
-    return this.elementSource;
+    return this.tes;
   }
 
   public final EraseVisitor eraseVisitor() {

@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -22,6 +22,7 @@ import java.util.List;
 import javax.lang.model.element.TypeElement;
 
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.sun.tools.javac.model.JavacTypes;
@@ -87,6 +88,21 @@ final class TestTypeClosureVisitor {
     assertTrue(sameType(Lang.declaredType("java.lang.Object"), closure.get(closure.size() - 1)));
     assertTrue(sameType(Lang.declaredType("java.lang.Object"), closure.get(visitorClosure.size() - 1)));
     assertTrue(contentsEqual(closure, visitorClosure));
+  }
+
+  @Test
+  final void testArrayTypeClosure() {
+    final TypeMirror t = Lang.arrayTypeOf(Lang.declaredType("java.lang.Integer"));
+    assertSame(TypeKind.ARRAY, t.getKind());
+    
+    final Type integerArrayType = (Type)unwrap(Lang.arrayTypeOf(Lang.declaredType("java.lang.Integer")));
+    assertSame(TypeKind.ARRAY, integerArrayType.getKind());
+    final List<? extends TypeMirror> closure = javacCodeTypes.closure(integerArrayType);
+    // Perhaps surprisingly, the closure (as implemented by javac) of any type, including array types, that is not a
+    // class or interface type is simply the type itself.
+    assertEquals(1, closure.size());
+    assertSame(integerArrayType, closure.get(0));
+    assertThrows(IllegalArgumentException.class, () -> this.visitors.typeClosureVisitor().visit(t));
   }
 
   private static final boolean contentsEqual(final Iterable<? extends TypeMirror> t, final Iterable<? extends TypeMirror> s) {

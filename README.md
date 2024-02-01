@@ -27,7 +27,7 @@ Maven dependency:
   <groupId>org.microbean</groupId>
   <artifactId>microbean-lang</artifactId>
   <!-- Always check https://search.maven.org/artifact/org.microbean/microbean-lang for up-to-date available versions. -->
-  <version>0.0.9</version>
+  <version>0.0.10</version>
 </dependency>
 ```
 

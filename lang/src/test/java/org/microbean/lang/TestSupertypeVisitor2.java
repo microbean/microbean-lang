@@ -73,7 +73,7 @@ final class TestSupertypeVisitor2 {
     assertSame(TypeKind.DECLARED, integerElementType.getKind());
 
     final SupertypeVisitor supertypeVisitor = this.visitors.supertypeVisitor();
-    
+
     assertSame(this.javacCodeTypes.supertype((Type)unwrap(integerElementType)),
                unwrap(supertypeVisitor.visit(integerElementType)));
 
@@ -98,29 +98,6 @@ final class TestSupertypeVisitor2 {
   @Test
   final void testSupertypeOfObject() {
     assertSame(Lang.noType(TypeKind.NONE), this.javacCodeTypes.supertype((Type)unwrap(Lang.declaredType("java.lang.Object"))));
-  }
-
-  @Test
-  final void testFilter() {
-    final SupertypeVisitor supertypeVisitor = this.visitors.supertypeVisitor().withFilter(t -> {
-        if (t.getKind() == TypeKind.DECLARED && ((TypeElement)((DeclaredType)t).asElement()).getQualifiedName().contentEquals("java.lang.Object")) {
-          return false;
-        }
-        return true;
-      });
-    assertSame(Lang.noType(TypeKind.NONE), unwrap(supertypeVisitor.visit(Lang.declaredType("java.io.Serializable"))));
-  }
-
-  @Test
-  final void testFilter2() {
-    assertSame(unwrap(Lang.declaredType("java.lang.Number")), this.javacCodeTypes.supertype((Type)unwrap(Lang.declaredType("java.lang.Integer"))));
-    final SupertypeVisitor supertypeVisitor = this.visitors.supertypeVisitor().withFilter(t -> {
-        if (t.getKind() == TypeKind.DECLARED && ((TypeElement)((DeclaredType)t).asElement()).getQualifiedName().contentEquals("java.lang.Number")) {
-          return false;
-        }
-        return true;
-      });
-    assertSame(unwrap(Lang.declaredType("java.lang.Object")), supertypeVisitor.visit(unwrap(Lang.declaredType("java.lang.Integer"))));
   }
 
 }
