@@ -111,8 +111,9 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
 
   /**
    * Returns the <em>specialization depth</em> of the supplied {@link TypeMirror}, which must be an {@linkplain
-   * TypeKind#ARRAY array type}, a {@linkplain TypeKind#DECLARED declared type}, an {@linkplain TypeKind#INTERSECTION
-   * intersection type} or a {@linkplain TypeKind#TYPEVAR type variable}.
+   * javax.lang.model.type.TypeKind#ARRAY array type}, a {@linkplain javax.lang.model.type.TypeKind#DECLARED declared
+   * type}, an {@linkplain javax.lang.model.type.TypeKind#INTERSECTION intersection type} or a {@linkplain
+   * javax.lang.model.type.TypeKind#TYPEVAR type variable}.
    *
    * <p>The specialization depth of the type representing {@link java.lang.Object java.lang.Object} is {@code 0}.</p>
    *
@@ -120,9 +121,10 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
    *
    * <p>The specialization depth of a subclass of an immediate subclass of {@link Object} is {@code 2}. And so on.</p>
    *
-   * @param t a {@link TypeMirror}; must not be {@code null}; must be an {@linkplain TypeKind#ARRAY array type}, a
-   * {@linkplain TypeKind#DECLARED declared type}, an {@linkplain TypeKind#INTERSECTION intersection type} or a
-   * {@linkplain TypeKind#TYPEVAR type variable}
+   * @param t a {@link TypeMirror}; must not be {@code null}; must be an {@linkplain
+   * javax.lang.model.type.TypeKind#ARRAY array type}, a {@linkplain javax.lang.model.type.TypeKind#DECLARED declared
+   * type}, an {@linkplain javax.lang.model.type.TypeKind#INTERSECTION intersection type} or a {@linkplain
+   * javax.lang.model.type.TypeKind#TYPEVAR type variable}
    *
    * @return {@code 0} or a positive {@code int} representing the specialization depth of the {@link TypeMirror} in question
    *
