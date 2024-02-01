@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,9 +39,24 @@ import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
 
+/**
+ * A supplier of a {@link List} of {@link DelegatingTypeMirror}s, built by a {@link TypeClosureVisitor}.
+ *
+ * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
+ *
+ * @see #toList()
+ *
+ * @see TypeClosureVisitor
+ */
 // A type closure list builder.
 // NOT THREADSAFE
 public final class TypeClosure {
+
+
+  /*
+   * Instance fields.
+   */
+
 
   private final TypeAndElementSource elementSource;
 
@@ -51,6 +66,12 @@ public final class TypeClosure {
   private final BiPredicate<? super Element, ? super Element> precedesPredicate;
 
   private final BiPredicate<? super Element, ? super Element> equalsPredicate;
+
+
+  /*
+   * Constructors.
+   */
+
 
   TypeClosure(final TypeAndElementSource elementSource, final SupertypeVisitor supertypeVisitor, final SubtypeVisitor subtypeVisitor) {
     this(elementSource, new PrecedesPredicate(supertypeVisitor, subtypeVisitor), null);
@@ -69,6 +90,12 @@ public final class TypeClosure {
     this.precedesPredicate = Objects.requireNonNull(precedesPredicate, "precedesPredicate");
     this.equalsPredicate = equalsPredicate == null ? Equality::equalsIncludingAnnotations : equalsPredicate;
   }
+
+
+  /*
+   * Instance methods.
+   */
+
 
   final void union(final TypeMirror t) {
     // t must be DECLARED or TYPEVAR.  TypeClosureVisitor deals with INTERSECTION before it gets here.
@@ -122,6 +149,9 @@ public final class TypeClosure {
     this.union(tc.toList());
   }
 
+  // A spiritual port of
+  // https://github.com/openjdk/jdk/blob/jdk-21%2B35/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3783-L3802. Adds
+  // elements of list in appropriate locations in this TypeClosure.
   private final void union(final List<? extends TypeMirror> list) {
     final int size = list.size();
     switch (size) {
@@ -148,7 +178,20 @@ public final class TypeClosure {
       return;
     }
 
-    final DelegatingTypeMirror head1 = this.deque.peekFirst();
+    final DelegatingTypeMirror head0 = this.deque.peekFirst();
+    final Element head0E;
+    switch (head0.getKind()) {
+    case DECLARED:
+      head0E = ((DeclaredType)head0).asElement();
+      break;
+    case TYPEVAR:
+      head0E = ((TypeVariable)head0).asElement();
+      break;
+    default:
+      throw new IllegalStateException();
+    }
+
+    final TypeMirror head1 = list.get(0);
     final Element head1E;
     switch (head1.getKind()) {
     case DECLARED:
@@ -158,34 +201,21 @@ public final class TypeClosure {
       head1E = ((TypeVariable)head1).asElement();
       break;
     default:
-      throw new IllegalStateException();
-    }
-
-    final TypeMirror head2 = list.get(0);
-    final Element head2E;
-    switch (head2.getKind()) {
-    case DECLARED:
-      head2E = ((DeclaredType)head2).asElement();
-      break;
-    case TYPEVAR:
-      head2E = ((TypeVariable)head2).asElement();
-      break;
-    default:
       throw new IllegalArgumentException("list: " + list);
     }
 
-    if (this.equalsPredicate.test(head1E, head2E)) {
-      // Don't include head2.
-      this.deque.removeFirst(); // removes head1
+    if (this.equalsPredicate.test(head0E, head1E)) {
+      // Don't include head1.
+      this.deque.removeFirst(); // removes head0
       this.union(list.subList(1, size)); // RECURSIVE
-      this.deque.addFirst(head1); // put head1 back
-    } else if (this.precedesPredicate.test(head2E, head1E)) {
+      this.deque.addFirst(head0); // put head0 back
+    } else if (this.precedesPredicate.test(head1E, head0E)) {
       this.union(list.subList(1, size)); // RECURSIVE
-      this.deque.addFirst(DelegatingTypeMirror.of(head2, this.elementSource));
+      this.deque.addFirst(DelegatingTypeMirror.of(head1, this.elementSource));
     } else {
-      this.deque.removeFirst(); // removes head1
+      this.deque.removeFirst(); // removes head0
       this.union(list); // RECURSIVE
-      this.deque.addFirst(head1); // put head1 back
+      this.deque.addFirst(head0); // put head0 back
     }
   }
 
@@ -244,6 +274,18 @@ public final class TypeClosure {
     return Collections.unmodifiableList(classes);
   }
 
+  /**
+   * Returns an immutable {@link List} of {@link DelegatingTypeMirror}s that this {@link TypeClosure} contains.
+   *
+   * <p>The {@link DelegatingTypeMirror}s within the returned {@link List} will {@linkplain TypeMirror#getKind() report}
+   * {@link TypeKind} instances that are either {@link TypeKind#DECLARED} or {@link TypeKind#TYPEVAR} and none
+   * other.</p>
+   *
+   * @return an immutable {@link List} of {@link DelegatingTypeMirror}s that this {@link TypeClosure} contains; never
+   * {@code null}
+   *
+   * @see TypeClosureVisitor
+   */
   // Every element of the returned list will have a TypeKind that is either DECLARED or TYPEVAR.
   public final List<? extends DelegatingTypeMirror> toList() {
     return List.copyOf(this.deque);

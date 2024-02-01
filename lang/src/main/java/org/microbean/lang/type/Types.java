@@ -1,18 +1,15 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2022–2023 microBean™.
+ * Copyright © 2022–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.type;
 
@@ -55,29 +52,28 @@ public final class Types {
     // javac's "wildUpperBound".
     // See
     // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L130-L143
-    switch (t.getKind()) {
-    case WILDCARD:
-      final javax.lang.model.type.WildcardType w = (javax.lang.model.type.WildcardType)t;
-      final javax.lang.model.type.TypeMirror superBound = w.getSuperBound();
-      if (superBound == null) {
-        // Unbounded or upper-bounded.
-        final javax.lang.model.type.TypeMirror extendsBound = w.getExtendsBound();
-        if (extendsBound == null) {
-          // Unbounded, so upper bound is Object.
-          return this.es.typeElement("java.lang.Object").asType();
-        } else {
+    return switch (t.getKind()) {
+      case WILDCARD -> {
+        final javax.lang.model.type.WildcardType w = (javax.lang.model.type.WildcardType)t;
+        final javax.lang.model.type.TypeMirror superBound = w.getSuperBound();
+        if (superBound == null) {
+          // Unbounded or upper-bounded.
+          final javax.lang.model.type.TypeMirror extendsBound = w.getExtendsBound();
+          if (extendsBound == null) {
+            // Unbounded, so upper bound is Object.
+            yield this.es.typeElement("java.lang.Object").asType();
+          }
           // Upper-bounded.
           assert
             extendsBound.getKind() == TypeKind.ARRAY ||
             extendsBound.getKind() == TypeKind.DECLARED ||
             extendsBound.getKind() == TypeKind.TYPEVAR :
           "extendsBound kind: " + extendsBound.getKind();
-          return extendsBound;
+          yield extendsBound;
         }
-      } else {
         // See
         // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L138.
-        // A (javac) WildcardType's bound field is NOT the same as its type field.  The lang model only exposes the type
+        // A (javac) WildcardType's bound field is NOT the same as its type field. The lang model only exposes the type
         // field.
         //
         // Consider some context like this:
@@ -88,8 +84,8 @@ public final class Types {
         //
         //   Foo<? super String> f;
         //
-        // The (javac) WildcardType's bound field will be initialized to T extends Serializable.  Its type field will be
-        // initialized to String.  wildUpperBound(thisWildcardType) will return Serializable.class, not Object.class.
+        // The (javac) WildcardType's bound field will be initialized to T extends Serializable. Its type field will be
+        // initialized to String. wildUpperBound(thisWildcardType) will return Serializable.class, not Object.class.
         //
         // The lang model makes this impossible, because bound is not exposed, and getSuperBound() doesn't do anything
         // fancy to return it.
@@ -112,55 +108,54 @@ public final class Types {
         // So bound gets set to T extends Serializable.  There is no way to extract T extends Serializable from a
         // javax.lang.model.type.WildcardType, and without that ability we have no other information, so we must return
         // Object.class.
-        return this.es.typeElement("java.lang.Object").asType();
+        yield this.es.typeElement("java.lang.Object").asType();
       }
-    default:
-      return t;
-    }
+      default -> t;
+    };
   }
 
   public final javax.lang.model.type.TypeMirror superBound(final javax.lang.model.type.TypeMirror t) {
     // See
     // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L157-L167
     return switch (t.getKind()) {
-    case WILDCARD -> {
-      final javax.lang.model.type.TypeMirror superBound = ((javax.lang.model.type.WildcardType)t).getSuperBound();
-      yield superBound == null ? org.microbean.lang.type.NullType.INSTANCE : superBound;
-    }
-    default -> t;
+      case WILDCARD -> {
+        final javax.lang.model.type.TypeMirror superBound = ((javax.lang.model.type.WildcardType)t).getSuperBound();
+        yield superBound == null ? org.microbean.lang.type.NullType.INSTANCE : superBound;
+      }
+      default -> t;
     };
   }
 
   public final javax.lang.model.type.TypeMirror box(final javax.lang.model.type.TypeMirror t) {
     return t == null ? null : switch (t.getKind()) {
-    case BOOLEAN -> this.es.typeElement("java.lang.Boolean").asType();
-    case BYTE -> this.es.typeElement("java.lang.Byte").asType();
-    case CHAR -> this.es.typeElement("java.lang.Character").asType();
-    case DOUBLE -> this.es.typeElement("java.lang.Double").asType();
-    case FLOAT -> this.es.typeElement("java.lang.Float").asType();
-    case INT -> this.es.typeElement("java.lang.Integer").asType();
-    case LONG -> this.es.typeElement("java.lang.Long").asType();
-    case SHORT -> this.es.typeElement("java.lang.Short").asType();
-    case VOID -> this.es.typeElement("java.lang.Void").asType();
-    default -> t;
+      case BOOLEAN -> this.es.typeElement("java.lang.Boolean").asType();
+      case BYTE -> this.es.typeElement("java.lang.Byte").asType();
+      case CHAR -> this.es.typeElement("java.lang.Character").asType();
+      case DOUBLE -> this.es.typeElement("java.lang.Double").asType();
+      case FLOAT -> this.es.typeElement("java.lang.Float").asType();
+      case INT -> this.es.typeElement("java.lang.Integer").asType();
+      case LONG -> this.es.typeElement("java.lang.Long").asType();
+      case SHORT -> this.es.typeElement("java.lang.Short").asType();
+      case VOID -> this.es.typeElement("java.lang.Void").asType();
+      default -> t;
     };
   }
 
   public final javax.lang.model.type.TypeMirror unbox(final javax.lang.model.type.TypeMirror t) {
     return t == null ? null : switch (t.getKind()) {
-    case DECLARED -> switch (((javax.lang.model.element.QualifiedNameable)((javax.lang.model.type.DeclaredType)t).asElement()).getQualifiedName().toString()) {
-    case "java.lang.Boolean" -> org.microbean.lang.type.PrimitiveType.BOOLEAN;
-    case "java.lang.Byte" -> org.microbean.lang.type.PrimitiveType.BYTE;
-    case "java.lang.Character" -> org.microbean.lang.type.PrimitiveType.CHAR;
-    case "java.lang.Double" -> org.microbean.lang.type.PrimitiveType.DOUBLE;
-    case "java.lang.Float" -> org.microbean.lang.type.PrimitiveType.FLOAT;
-    case "java.lang.Integer" -> org.microbean.lang.type.PrimitiveType.INT;
-    case "java.lang.Long" -> org.microbean.lang.type.PrimitiveType.LONG;
-    case "java.lang.Short" -> org.microbean.lang.type.PrimitiveType.SHORT;
-    case "java.lang.Void" -> org.microbean.lang.type.NoType.VOID;
-    default -> t;
-    };
-    default -> t;
+      case DECLARED -> switch (((javax.lang.model.element.QualifiedNameable)((javax.lang.model.type.DeclaredType)t).asElement()).getQualifiedName().toString()) {
+        case "java.lang.Boolean" -> org.microbean.lang.type.PrimitiveType.BOOLEAN;
+        case "java.lang.Byte" -> org.microbean.lang.type.PrimitiveType.BYTE;
+        case "java.lang.Character" -> org.microbean.lang.type.PrimitiveType.CHAR;
+        case "java.lang.Double" -> org.microbean.lang.type.PrimitiveType.DOUBLE;
+        case "java.lang.Float" -> org.microbean.lang.type.PrimitiveType.FLOAT;
+        case "java.lang.Integer" -> org.microbean.lang.type.PrimitiveType.INT;
+        case "java.lang.Long" -> org.microbean.lang.type.PrimitiveType.LONG;
+        case "java.lang.Short" -> org.microbean.lang.type.PrimitiveType.SHORT;
+        case "java.lang.Void" -> org.microbean.lang.type.NoType.VOID;
+        default -> t;
+      };
+      default -> t;
     };
   }
 
@@ -186,12 +181,11 @@ public final class Types {
       return typeArguments.isEmpty() ? List.of() : typeArguments;
     } else if (typeArguments.isEmpty()) {
       return enclosingTypeTypeArguments;
-    } else {
-      final List<javax.lang.model.type.TypeMirror> list = new ArrayList<>(enclosingTypeTypeArguments.size() + typeArguments.size());
-      list.addAll(enclosingTypeTypeArguments);
-      list.addAll(typeArguments);
-      return Collections.unmodifiableList(list);
     }
+    final List<javax.lang.model.type.TypeMirror> list = new ArrayList<>(enclosingTypeTypeArguments.size() + typeArguments.size());
+    list.addAll(enclosingTypeTypeArguments);
+    list.addAll(typeArguments);
+    return Collections.unmodifiableList(list);
   }
 
   public static final javax.lang.model.element.Element asElement(final javax.lang.model.type.TypeMirror t, final boolean generateSyntheticElements) {
@@ -259,7 +253,7 @@ public final class Types {
     case WILDCARD:
       if (generateSyntheticElements) {
         synchronized (syntheticElements) {
-          // The compiler users exactly one synthetic element for all wildcard types.
+          // The compiler uses exactly one synthetic element for all wildcard types.
           return syntheticElements.computeIfAbsent(t, wildcardType -> SyntheticWildcardElement.INSTANCE);
         }
       }
@@ -268,7 +262,7 @@ public final class Types {
     case BOOLEAN:
       if (generateSyntheticElements) {
         synchronized (syntheticElements) {
-          // The compiler users exactly one synthetic element for a given kind of primitive type.
+          // The compiler uses exactly one synthetic element for a given primitive type.
           return syntheticElements.computeIfAbsent(t, booleanType -> SyntheticPrimitiveElement.BOOLEAN);
         }
       }
@@ -277,7 +271,7 @@ public final class Types {
     case BYTE:
       if (generateSyntheticElements) {
         synchronized (syntheticElements) {
-          // The compiler users exactly one synthetic element for a given kind of primitive type.
+          // The compiler uses exactly one synthetic element for a given primitive type.
           return syntheticElements.computeIfAbsent(t, byteType -> SyntheticPrimitiveElement.BYTE);
         }
       }
@@ -286,7 +280,7 @@ public final class Types {
     case CHAR:
       if (generateSyntheticElements) {
         synchronized (syntheticElements) {
-          // The compiler users exactly one synthetic element for a given kind of primitive type.
+          // The compiler uses exactly one synthetic element for a given primitive type.
           return syntheticElements.computeIfAbsent(t, charType -> SyntheticPrimitiveElement.CHAR);
         }
       }
@@ -295,7 +289,7 @@ public final class Types {
     case DOUBLE:
       if (generateSyntheticElements) {
         synchronized (syntheticElements) {
-          // The compiler users exactly one synthetic element for a given kind of primitive type.
+          // The compiler uses exactly one synthetic element for a given primitive type.
           return syntheticElements.computeIfAbsent(t, doubleType -> SyntheticPrimitiveElement.DOUBLE);
         }
       }
@@ -304,7 +298,7 @@ public final class Types {
     case FLOAT:
       if (generateSyntheticElements) {
         synchronized (syntheticElements) {
-          // The compiler users exactly one synthetic element for a given kind of primitive type.
+          // The compiler uses exactly one synthetic element for a given primitive type.
           return syntheticElements.computeIfAbsent(t, floatType -> SyntheticPrimitiveElement.FLOAT);
         }
       }
@@ -313,7 +307,7 @@ public final class Types {
     case INT:
       if (generateSyntheticElements) {
         synchronized (syntheticElements) {
-          // The compiler users exactly one synthetic element for a given kind of primitive type.
+          // The compiler uses exactly one synthetic element for a given primitive type.
           return syntheticElements.computeIfAbsent(t, intType -> SyntheticPrimitiveElement.INT);
         }
       }
@@ -322,7 +316,7 @@ public final class Types {
     case LONG:
       if (generateSyntheticElements) {
         synchronized (syntheticElements) {
-          // The compiler users exactly one synthetic element for a given kind of primitive type.
+          // The compiler uses exactly one synthetic element for a given primitive type.
           return syntheticElements.computeIfAbsent(t, longType -> SyntheticPrimitiveElement.LONG);
         }
       }
@@ -331,7 +325,7 @@ public final class Types {
     case SHORT:
       if (generateSyntheticElements) {
         synchronized (syntheticElements) {
-          // The compiler users exactly one synthetic element for a given kind of primitive type.
+          // The compiler uses exactly one synthetic element for a given primitive type.
           return syntheticElements.computeIfAbsent(t, shortType -> SyntheticPrimitiveElement.SHORT);
         }
       }
@@ -362,7 +356,8 @@ public final class Types {
   }
 
   // Return the javax.lang.model.type.TypeMirror representing the declaration whose type may currently be being used.
-  // E.g. given a type denoted by List<String>, return the type denoted by List<E> (from List<String>'s usage of List<E>)
+  // E.g. given a type denoted by List<String>, return the type denoted by List<E> (from List<String>'s usage of
+  // List<E>)
   //
   // If it is passed something funny, it just returns what it was passed instead. The compiler does this a lot and I
   // think it's confusing.
@@ -376,11 +371,11 @@ public final class Types {
 
   public static final boolean hasTypeArguments(final javax.lang.model.type.TypeMirror t) {
     // This is modeled after javac's allparams() method.  javac frequently confuses type parameters and type arguments
-    // in its terminology.  This implementation could probably be made more efficient. See
+    // in its terminology. This implementation could probably be made more efficient. See
     // https://github.com/openjdk/jdk/blob/67ecd30327086c5d7628c4156f8d9dcccb0f4d09/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L1137
     return switch (t.getKind()) {
-    case ARRAY, DECLARED -> !allTypeArguments(t).isEmpty();
-    default -> false;
+      case ARRAY, DECLARED -> !allTypeArguments(t).isEmpty();
+      default -> false;
     };
   }
 
@@ -389,7 +384,7 @@ public final class Types {
   }
 
   public static final boolean isInterface(final javax.lang.model.type.TypeMirror t) {
-    return t.getKind() == TypeKind.DECLARED && ((javax.lang.model.type.DeclaredType)t).asElement().getKind().isInterface();
+    return t.getKind() == TypeKind.DECLARED && isInterface(((javax.lang.model.type.DeclaredType)t).asElement());
   }
 
   public static final boolean isStatic(final javax.lang.model.element.Element e) {
@@ -400,15 +395,15 @@ public final class Types {
   // https://github.com/openjdk/jdk/blob/67ecd30327086c5d7628c4156f8d9dcccb0f4d09/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L1154-L1164
   public final boolean raw(final javax.lang.model.type.TypeMirror t) {
     return t == null ? false : switch (t.getKind()) {
-    case ARRAY -> raw(((ArrayType)t).getComponentType());
-    case DECLARED -> {
-      final javax.lang.model.type.TypeMirror typeDeclaration = typeDeclaration(t);
-      yield
-        t != typeDeclaration && // t is a parameterized type, i.e. a type usage, and
-        hasTypeArguments(typeDeclaration) && // the type it parameterizes has type arguments (type variables declared by type parameters) and
-        !hasTypeArguments(t); // t does not supply type arguments
-    }
-    default -> false;
+      case ARRAY -> raw(((ArrayType)t).getComponentType());
+      case DECLARED -> {
+        final javax.lang.model.type.TypeMirror typeDeclaration = typeDeclaration(t);
+        yield
+          t != typeDeclaration && // t is a parameterized type, i.e. a type usage, and
+          hasTypeArguments(typeDeclaration) && // the type it parameterizes has type arguments (type variables declared by type parameters) and
+          !hasTypeArguments(t); // t does not supply type arguments
+      }
+      default -> false;
     };
   }
 

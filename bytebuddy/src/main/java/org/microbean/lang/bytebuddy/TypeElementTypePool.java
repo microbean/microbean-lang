@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -47,29 +47,95 @@ import org.microbean.lang.element.DelegatingElement;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
 
+/**
+ * A {@link TypePool.Default} that produces {@link net.bytebuddy.description.type.TypeDescription}s from {@code
+ * javax.lang.model.*} constructs.
+ *
+ * <p>Notably, this approach does not cause classloading to occur.</p>
+ *
+ * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
+ *
+ * @see #doDescribe(String)
+ */
 public final class TypeElementTypePool extends TypePool.Default {
+
+
+  /*
+   * Instance fields.
+   */
+
 
   private final ClassFileVersion classFileVersion;
 
   private final TypeAndElementSource tes;
 
+
+  /*
+   * Constructors.
+   */
+
+
+  /**
+   * Creates a new {@link TypeElementTypePool}.
+   *
+   * @see #TypeElementTypePool(ClassFileVersion, TypePool.CacheProvider, TypeAndElementSource)
+   */
   public TypeElementTypePool() {
     this(ClassFileVersion.ofThisVm(), new TypePool.CacheProvider.Simple(), Lang.typeAndElementSource());
   }
 
+  /**
+   * Creates a new {@link TypeElementTypePool}.
+   *
+   * @param cacheProvider a {@link TypePool.CacheProvider}; may be {@code null} in which case a new {@link
+   * TypePool.CacheProvider.Simple} will be used instead
+   *
+   * @see #TypeElementTypePool(ClassFileVersion, TypePool.CacheProvider, TypeAndElementSource)
+   */
   public TypeElementTypePool(final TypePool.CacheProvider cacheProvider) {
     this(ClassFileVersion.ofThisVm(), cacheProvider, Lang.typeAndElementSource());
   }
 
+  /**
+   * Creates a new {@link TypeElementTypePool}.
+   *
+   * @param tes a {@link TypeAndElementSource}; may be {@code null} in which case the return value of an invocation of
+   * {@link Lang#typeAndElementSource()} will be used instead
+   *
+   * @see #TypeElementTypePool(ClassFileVersion, TypePool.CacheProvider, TypeAndElementSource)
+   */
   public TypeElementTypePool(final TypeAndElementSource tes) {
     this(ClassFileVersion.ofThisVm(), new TypePool.CacheProvider.Simple(), tes);
   }
 
+  /**
+   * Creates a new {@link TypeElementTypePool}.
+   *
+   * @param cacheProvider a {@link TypePool.CacheProvider}; may be {@code null} in which case a new {@link
+   * TypePool.CacheProvider.Simple} will be used instead
+   *
+   * @param tes a {@link TypeAndElementSource}; may be {@code null} in which case the return value of an invocation of
+   * {@link Lang#typeAndElementSource()} will be used instead
+   *
+   * @see #TypeElementTypePool(ClassFileVersion, TypePool.CacheProvider, TypeAndElementSource)
+   */
   public TypeElementTypePool(final TypePool.CacheProvider cacheProvider,
                              final TypeAndElementSource tes) {
     this(ClassFileVersion.ofThisVm(), cacheProvider, tes);
   }
 
+  /**
+   * Creates a new {@link TypeElementTypePool}.
+   *
+   * @param classFileVersion a {@link ClassFileVersion}; may be {@code null} in which case the return value of an
+   * invocation of {@link ClassFileVersion#ofThisVm()} will be used instead
+   *
+   * @param cacheProvider a {@link TypePool.CacheProvider}; may be {@code null} in which case a new {@link
+   * TypePool.CacheProvider.Simple} will be used instead
+   *
+   * @param tes a {@link TypeAndElementSource}; may be {@code null} in which case the return value of an invocation of
+   * {@link Lang#typeAndElementSource()} will be used instead
+   */
   public TypeElementTypePool(final ClassFileVersion classFileVersion,
                              final TypePool.CacheProvider cacheProvider,
                              final TypeAndElementSource tes) {
@@ -77,18 +143,42 @@ public final class TypeElementTypePool extends TypePool.Default {
           ClassFileLocator.NoOp.INSTANCE,
           TypePool.Default.ReaderMode.FAST /* actually irrelevant */);
     this.classFileVersion = classFileVersion == null ? ClassFileVersion.ofThisVm() : classFileVersion;
-    this.tes = Objects.requireNonNull(tes, "tes");
+    this.tes = tes == null ? Lang.typeAndElementSource() : tes;
   }
 
-  @Override
+
+  /*
+   * Instance methods.
+   */
+
+
+  @Override // TypePool.Default
   protected final Resolution doDescribe(final String name) {
     final TypeElement e = this.tes.typeElement(name);
     return e == null ? new Resolution.Illegal(name) : new Resolution.Simple(new TypeDescription(e));
   }
 
+
+  /*
+   * Inner and nested classes.
+   */
+
+
   private final class TypeDescription extends LazyTypeDescription {
 
+
+    /*
+     * Static fields.
+     */
+
+
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
+
+
+    /*
+     * Constructors.
+     */
+
 
     // Binary names in this mess are JVM binary names, not JLS binary names. Raph calls them "internal names" which
     // isn't a thing.
@@ -117,6 +207,12 @@ public final class TypeElementTypePool extends TypePool.Default {
             permittedSubclassBinaryNames(e),
             classFileVersion);
     }
+
+
+    /*
+     * Static methods.
+     */
+
 
     private static final String binaryName(final TypeMirror t) {
       assert t instanceof DelegatingTypeMirror;
@@ -338,7 +434,19 @@ public final class TypeElementTypePool extends TypePool.Default {
                                  List.of()) {}; // annotationTokens
     }
 
+
+    /*
+     * Inner and nested classes.
+     */
+
+
     private static final class MethodTokenSubclass extends MethodToken {
+
+
+      /*
+       * Constructors.
+       */
+
 
       @SuppressWarnings("unchecked")
       private MethodTokenSubclass(final String name,
@@ -373,7 +481,19 @@ public final class TypeElementTypePool extends TypePool.Default {
               defaultValue);
       }
 
+
+      /*
+       * Inner and nested classes.
+       */
+
+
       private static final class ParameterTokenSubclass extends ParameterToken {
+
+
+        /*
+         * Constructors.
+         */
+
 
         private ParameterTokenSubclass(final String name, final Integer modifiers) {
           super(name, modifiers);

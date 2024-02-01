@@ -121,6 +121,7 @@ import org.microbean.lang.element.DelegatingElement;
 import org.microbean.lang.type.DelegatingTypeMirror;
 
 import static java.lang.System.Logger.Level.DEBUG;
+import static java.lang.System.Logger.Level.ERROR;
 import static java.lang.System.Logger.Level.WARNING;
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 import static java.lang.constant.ConstantDescs.CD_List;
@@ -240,12 +241,6 @@ public final class Lang {
   }
 
   private static volatile ProcessingEnvironment pe;
-
-
-  /*
-   * Static initializer.
-   */
-
 
   static {
     final EnumMap<Modifier, Long> m = new EnumMap<>(Modifier.class);
@@ -2129,6 +2124,21 @@ public final class Lang {
     return wrap(rv);
   }
 
+  /**
+   * Returns {@code true} if and only if a bearer of the supplied {@code payload} is assignable to a bearer of the
+   * supplied {@code receiver}.
+   *
+   * @param payload a type borne by the "right hand side" of a potential assignment; must not be {@code null}
+   *
+   * @param receiver a type borne by the "left hand side" of a potential assignment; must not be {@code null}
+   *
+   * @return {@code true} if and only if a bearer of the supplied {@code payload} is assignable to a bearer of the
+   * supplied {@code receiver}
+   *
+   * @exception NullPointerException if any argument is {@code null}
+   *
+   * @see Types#isAssignable(TypeMirror, TypeMirror)
+   */
   public static final boolean assignable(TypeMirror payload, TypeMirror receiver) {
     payload = unwrap(payload);
     receiver = unwrap(receiver);
@@ -2179,56 +2189,6 @@ public final class Lang {
     return SameTypeEquality.INSTANCE;
   }
 
-
-  /*
-   * Private static methods.
-   */
-
-
-  private static final TypeMirror[] typeArray(final Type[] ts) {
-    if (ts.length <= 0) {
-      return EMPTY_TYPEMIRROR_ARRAY;
-    }
-    final TypeMirror[] rv = new TypeMirror[ts.length];
-    for (int i = 0; i < ts.length; i++) {
-      rv[i] = type(ts[i]);
-    }
-    return rv;
-  }
-
-  private static final TypeMirror[] typeArray(final List<? extends Type> ts) {
-    if (ts.isEmpty()) {
-      return EMPTY_TYPEMIRROR_ARRAY;
-    }
-    final TypeMirror[] rv = new TypeMirror[ts.size()];
-    for (int i = 0; i < ts.size(); i++) {
-      rv[i] = type(ts.get(i));
-    }
-    return rv;
-  }
-
-  private static final List<? extends TypeMirror> typeList(final Type[] ts) {
-    if (ts.length <= 0) {
-      return List.of();
-    }
-    final List<TypeMirror> rv = new ArrayList<>(ts.length);
-    for (final Type t : ts) {
-      rv.add(type(t));
-    }
-    return Collections.unmodifiableList(rv);
-  }
-
-  static final List<? extends TypeMirror> typeList(final Collection<? extends Type> ts) {
-    if (ts.isEmpty()) {
-      return List.of();
-    }
-    final List<TypeMirror> rv = new ArrayList<>(ts.size());
-    for (final Type t : ts) {
-      rv.add(type(t));
-    }
-    return Collections.unmodifiableList(rv);
-  }
-
   static final ProcessingEnvironment pe() {
     ProcessingEnvironment pe = Lang.pe; // volatile read
     if (pe == null) {
@@ -2245,6 +2205,17 @@ public final class Lang {
     return pe;
   }
 
+  private static final TypeMirror[] typeArray(final Type[] ts) {
+    if (ts.length <= 0) {
+      return EMPTY_TYPEMIRROR_ARRAY;
+    }
+    final TypeMirror[] rv = new TypeMirror[ts.length];
+    for (int i = 0; i < ts.length; i++) {
+      rv[i] = type(ts[i]);
+    }
+    return rv;
+  }
+
   // Called once, ever, by the static initializer. Idempotent.
   private static final void initialize() {
     if (pe != null) { // volatile read
@@ -2253,7 +2224,15 @@ public final class Lang {
     if (LOGGER.isLoggable(DEBUG)) {
       LOGGER.log(DEBUG, "Initializing");
     }
-    new BlockingCompilationTaskInvocationThread("Lang", initLatch).start();
+    // Virtual thread because it will spend the vast majority of its life blocked on a CountDownLatch
+    Thread.ofVirtual()
+      .name("Lang")
+      .uncaughtExceptionHandler((t, e) -> {
+          if (LOGGER.isLoggable(ERROR)) {
+            LOGGER.log(ERROR, e);
+          }
+        })
+      .start(new BlockingCompilationTask(initLatch));
   }
 
   @SuppressWarnings("unchecked")
@@ -2293,15 +2272,45 @@ public final class Lang {
    */
 
 
+  /**
+   * An {@link Equality} implemented in terms of the {@link Lang#sameType(TypeMirror, TypeMirror)} method.
+   *
+   * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
+   *
+   * @see Equality
+   *
+   * @see Lang#sameType(TypeMirror, TypeMirror)
+   */
   public static final class SameTypeEquality extends Equality {
 
+
+    /*
+     * Static fields.
+     */
+
+
+    /**
+     * The sole instance of this class.
+     */
     public static final SameTypeEquality INSTANCE = new SameTypeEquality();
+
+
+    /*
+     * Constructors.
+     */
+
 
     private SameTypeEquality() {
       super(false);
     }
 
-    @Override
+
+    /*
+     * Instance methods.
+     */
+
+
+    @Override // Equality
     public final boolean equals(final Object o1, final Object o2) {
       if (o1 == o2) {
         return true;
@@ -2318,15 +2327,41 @@ public final class Lang {
 
   }
 
+  /**
+   * A {@link TypeAndElementSource} implementation that is also {@link Constable}.
+   *
+   * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
+   */
   public static final class ConstableTypeAndElementSource implements Constable, TypeAndElementSource {
 
+
+    /*
+     * Static fields.
+     */
+
+
+    /**
+     * The sole instance of this class.
+     */
     public static final ConstableTypeAndElementSource INSTANCE = new ConstableTypeAndElementSource();
 
     private static final ClassDesc CD_ConstableTypeAndElementSource = ClassDesc.of(ConstableTypeAndElementSource.class.getName());
 
+
+    /*
+     * Constructors.
+     */
+
+
     private ConstableTypeAndElementSource() {
       super();
     }
+
+
+    /*
+     * Instance methods.
+     */
+
 
     @Override
     public final ArrayType arrayTypeOf(final TypeMirror componentType) {
@@ -2419,21 +2454,44 @@ public final class Lang {
 
   }
 
-  private static final class BlockingCompilationTaskInvocationThread extends Thread {
+  private static final class BlockingCompilationTask implements Runnable {
 
-    private static final Logger LOGGER = System.getLogger(BlockingCompilationTaskInvocationThread.class.getName());
+
+    /*
+     * Static fields.
+     */
+
+
+    private static final Logger LOGGER = System.getLogger(BlockingCompilationTask.class.getName());
+
+
+    /*
+     * Instance fields.
+     */
+
 
     private final CountDownLatch initLatch;
 
+    // (Never counted down except in error cases.)
     private final CountDownLatch runningLatch;
 
-    private BlockingCompilationTaskInvocationThread(final String name,
-                                                    final CountDownLatch initLatch) {
-      super(name);
-      this.setDaemon(true); // critical; runningLatch is never counted down except in error cases
+
+    /*
+     * Constructors.
+     */
+
+
+    private BlockingCompilationTask(final CountDownLatch initLatch) {
+      super();
       this.initLatch = Objects.requireNonNull(initLatch, "initLatch");
       this.runningLatch = new CountDownLatch(1);
     }
+
+
+    /*
+     * Instance methods.
+     */
+
 
     @Override
     public final void run() {
@@ -2488,7 +2546,7 @@ public final class Lang {
             LOGGER.log(DEBUG, "Using shared name table");
           }
         } else {
-          options.add("-XDuseUnsharedTable"); // TODO: experimental
+          options.add("-XDuseUnsharedTable"); // TODO: experimental but quite poassibly critical for thread safety
           if (LOGGER.isLoggable(DEBUG)) {
             LOGGER.log(DEBUG, "Using unshared name table");
           }
@@ -2498,18 +2556,15 @@ public final class Lang {
           options.add("-verbose");
         }
 
-        final List<String> classes = new ArrayList<>();
-        classes.add("java.lang.annotation.RetentionPolicy"); // arbitrary, but loads the least amount of stuff up front
-
         // (Any "loading" is actually performed by, e.g. com.sun.tools.javac.jvm.ClassReader.fillIn(), not reflective
-        // machinery. Once a class has been loaded, com.sun.tools.javac.code.Symtab#getClass(ModuleSymbol, Name) will
+        // machinery. Once a class has been so loaded, com.sun.tools.javac.code.Symtab#getClass(ModuleSymbol, Name) will
         // retrieve it from a HashMap.)
         final CompilationTask task =
           jc.getTask(null, // additionalOutputWriter
                      new ReadOnlyModularJavaFileManager(jc.getStandardFileManager(null, null, null), effectiveModulePathModules), // fileManager,
                      null, // diagnosticListener,
                      options,
-                     classes,
+                     List.of("java.lang.annotation.RetentionPolicy"), // arbitrary, but loads the least amount of stuff up front
                      null); // compilation units; null means we aren't actually compiling anything
 
         task.setProcessors(List.of(new P()));
@@ -2532,21 +2587,23 @@ public final class Lang {
           LOGGER.log(DEBUG, "Calling CompilationTask");
         }
 
-        if (Boolean.FALSE.equals(task.call())) { // NOTE: runs the task; task blocks forever by design
-          if (LOGGER.isLoggable(WARNING)) {
-            LOGGER.log(WARNING, "CompilationTask called unuccessfully; releasing latches");
+        if (Boolean.FALSE.equals(task.call())) { // NOTE: runs the task; task blocks forever by design; this thread therefore blocks forever here
+          if (LOGGER.isLoggable(ERROR)) {
+            LOGGER.log(ERROR, "CompilationTask called unuccessfully; releasing latches");
           }
           runningLatch.countDown();
           initLatch.countDown();
         }
 
       } catch (final RuntimeException | Error e) {
-        e.printStackTrace();
         runningLatch.countDown();
         initLatch.countDown();
         throw e;
       } finally {
         pe = null; // volatile write
+      }
+      if (LOGGER.isLoggable(DEBUG)) {
+        LOGGER.log(DEBUG, "CompilationTask invocation daemon thread exiting");
       }
     }
 
@@ -2568,7 +2625,19 @@ public final class Lang {
 
     private final class P extends AbstractProcessor {
 
+
+      /*
+       * Static fields.
+       */
+
+
       private static final Logger LOGGER = System.getLogger(P.class.getName());
+
+
+      /*
+       * Constructors.
+       */
+
 
       private P() {
         super();
@@ -2577,7 +2646,13 @@ public final class Lang {
         }
       }
 
-      @Override
+
+      /*
+       * Instance methods.
+       */
+
+
+      @Override // AbstractProcessor (Processor)
       public final void init(final ProcessingEnvironment pe) {
         if (LOGGER.isLoggable(DEBUG)) {
           LOGGER.log(DEBUG, "AbstractProcessor inititializing with " + pe);
@@ -2588,31 +2663,31 @@ public final class Lang {
           LOGGER.log(DEBUG, "The " + Lang.class.getName() + " class is ready for use");
         }
         // Note to future maintainers: you're going to desperately want to move this to the process() method, and you
-        // cannot.  If you decide to doubt this message, at least comment this out so you don't lose it here.  Don't say
-        // I didn't warn you.
+        // cannot. If you decide to doubt this message, at least comment this out so you don't lose it here. Don't say I
+        // didn't warn you.
         try {
-          runningLatch.await();
+          runningLatch.await(); // NOTE: Blocks forever except in error cases
         } catch (final InterruptedException e) {
           Thread.currentThread().interrupt();
         }
       }
 
-      @Override // AbstractProcessor
+      @Override // AbstractProcessor (Processor)
       public final Set<String> getSupportedAnnotationTypes() {
         return Set.of(); // we claim nothing, although it's moot because we're the only processor in existence
       }
 
-      @Override // AbstractProcessor
+      @Override // AbstractProcessor (Processor)
       public final Set<String> getSupportedOptions() {
         return Set.of();
       }
 
-      @Override // AbstractProcessor
+      @Override // AbstractProcessor (Processor)
       public final SourceVersion getSupportedSourceVersion() {
         return SourceVersion.latestSupported();
       }
 
-      @Override // AbstractProcessor
+      @Override // AbstractProcessor (Processor)
       public final boolean process(final Set<? extends TypeElement> annotations, final RoundEnvironment roundEnvironment) {
         assert this.isInitialized();
         return false; // we don't claim anything, but we're the only processor in existence
@@ -2624,13 +2699,31 @@ public final class Lang {
 
   private static final class ReadOnlyModularJavaFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> {
 
+
+    /*
+     * Static fields.
+     */
+
+
     private static final Logger LOGGER = System.getLogger(ReadOnlyModularJavaFileManager.class.getName());
 
     private static final Set<JavaFileObject.Kind> ALL_KINDS = EnumSet.allOf(JavaFileObject.Kind.class);
 
+
+    /*
+     * Instance fields.
+     */
+
+
     private final Set<ModuleReference> modulePath;
 
     private final Map<ModuleReference, Map<String, List<JavaFileRecord>>> maps;
+
+
+    /*
+     * Constructors.
+     */
+
 
     private ReadOnlyModularJavaFileManager(final StandardJavaFileManager fm, final Set<Module> effectiveModulePathModules) {
       super(fm);
@@ -2639,6 +2732,12 @@ public final class Lang {
         .map(m -> m.getLayer().configuration().findModule(m.getName()).orElseThrow().reference())
         .collect(Collectors.toUnmodifiableSet());
     }
+
+
+    /*
+     * Instance methods.
+     */
+
 
     @Override
     public final void close() throws IOException {
@@ -2858,9 +2957,21 @@ public final class Lang {
 
     private static final record ModuleLocation(ModuleReference moduleReference) implements Location {
 
+
+      /*
+       * Constructors.
+       */
+
+
       private ModuleLocation(final Module module) {
         this(module.getLayer().configuration().findModule(module.getName()).orElseThrow().reference());
       }
+
+
+      /*
+       * Instance methods.
+       */
+
 
       @Override
       public final String getName() {

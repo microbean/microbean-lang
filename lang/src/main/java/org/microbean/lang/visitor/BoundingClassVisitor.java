@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -53,14 +53,14 @@ public final class BoundingClassVisitor extends SimpleTypeVisitor14<TypeMirror, 
     dt.addTypeArguments(t.getTypeArguments());
     dt.addAnnotationMirrors(t.getAnnotationMirrors());
     dt.setDefiningElement((TypeElement)t.asElement());
-    dt.setEnclosingType(visitedEnclosingType);
+    dt.setEnclosingType(visitedEnclosingType); // note
     return dt;
   }
 
   @Override
   public final TypeMirror visitTypeVariable(final TypeVariable t, final Void x) {
     assert t.getKind() == TypeKind.TYPEVAR;
-    return this.visit(this.supertypeVisitor.visit(t));
+    return this.visit(this.supertypeVisitor.visit(t)); // this effectively erases T extends S to just S
   }
 
 }
