@@ -13,11 +13,20 @@
  */
 package org.microbean.lang;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+
 import java.lang.constant.Constable;
 import java.lang.constant.ConstantDesc;
 
 import java.lang.invoke.MethodHandles;
 
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReader;
+import java.lang.module.ModuleReference;
+import java.lang.module.ResolvedModule;
+
+import java.util.Comparator;
 import java.util.Optional;
 
 import javax.lang.model.element.ModuleElement;
@@ -42,6 +51,42 @@ final class TestModuleRelatedIssues {
     super();
   }
 
+  @Test
+  final void reportModuleInformation() {
+    assertEquals("org.microbean.lang", Lang.class.getModule().getName());
+    final ModuleLayer bootLayer = ModuleLayer.boot();
+    assertSame(Lang.class.getModule().getLayer(), bootLayer);
+
+    System.out.println("ModuleLayer.boot().modules():");
+    bootLayer.modules().stream()
+      .map(Module::getName)
+      .sorted()
+      .forEach(System.out::println);
+    System.out.println();
+
+    System.out.println("ModuleFinder.ofSystem().findAll():");
+    ModuleFinder.ofSystem().findAll().stream()
+      .map(mr -> mr.descriptor().name())
+      .sorted()
+      .forEach(System.out::println);
+    System.out.println();
+    
+    System.out.println("Lang.allModuleElements():");
+    Lang.allModuleElements().stream()
+      .map(e -> e.getQualifiedName().toString())
+      .sorted()
+      .forEach(System.out::println);
+  }
+
+  @Test
+  final void testGraal() {
+    ModuleElement me = Lang.moduleElement("com.oracle.graal.graal_enterprise");
+    assertNull(me);
+    me = Lang.moduleElement("java.base");
+    assertNotNull(me);
+    assertNull(Lang.moduleElement("org.graalvm.truffle.compiler"));
+  }
+  
   @Test
   final void testModuleRelatedIssues() {
     // Maven puts the (modular) junit-jupiter-api jar file on the classpath, not the module path, so there's no module

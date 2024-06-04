@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import java.util.function.Supplier;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 
@@ -100,9 +102,9 @@ public final class DelegatingTypeMirror
 
   private final TypeAndElementSource elementSource;
 
-  private final TypeMirror delegate;
-
   private final Equality ehc;
+
+  private Supplier<TypeMirror> delegateSupplier;
 
 
   /*
@@ -112,9 +114,21 @@ public final class DelegatingTypeMirror
 
   private DelegatingTypeMirror(final TypeMirror delegate, final TypeAndElementSource elementSource, final Equality ehc) {
     super();
-    this.delegate = unwrap(Objects.requireNonNull(delegate, "delegate"));
+    Objects.requireNonNull(delegate, "delegate");
     this.elementSource = elementSource == null ? Lang.typeAndElementSource() : elementSource;
     this.ehc = ehc == null ? new Equality(true) : ehc;
+    this.delegateSupplier = () -> {
+      final TypeMirror unwrappedDelegate = unwrap(delegate);
+      CompletionLock.acquire();
+      try {
+        // Eagerly complete
+        unwrappedDelegate.getKind();
+        this.delegateSupplier = () -> unwrappedDelegate;
+        return unwrappedDelegate;
+      } finally {
+        CompletionLock.release();
+      }
+    };
   }
 
 
@@ -144,44 +158,44 @@ public final class DelegatingTypeMirror
   @Override // Various
   public final Element asElement() {
     return switch (this.getKind()) {
-    case DECLARED -> DelegatingElement.of(((DeclaredType)this.delegate).asElement(), this.elementSource, this.ehc);
-    case TYPEVAR -> DelegatingElement.of(((TypeVariable)this.delegate).asElement(), this.elementSource, this.ehc);
+    case DECLARED -> DelegatingElement.of(((DeclaredType)this.delegate()).asElement(), this.elementSource, this.ehc);
+    case TYPEVAR -> DelegatingElement.of(((TypeVariable)this.delegate()).asElement(), this.elementSource, this.ehc);
     default -> null;
     };
   }
 
   public final TypeMirror delegate() {
-    return this.delegate;
+    return this.delegateSupplier.get();
   }
 
   @Override // UnionType
   public final List<? extends TypeMirror> getAlternatives() {
     return switch (this.getKind()) {
-    case UNION -> this.wrap(((UnionType)this.delegate).getAlternatives());
+    case UNION -> this.wrap(((UnionType)this.delegate()).getAlternatives());
     default -> List.of();
     };
   }
 
   @Override // TypeMirror
   public final <A extends Annotation> A getAnnotation(final Class<A> annotationType) {
-    return this.delegate.getAnnotation(annotationType);
+    return this.delegate().getAnnotation(annotationType);
   }
 
   @Override // TypeMirror
   public final List<? extends AnnotationMirror> getAnnotationMirrors() {
     // TODO: delegating annotation mirror?
-    return this.delegate.getAnnotationMirrors();
+    return this.delegate().getAnnotationMirrors();
   }
 
   @Override // TypeMirror
   public final <A extends Annotation> A[] getAnnotationsByType(final Class<A> annotationType) {
-    return this.delegate.getAnnotationsByType(annotationType);
+    return this.delegate().getAnnotationsByType(annotationType);
   }
 
   @Override // IntersectionType
   public final List<? extends TypeMirror> getBounds() {
     return switch (this.getKind()) {
-    case INTERSECTION -> this.wrap(((IntersectionType)this.delegate).getBounds());
+    case INTERSECTION -> this.wrap(((IntersectionType)this.delegate()).getBounds());
     default -> List.of();
     };
   }
@@ -189,7 +203,7 @@ public final class DelegatingTypeMirror
   @Override // ArrayType
   public final TypeMirror getComponentType() {
     return switch (this.getKind()) {
-    case ARRAY -> this.wrap(((ArrayType)this.delegate).getComponentType());
+    case ARRAY -> this.wrap(((ArrayType)this.delegate()).getComponentType());
     default -> NoType.NONE;
     };
   }
@@ -197,7 +211,7 @@ public final class DelegatingTypeMirror
   @Override // DeclaredType
   public final TypeMirror getEnclosingType() {
     return switch(this.getKind()) {
-    case DECLARED -> this.wrap(((DeclaredType)this.delegate).getEnclosingType());
+    case DECLARED -> this.wrap(((DeclaredType)this.delegate()).getEnclosingType());
     default -> NoType.NONE;
     };
   }
@@ -205,25 +219,20 @@ public final class DelegatingTypeMirror
   @Override // WildcardType
   public final TypeMirror getExtendsBound() {
     return switch (this.getKind()) {
-    case WILDCARD -> this.wrap(((WildcardType)this.delegate).getExtendsBound());
+    case WILDCARD -> this.wrap(((WildcardType)this.delegate()).getExtendsBound());
     default -> null;
     };
   }
 
   @Override // TypeMirror
   public final TypeKind getKind() {
-    CompletionLock.acquire(); // CRITICAL!
-    try {
-      return this.delegate.getKind();
-    } finally {
-      CompletionLock.release();
-    }
+    return this.delegate().getKind();
   }
 
   @Override // TypeVariable
   public final TypeMirror getLowerBound() {
     return switch (this.getKind()) {
-    case TYPEVAR -> this.wrap(((TypeVariable)this.delegate).getLowerBound());
+    case TYPEVAR -> this.wrap(((TypeVariable)this.delegate()).getLowerBound());
     default -> org.microbean.lang.type.NullType.INSTANCE; // bottom type, not NONE type
     };
   }
@@ -231,7 +240,7 @@ public final class DelegatingTypeMirror
   @Override // TypeVariable
   public final TypeMirror getUpperBound() {
     return switch (this.getKind()) {
-    case TYPEVAR -> this.wrap(((TypeVariable)this.delegate).getUpperBound());
+    case TYPEVAR -> this.wrap(((TypeVariable)this.delegate()).getUpperBound());
     default -> this.wrap(this.elementSource.typeElement("java.lang.Object").asType());
     };
   }
@@ -239,7 +248,7 @@ public final class DelegatingTypeMirror
   @Override // ExecutableType
   public final List<? extends TypeMirror> getParameterTypes() {
     return switch (this.getKind()) {
-    case EXECUTABLE -> this.wrap(((ExecutableType)this.delegate).getParameterTypes());
+    case EXECUTABLE -> this.wrap(((ExecutableType)this.delegate()).getParameterTypes());
     default -> List.of();
     };
   }
@@ -247,7 +256,7 @@ public final class DelegatingTypeMirror
   @Override // ExecutableType
   public final TypeMirror getReceiverType() {
     return switch (this.getKind()) {
-    case EXECUTABLE -> this.wrap(((ExecutableType)this.delegate).getReceiverType());
+    case EXECUTABLE -> this.wrap(((ExecutableType)this.delegate()).getReceiverType());
     default -> null;
     };
   }
@@ -255,7 +264,7 @@ public final class DelegatingTypeMirror
   @Override // ExecutableType
   public final TypeMirror getReturnType() {
     return switch (this.getKind()) {
-    case EXECUTABLE -> this.wrap(((ExecutableType)this.delegate).getReturnType());
+    case EXECUTABLE -> this.wrap(((ExecutableType)this.delegate()).getReturnType());
     default -> null;
     };
   }
@@ -263,7 +272,7 @@ public final class DelegatingTypeMirror
   @Override // WildcardType
   public final TypeMirror getSuperBound() {
     return switch (this.getKind()) {
-    case WILDCARD -> this.wrap(((WildcardType)this.delegate).getSuperBound());
+    case WILDCARD -> this.wrap(((WildcardType)this.delegate()).getSuperBound());
     default -> null;
     };
   }
@@ -271,7 +280,7 @@ public final class DelegatingTypeMirror
   @Override // ExecutableType
   public final List<? extends TypeMirror> getThrownTypes() {
     return switch (this.getKind()) {
-    case EXECUTABLE -> this.wrap(((ExecutableType)this.delegate).getThrownTypes());
+    case EXECUTABLE -> this.wrap(((ExecutableType)this.delegate()).getThrownTypes());
     default -> List.of();
     };
   }
@@ -279,7 +288,7 @@ public final class DelegatingTypeMirror
   @Override // DeclaredType
   public final List<? extends TypeMirror> getTypeArguments() {
     return switch (this.getKind()) {
-    case DECLARED -> this.wrap(((DeclaredType)this.delegate).getTypeArguments());
+    case DECLARED -> this.wrap(((DeclaredType)this.delegate()).getTypeArguments());
     default -> List.of();
     };
   }
@@ -287,7 +296,7 @@ public final class DelegatingTypeMirror
   @Override // ExecutableType
   public final List<? extends TypeVariable> getTypeVariables() {
     return switch (this.getKind()) {
-    case EXECUTABLE -> this.wrap(((ExecutableType)this.delegate).getTypeVariables());
+    case EXECUTABLE -> this.wrap(((ExecutableType)this.delegate()).getTypeVariables());
     default -> List.of();
     };
   }
@@ -304,12 +313,12 @@ public final class DelegatingTypeMirror
 
   @Override // TypeMirror
   public final String toString() {
-    return this.delegate.toString();
+    return this.delegate().toString();
   }
 
   @Override // Constable
   public final Optional<? extends ConstantDesc> describeConstable() {
-    return Lang.describeConstable(this.delegate)
+    return Lang.describeConstable(this.delegate())
       .flatMap(delegateDesc -> (this.elementSource instanceof Constable c ? c.describeConstable() : Optional.<ConstantDesc>empty())
                .flatMap(elementSourceDesc -> this.ehc.describeConstable()
                         .map(equalityDesc -> DynamicConstantDesc.of(BSM_INVOKE,

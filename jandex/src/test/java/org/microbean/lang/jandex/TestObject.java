@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,6 @@ final class TestObject {
   final void testObject() {
     final Element e = new Jandex(jdk).typeElement("java.lang.Object");
     final List<?> es = e.getEnclosedElements();
-    // es.forEach(System.out::println);
   }
 
   @Test
