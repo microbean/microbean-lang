@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.io.UncheckedIOException;
 
@@ -42,8 +43,11 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 
 import java.net.URI;
+
+import java.nio.charset.Charset;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -56,6 +60,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -65,14 +70,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-import java.util.function.Predicate;
-
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
+
+import javax.lang.model.SourceVersion;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -101,6 +106,8 @@ import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticListener;
 import javax.tools.FileObject;
 import javax.tools.ForwardingJavaFileManager;
 import javax.tools.JavaCompiler.CompilationTask;
@@ -109,10 +116,7 @@ import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
-
 import javax.tools.ToolProvider;
-
-import javax.lang.model.SourceVersion;
 
 import org.microbean.constant.Constables;
 
@@ -122,16 +126,16 @@ import org.microbean.lang.type.DelegatingTypeMirror;
 
 import static java.lang.System.Logger.Level.DEBUG;
 import static java.lang.System.Logger.Level.ERROR;
+import static java.lang.System.Logger.Level.INFO;
 import static java.lang.System.Logger.Level.WARNING;
+
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 import static java.lang.constant.ConstantDescs.CD_List;
-import static java.lang.constant.ConstantDescs.CD_String;
 import static java.lang.constant.ConstantDescs.NULL;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC_GETTER;
 
 import static javax.lang.model.util.ElementFilter.constructorsIn;
-import static javax.lang.model.util.ElementFilter.fieldsIn;
 import static javax.lang.model.util.ElementFilter.methodsIn;
 
 import static org.microbean.lang.ConstantDescs.CD_ArrayType;
@@ -220,6 +224,8 @@ public final class Lang {
 
   private static final CountDownLatch initLatch = new CountDownLatch(1);
 
+  private static final boolean lockNames = Boolean.parseBoolean(System.getProperty("org.microbean.lang.lockNames", "true"));
+
   // For debugging only
   private static final Field modulesField;
 
@@ -292,18 +298,22 @@ public final class Lang {
       return Optional.of(cd);
     }
     final String s;
-    CompletionLock.acquire();
-    try {
+    if (lockNames) {
+      CompletionLock.acquire();
+      try {
+        s = n.toString();
+      } finally {
+        CompletionLock.release();
+      }
+    } else {
       s = n.toString();
-    } finally {
-      CompletionLock.release();
     }
     return Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
                                               MethodHandleDesc.ofMethod(STATIC,
                                                                         CD_Lang,
                                                                         "name",
                                                                         MethodTypeDesc.of(CD_Name,
-                                                                                          CD_String)),
+                                                                                          CD_CharSequence)),
                                               s));
   }
 
@@ -647,17 +657,8 @@ public final class Lang {
 
   public static final Set<? extends ModuleElement> allModuleElements() {
     final Elements elements = pe().getElementUtils();
-    final Set<? extends ModuleElement> mes;
-    CompletionLock.acquire();
-    try {
-      mes = elements.getAllModuleElements();
-    } finally {
-      CompletionLock.release();
-    }
     final Set<ModuleElement> rv = new HashSet<>();
-    for (final ModuleElement me : mes) {
-      rv.add(wrap(me));
-    }
+    CompletionLock.guard(elements::getAllModuleElements).forEach(me -> rv.add(wrap(me)));
     return Collections.unmodifiableSet(rv);
   }
 
@@ -666,16 +667,11 @@ public final class Lang {
     return pe().getElementUtils().getBinaryName(unwrap(e));
   }
 
-  public static final boolean functionalInterface(TypeElement e) {
-    e = unwrap(e);
+  public static final boolean functionalInterface(final TypeElement e) {
+    final TypeElement e2 = unwrap(e);
     final Elements elements = pe().getElementUtils();
     // JavacElements#isFunctionalInterface(Element) calls Element#getKind().
-    CompletionLock.acquire();
-    try {
-      return elements.isFunctionalInterface(e);
-    } finally {
-      CompletionLock.release();
-    }
+    return CompletionLock.guard(() -> elements.isFunctionalInterface(e2));
   }
 
   public static final boolean generic(final Element e) {
@@ -746,13 +742,7 @@ public final class Lang {
   }
 
   public static final TypeMirror box(final TypeMirror t) {
-    final TypeKind k;
-    CompletionLock.acquire();
-    try {
-      k = t.getKind();
-    } finally {
-      CompletionLock.release();
-    }
+    final TypeKind k = CompletionLock.guard(t::getKind);
     return k.isPrimitive() ? boxedClass((PrimitiveType)t).asType() : t;
   }
 
@@ -767,33 +757,42 @@ public final class Lang {
   }
 
   public static final boolean bridge(Element e) {
-    e = unwrap(e);
+    Objects.requireNonNull(e, "e");
     final Elements elements = pe().getElementUtils();
     CompletionLock.acquire();
     try {
-      return e.getKind() == ElementKind.METHOD && elements.isBridge((ExecutableElement)e);
+      if (e.getKind() == ElementKind.METHOD) {
+        return elements.isBridge(unwrap((ExecutableElement)e));
+      }
+      return false;
     } finally {
       CompletionLock.release();
     }
   }
 
   public static final boolean compactConstructor(Element e) {
-    e = unwrap(e);
+    Objects.requireNonNull(e, "e");
     final Elements elements = pe().getElementUtils();
     CompletionLock.acquire();
     try {
-      return e.getKind() == ElementKind.CONSTRUCTOR && elements.isCompactConstructor((ExecutableElement)e);
+      if (e.getKind() == ElementKind.CONSTRUCTOR) {
+        return elements.isCompactConstructor(unwrap((ExecutableElement)e));
+      }
+      return false;
     } finally {
       CompletionLock.release();
     }
   }
 
   public static final boolean canonicalConstructor(Element e) {
-    e = unwrap(e);
+    Objects.requireNonNull(e, "e");
     final Elements elements = pe().getElementUtils();
     CompletionLock.acquire();
     try {
-      return e.getKind() == ElementKind.CONSTRUCTOR && elements.isCanonicalConstructor((ExecutableElement)e);
+      if (e.getKind() == ElementKind.CONSTRUCTOR) {
+        return elements.isCanonicalConstructor(unwrap((ExecutableElement)e));
+      }
+      return false;
     } finally {
       CompletionLock.release();
     }
@@ -1493,9 +1492,7 @@ public final class Lang {
           try {
             LOGGER.log(DEBUG, "default module: " + getDefaultModuleMethod.invoke(modulesField.get(elements)));
           } catch (final ReflectiveOperationException x) {
-            if (LOGGER.isLoggable(DEBUG)) {
-              LOGGER.log(DEBUG, x.getMessage(), x);
-            }
+            LOGGER.log(DEBUG, x.getMessage(), x);
           }
         }
       }
@@ -1519,9 +1516,7 @@ public final class Lang {
           try {
             LOGGER.log(DEBUG, "default module: " + getDefaultModuleMethod.invoke(modulesField.get(e)));
           } catch (final ReflectiveOperationException x) {
-            if (LOGGER.isLoggable(DEBUG)) {
-              LOGGER.log(DEBUG, x.getMessage(), x);
-            }
+            LOGGER.log(DEBUG, x.getMessage(), x);
           }
         }
       }
@@ -1532,23 +1527,18 @@ public final class Lang {
   }
 
   public static final Name name(final CharSequence name) {
-    final String s;
-    if (name instanceof String) {
-      s = (String)name;
-    } else {
+    Objects.requireNonNull(name, "name");
+    final Elements elements = pe().getElementUtils();
+    if (lockNames) {
       CompletionLock.acquire();
       try {
-        // Name.toString() is not necessarily thread-safe.
-        s = name.toString();
+        return elements.getName(name);
       } finally {
         CompletionLock.release();
       }
+    } else {
+      return elements.getName(name);
     }
-    return name(s);
-  }
-
-  public static final Name name(final String name) {
-    return pe().getElementUtils().getName(Objects.requireNonNull(name, "name"));
   }
 
   public static final Elements.Origin origin(Element e) {
@@ -1714,7 +1704,7 @@ public final class Lang {
     if (Objects.requireNonNull(t, "t") instanceof DeclaredType dt) {
       CompletionLock.acquire();
       try {
-        switch (t.getKind()) {
+        switch (dt.getKind()) {
         case DECLARED:
           return dt.getTypeArguments();
         default:
@@ -1728,8 +1718,8 @@ public final class Lang {
   }
 
   public static final ExecutableElement executableElement(final Executable e) {
-    Objects.requireNonNull(e, "e");
     return switch (e) {
+    case null -> throw new NullPointerException("e");
     case Constructor<?> c -> executableElement(c);
     case Method m -> executableElement(m);
     default -> throw new IllegalArgumentException("e: " + e);
@@ -2006,8 +1996,8 @@ public final class Lang {
   }
 
   public static final Parameterizable parameterizable(final GenericDeclaration gd) {
-    Objects.requireNonNull(gd, "gd");
     return switch (gd) {
+    case null -> throw new NullPointerException("gd");
     case Executable e -> executableElement(e);
     case Class<?> c -> typeElement(c);
     default -> throw new IllegalArgumentException("gd: " + gd);
@@ -2198,7 +2188,7 @@ public final class Lang {
         Thread.currentThread().interrupt();
       }
       pe = Lang.pe; // volatile read
-      if (pe == null) {
+      if (pe == null || initLatch.getCount() > 0L) {
         throw new IllegalStateException();
       }
     }
@@ -2218,7 +2208,7 @@ public final class Lang {
 
   // Called once, ever, by the static initializer. Idempotent.
   private static final void initialize() {
-    if (pe != null) { // volatile read
+    if (Lang.pe != null) { // volatile read
       return;
     }
     if (LOGGER.isLoggable(DEBUG)) {
@@ -2229,7 +2219,7 @@ public final class Lang {
       .name("Lang")
       .uncaughtExceptionHandler((t, e) -> {
           if (LOGGER.isLoggable(ERROR)) {
-            LOGGER.log(ERROR, e);
+            LOGGER.log(ERROR, e.getMessage(), e);
           }
         })
       .start(new BlockingCompilationTask(initLatch));
@@ -2409,7 +2399,7 @@ public final class Lang {
 
     @Override
     public final boolean sameType(final TypeMirror t, final TypeMirror s) {
-      return Lang.sameType(t, s);
+      return t == s || Lang.sameType(t, s);
     }
 
     @Override
@@ -2418,15 +2408,12 @@ public final class Lang {
         return Lang.typeElement(canonicalName);
       }
       final ModuleElement m = Lang.moduleElement(moduleName);
-      if (m == null) {
-        if (LOGGER.isLoggable(DEBUG)) {
-          // moduleName might be a javax.lang.element.Name and the shared name table might be in effect
-          CompletionLock.acquire();
-          try {
-            LOGGER.log(DEBUG, "null ModuleElement for module name " + moduleName);
-          } finally {
-            CompletionLock.release();
-          }
+      if (m == null && LOGGER.isLoggable(DEBUG)) {
+        final Runnable r = () -> LOGGER.log(DEBUG, () -> "null ModuleElement for module name " + moduleName);
+        if (lockNames) {
+          CompletionLock.guard(r);
+        } else {
+          r.run();
         }
       }
       return Lang.typeElement(m, canonicalName);
@@ -2501,26 +2488,18 @@ public final class Lang {
       try {
         final JavaCompiler jc = ToolProvider.getSystemJavaCompiler();
         if (jc == null) {
+          if (LOGGER.isLoggable(ERROR)) {
+            LOGGER.log(ERROR, "No system Java compiler available");
+          }
           runningLatch.countDown();
           initLatch.countDown();
           return;
         }
 
         final List<String> options = new ArrayList<>();
-        options.add("-proc:only");
+        options.add("-proc:only"); // critical
         options.add("-cp");
         options.add(System.getProperty("java.class.path"));
-
-        final Set<Module> effectiveModulePathModules = effectiveModulePathModules();
-        final Module unnamedModule = Lang.class.getClassLoader().getUnnamedModule();
-        for (final Module m : effectiveModulePathModules) {
-          assert m.isNamed();
-          if (m.canRead(unnamedModule)) {
-            // This is a (required) stupendous hack.
-            options.add("--add-reads");
-            options.add(m.getName() + "=ALL-UNNAMED");
-          }
-        }
 
         // See
         // https://github.com/openjdk/jdk/blob/jdk-21%2B35/src/jdk.compiler/share/classes/com/sun/tools/javac/util/Names.java#L430-L436
@@ -2533,7 +2512,9 @@ public final class Lang {
         //
         // In JDK 22+, there is a String-based name table that is used by default; see
         // https://github.com/openjdk/jdk/pull/15470. However note that this is also not thread-safe:
-        // https://github.com/archiecobbs/jdk/blob/1dcafc70c2969093b0c59cf637a982697b05030b/src/jdk.compiler/share/classes/com/sun/tools/javac/util/StringNameTable.java#L65
+        // https://github.com/openjdk/jdk/blob/jdk-22%2B36/src/jdk.compiler/share/classes/com/sun/tools/javac/util/StringNameTable.java#L65
+        // The non-thread-safety may be a non-issue, however, as the map's computations are used only for canonical
+        // mappings, so unless the internals of HashMap are broken repeated computation is just inconvenient, not a deal-breaker.
         //
         // TODO: It *seems* that the thread safety issues we sometimes see are due to the shared name table's Name
         // implementation's toString() method, which can read a portion of the shared byte[] array in which all name
@@ -2541,55 +2522,91 @@ public final class Lang {
         // any of the other Name.Table implementations suffer from this, so the string table may be good enough. That
         // is, except for the shared name table situation, any time you have a Name in your hand you should be able to
         // call toString() on it without any problems.
-        if (Boolean.getBoolean("useSharedNameTable")) {
-          if (LOGGER.isLoggable(DEBUG)) {
-            LOGGER.log(DEBUG, "Using shared name table");
+        if (Runtime.version().feature() >= 22) {
+          if (Boolean.getBoolean("useUnsharedTable")) {
+            if (LOGGER.isLoggable(DEBUG)) {
+              LOGGER.log(DEBUG, "Using unshared name table");
+            }
+            options.add("-XDuseUnsharedTable");
+          } else if (Boolean.getBoolean("useSharedTable")) {
+            // Yikes
+            if (LOGGER.isLoggable(WARNING)) {
+              LOGGER.log(WARNING, "Using shared name table");
+            }
+            options.add("-XDuseSharedTable");
+          } else {
+            if (LOGGER.isLoggable(DEBUG)) {
+              LOGGER.log(DEBUG, "Using string name table (default)");
+            }
+            if (Boolean.parseBoolean(System.getProperty("internStringTable", "true"))) {
+              if (LOGGER.isLoggable(DEBUG)) {
+                LOGGER.log(DEBUG, "Interning string name table strings");
+              }
+              options.add("-XDinternStringTable");
+            }
+          }
+        } else if (Boolean.getBoolean("useSharedTable")) {
+          // Strictly speaking not an option in JDK 21-, but we want to default to the unshared table because otherwise it's dangerous
+          if (LOGGER.isLoggable(WARNING)) {
+            LOGGER.log(WARNING, "Using shared name table");
           }
         } else {
-          options.add("-XDuseUnsharedTable"); // TODO: experimental but quite poassibly critical for thread safety
           if (LOGGER.isLoggable(DEBUG)) {
             LOGGER.log(DEBUG, "Using unshared name table");
           }
+          options.add("-XDuseUnsharedTable");
+        }
+
+        final Set<String> additionalRootModuleNames = new HashSet<>();
+        final Collection<ModuleLocation> moduleLocations = new ArrayList<>();
+        final ModuleFinder smf = ModuleFinder.ofSystem();
+        final Module unnamedModule = this.getClass().getClassLoader().getUnnamedModule();
+        try (final Stream<Module> s = this.getClass().getModule().getLayer().modules().stream().sequential()) {
+          s
+            // Figure out which runtime modules are named and not system modules. That set will be added, eventually, to
+            // the task via its addModules(Set) method (see below).
+            .filter(m -> m.isNamed() && smf.find(m.getName()).isEmpty())
+            .forEach(m -> {
+                additionalRootModuleNames.add(m.getName());
+                if (m.canRead(unnamedModule)) {
+                  // This is a (required) stupendous hack.
+                  options.add("--add-reads");
+                  options.add(m.getName() + "=ALL-UNNAMED");
+                }
+                moduleLocations.add(new ModuleLocation(m));
+              });
         }
 
         if (Boolean.getBoolean(Lang.class.getName() + ".verbose")) {
           options.add("-verbose");
         }
 
+        final DiagnosticLogger diagnosticLogger = new DiagnosticLogger(Locale.getDefault());
+        final StandardJavaFileManager sjfm = jc.getStandardFileManager(diagnosticLogger, Locale.getDefault(), Charset.defaultCharset());
+
         // (Any "loading" is actually performed by, e.g. com.sun.tools.javac.jvm.ClassReader.fillIn(), not reflective
         // machinery. Once a class has been so loaded, com.sun.tools.javac.code.Symtab#getClass(ModuleSymbol, Name) will
         // retrieve it from a HashMap.)
         final CompilationTask task =
-          jc.getTask(null, // additionalOutputWriter
-                     new ReadOnlyModularJavaFileManager(jc.getStandardFileManager(null, null, null), effectiveModulePathModules), // fileManager,
-                     null, // diagnosticListener,
+          jc.getTask(new LogWriter(),
+                     new ReadOnlyModularJavaFileManager(sjfm, moduleLocations),
+                     diagnosticLogger,
                      options,
                      List.of("java.lang.annotation.RetentionPolicy"), // arbitrary, but loads the least amount of stuff up front
                      null); // compilation units; null means we aren't actually compiling anything
-
         task.setProcessors(List.of(new P()));
-
-        final Set<ModuleReference> systemModules = ModuleFinder.ofSystem().findAll();
-        final Set<String> modulePath = ModuleLayer.boot()
-          .configuration()
-          .modules()
-          .stream()
-          .map(ResolvedModule::reference)
-          .filter(Predicate.not(systemModules::contains))
-          .map(mr -> mr.descriptor().name())
-          .collect(Collectors.toUnmodifiableSet());
-
-        task.addModules(modulePath);
+        task.setLocale(Locale.getDefault());
+        task.addModules(additionalRootModuleNames);
 
         if (LOGGER.isLoggable(DEBUG)) {
           LOGGER.log(DEBUG, "CompilationTask options: " + options);
-          LOGGER.log(DEBUG, "CompilationTask modules: " + modulePath);
+          LOGGER.log(DEBUG, "CompilationTask additional root module names: " + additionalRootModuleNames);
           LOGGER.log(DEBUG, "Calling CompilationTask");
         }
 
         if (Boolean.FALSE.equals(task.call())) { // NOTE: runs the task; task blocks forever by design; this thread therefore blocks forever here
           if (LOGGER.isLoggable(ERROR)) {
-            LOGGER.log(ERROR, "CompilationTask called unuccessfully; releasing latches");
+            LOGGER.log(ERROR, "Calling CompilationTask failed");
           }
           runningLatch.countDown();
           initLatch.countDown();
@@ -2600,28 +2617,18 @@ public final class Lang {
         initLatch.countDown();
         throw e;
       } finally {
-        pe = null; // volatile write
+        Lang.pe = null; // volatile write
       }
       if (LOGGER.isLoggable(DEBUG)) {
         LOGGER.log(DEBUG, "CompilationTask invocation daemon thread exiting");
       }
     }
 
-    private static final Set<Module> effectiveModulePathModules() {
-      final Set<Module> modules = new HashSet<>(ModuleLayer.boot().modules());
-      // Remove system modules (e.g. java.base etc.). Whatever's left was on the module path.
-      modules.removeIf(m -> {
-          if (m.isNamed()) {
-            for (final ModuleReference mr : ModuleFinder.ofSystem().findAll()) {
-              if (mr.descriptor().name().equals(m.getName())) {
-                return true;
-              }
-            }
-          }
-          return false;
-        });
-      return Collections.unmodifiableSet(modules);
-    }
+
+    /*
+     * Inner and nested classes.
+     */
+
 
     private final class P extends AbstractProcessor {
 
@@ -2658,7 +2665,7 @@ public final class Lang {
           LOGGER.log(DEBUG, "AbstractProcessor inititializing with " + pe);
         }
         Lang.pe = pe; // volatile write
-        initLatch.countDown();
+        initLatch.countDown(); // all done initializing
         if (LOGGER.isLoggable(DEBUG)) {
           LOGGER.log(DEBUG, "The " + Lang.class.getName() + " class is ready for use");
         }
@@ -2695,6 +2702,101 @@ public final class Lang {
 
     }
 
+    private static final class DiagnosticLogger implements DiagnosticListener<JavaFileObject> {
+
+      private final Locale locale;
+      
+      private DiagnosticLogger(final Locale locale) {
+        super();
+        this.locale = locale;
+      }
+
+      @Override // DiagnosticListener<JavaFileObject>
+      public final void report(final Diagnostic<? extends JavaFileObject> d) {
+        final Level level = switch (d.getKind()) {
+        case ERROR -> Level.ERROR;
+        case MANDATORY_WARNING, WARNING -> Level.WARNING;
+        case NOTE, OTHER -> Level.INFO;
+        };
+        if (LOGGER.isLoggable(level)) {
+          LOGGER.log(level, d.getMessage(this.locale));
+        }
+      }
+
+    }
+
+    private static final class LogWriter extends StringWriter {
+
+      private LogWriter() {
+        super();
+      }
+
+      @Override
+      public final void flush() {
+        super.flush(); // does nothing
+        if (LOGGER.isLoggable(INFO)) {
+          LOGGER.log(INFO, this.toString());
+        }
+        this.getBuffer().setLength(0);
+      }
+
+    }
+
+  }
+
+  private static final class ModuleLocation implements Location {
+
+    private final ModuleReference moduleReference;
+
+    private ModuleLocation(final Module module) {
+      this(module.getLayer().configuration().findModule(module.getName()).map(ResolvedModule::reference).orElse(null));
+    }
+
+    private ModuleLocation(final ModuleReference moduleReference) {
+      super();
+      this.moduleReference = Objects.requireNonNull(moduleReference, "moduleReference");
+    }
+
+    @Override // Location
+    public final String getName() {
+      return this.moduleReference.descriptor().name();
+    }
+
+    @Override // Location
+    public final boolean isModuleOrientedLocation() {
+      return false;
+    }
+
+    @Override // Location
+    public final boolean isOutputLocation() {
+      return false;
+    }
+
+    private final ModuleReference moduleReference() {
+      return this.moduleReference;
+    }
+
+    @Override // Object
+    public final int hashCode() {
+      return this.moduleReference.descriptor().name().hashCode();
+    }
+
+    @Override // Object
+    public final boolean equals(final Object other) {
+      if (other == this) {
+        return true;
+      } else if (other != null && other.getClass() == this.getClass()) {
+        return Objects.equals(this.getName(), ((ModuleLocation)other).getName());
+      } else {
+        return false;
+      }
+    }
+
+    @Override // Object
+    public final String toString() {
+      return this.moduleReference.toString();
+    }
+
   }
 
   private static final class ReadOnlyModularJavaFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> {
@@ -2715,7 +2817,7 @@ public final class Lang {
      */
 
 
-    private final Set<ModuleReference> modulePath;
+    private final Set<Location> locations;
 
     private final Map<ModuleReference, Map<String, List<JavaFileRecord>>> maps;
 
@@ -2725,12 +2827,13 @@ public final class Lang {
      */
 
 
-    private ReadOnlyModularJavaFileManager(final StandardJavaFileManager fm, final Set<Module> effectiveModulePathModules) {
+    private ReadOnlyModularJavaFileManager(final StandardJavaFileManager fm, final Collection<? extends ModuleLocation> moduleLocations) {
       super(fm);
       this.maps = new ConcurrentHashMap<>();
-      this.modulePath = effectiveModulePathModules.stream()
-        .map(m -> m.getLayer().configuration().findModule(m.getName()).orElseThrow().reference())
-        .collect(Collectors.toUnmodifiableSet());
+      this.locations = moduleLocations == null ? Set.of() : Set.copyOf(moduleLocations);
+      if (LOGGER.isLoggable(DEBUG)) {
+        LOGGER.log(DEBUG, "Module locations: " + this.locations);
+      }
     }
 
 
@@ -2746,17 +2849,19 @@ public final class Lang {
     }
 
     @Override
-    public final ClassLoader getClassLoader(final Location location) {
-      assert !location.isModuleOrientedLocation();
-      if (location instanceof ModuleLocation m) {
-        return ModuleLayer.boot().findLoader(m.moduleReference().descriptor().name());
+    public final ClassLoader getClassLoader(final Location packageOrientedLocation) {
+      assert !packageOrientedLocation.isModuleOrientedLocation();
+      if (packageOrientedLocation instanceof ModuleLocation m) {
+        return this.getClass().getModule().getLayer().findLoader(m.getName());
       }
-      return super.getClassLoader(location);
+      return super.getClassLoader(packageOrientedLocation);
     }
 
     @Override
-    public final JavaFileObject getJavaFileForInput(final Location location, final String className, final JavaFileObject.Kind kind) throws IOException {
-      if (location instanceof ModuleLocation m) {
+    public final JavaFileObject getJavaFileForInput(final Location packageOrientedLocation,
+                                                    final String className,
+                                                    final JavaFileObject.Kind kind) throws IOException {
+      if (packageOrientedLocation instanceof ModuleLocation m) {
         try (final ModuleReader mr = m.moduleReference().open()) {
           return mr.find(className.replace('.', '/') + kind.extension)
             .map(u -> new JavaFileRecord(kind, className, u))
@@ -2765,7 +2870,7 @@ public final class Lang {
           throw new UncheckedIOException(e.getMessage(), e);
         }
       }
-      return super.getJavaFileForInput(location, className, kind);
+      return super.getJavaFileForInput(packageOrientedLocation, className, kind);
     }
 
     @Override
@@ -2785,8 +2890,12 @@ public final class Lang {
     }
 
     @Override
-    public final Iterable<JavaFileObject> list(final Location location, final String packageName, final Set<JavaFileObject.Kind> kinds, final boolean recurse) throws IOException {
-      if (location instanceof ModuleLocation m) {
+    public final Iterable<JavaFileObject> list(final Location packageOrientedLocation,
+                                               final String packageName,
+                                               final Set<JavaFileObject.Kind> kinds,
+                                               final boolean recurse)
+      throws IOException {
+      if (packageOrientedLocation instanceof ModuleLocation m) {
         final ModuleReference mref = m.moduleReference();
         if (recurse) {
           // Don't cache anything; not really worth it
@@ -2805,12 +2914,14 @@ public final class Lang {
                                                        final int lastSlashIndex = s.lastIndexOf('/');
                                                        assert lastSlashIndex != 0;
                                                        final String p0 = lastSlashIndex > 0 ? s.substring(0, lastSlashIndex).replace('/', '.') : "";
-                                                       // p0 is now "foo"
+                                                       // p0 is now "foo"; list will be class files under package foo
                                                        final List<JavaFileRecord> list = map.computeIfAbsent(p0, p1 -> new ArrayList<>());
                                                        final JavaFileObject.Kind kind = kind(s);
                                                        try {
                                                          list.add(new JavaFileRecord(kind,
-                                                                                     kind == JavaFileObject.Kind.CLASS || kind == JavaFileObject.Kind.SOURCE ? s.substring(0, s.length() - kind.extension.length()).replace('/', '.') : null,
+                                                                                     kind == JavaFileObject.Kind.CLASS || kind == JavaFileObject.Kind.SOURCE ?
+                                                                                     s.substring(0, s.length() - kind.extension.length()).replace('/', '.') :
+                                                                                     null,
                                                                                      reader.find(s).orElseThrow()));
                                                        } catch (final IOException ioException) {
                                                          throw new UncheckedIOException(ioException.getMessage(), ioException);
@@ -2832,68 +2943,94 @@ public final class Lang {
         }
         return Collections.unmodifiableList(unfilteredPackageContents);
       }
-      return super.list(location, packageName, kinds, recurse);
+      return super.list(packageOrientedLocation, packageName, kinds, recurse);
     }
 
+    // Returns package-oriented locations (or output locations if the given moduleOrientedOrOutputLocation is an output
+    // location).
     @Override
-    public final Iterable<Set<Location>> listLocationsForModules(final Location location) throws IOException {
+    public final Iterable<Set<Location>> listLocationsForModules(final Location moduleOrientedOrOutputLocation) throws IOException {
       return
-        location == StandardLocation.MODULE_PATH ?
-        Set.of(this.modulePath.stream().map(ModuleLocation::new).collect(Collectors.toUnmodifiableSet())) :
-        super.listLocationsForModules(location);
+        moduleOrientedOrOutputLocation == StandardLocation.MODULE_PATH ?
+        List.of(this.locations) :
+        super.listLocationsForModules(moduleOrientedOrOutputLocation);
     }
 
     @Override
-    public final String inferBinaryName(final Location location, final JavaFileObject file) {
-      return file instanceof JavaFileRecord f ? f.binaryName() : super.inferBinaryName(location, file);
+    public final String inferBinaryName(final Location packageOrientedLocation, final JavaFileObject file) {
+      return file instanceof JavaFileRecord f ? f.binaryName() : super.inferBinaryName(packageOrientedLocation, file);
     }
 
     @Override
-    public final String inferModuleName(final Location location) throws IOException {
-      if (location instanceof ModuleLocation m) {
+    public final String inferModuleName(final Location packageOrientedLocation) throws IOException {
+      if (packageOrientedLocation instanceof ModuleLocation m) {
         assert m.getName() != null : "m.getName() == null: " + m;
         return m.getName();
       }
-      return super.inferModuleName(location);
+      return super.inferModuleName(packageOrientedLocation);
     }
 
     @Override
-    public final boolean contains(final Location location, final FileObject fo) throws IOException {
+    public final boolean contains(final Location packageOrModuleOrientedLocation, final FileObject fo) throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public final FileObject getFileForInput(final Location location, final String packageName, final String relativeName) throws IOException {
+    public final FileObject getFileForInput(final Location packageOrientedLocation,
+                                            final String packageName,
+                                            final String relativeName)
+      throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public final FileObject getFileForOutput(final Location location, final String packageName, final String relativeName, final FileObject sibling) throws IOException {
+    public final FileObject getFileForOutput(final Location outputLocation,
+                                             final String packageName,
+                                             final String relativeName,
+                                             final FileObject sibling)
+      throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public final FileObject getFileForOutputForOriginatingFiles(final Location location, final String packageName, final String relativeName, final FileObject... originatingFiles) throws IOException {
+    public final FileObject getFileForOutputForOriginatingFiles(final Location outputLocation,
+                                                                final String packageName,
+                                                                final String relativeName,
+                                                                final FileObject... originatingFiles)
+      throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public final JavaFileObject getJavaFileForOutput(final Location location, final String className, final JavaFileObject.Kind kind, final FileObject sibling) throws IOException {
+    public final JavaFileObject getJavaFileForOutput(final Location packageOrientedLocation,
+                                                     final String className,
+                                                     final JavaFileObject.Kind kind,
+                                                     final FileObject sibling)
+      throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public final JavaFileObject getJavaFileForOutputForOriginatingFiles(final Location location, final String className, final JavaFileObject.Kind kind, final FileObject... originatingFiles) throws IOException {
+    public final JavaFileObject getJavaFileForOutputForOriginatingFiles(final Location packageOrientedLocation,
+                                                                        final String className,
+                                                                        final JavaFileObject.Kind kind,
+                                                                        final FileObject... originatingFiles)
+      throws IOException {
       throw new UnsupportedOperationException();
     }
 
+    // Returns a module-oriented location or an output location.
     @Override
-    public final Location getLocationForModule(final Location location, final String moduleName) throws IOException {
+    public final Location getLocationForModule(final Location moduleOrientedOrOutputLocation,
+                                               final String moduleName) throws IOException {
       throw new UnsupportedOperationException();
     }
 
+    // Returns a module-oriented location or an output location.
     @Override
-    public final Location getLocationForModule(final Location location, final JavaFileObject fileObject) throws IOException {
+    public final Location getLocationForModule(final Location moduleOrientedOrOutputLocation,
+                                               final JavaFileObject fileObject)
+      throws IOException {
       throw new UnsupportedOperationException();
     }
 
@@ -2930,13 +3067,19 @@ public final class Lang {
       final int packagePrefixLength = p.length() + 1;
       try (final Stream<String> ss = mr.list()) {
         return ss
-          .filter(s -> !s.endsWith("/") && s.startsWith(p) && isAKind(kinds, s) && (recurse || s.indexOf('/', packagePrefixLength) < 0))
+          .filter(s ->
+                  !s.endsWith("/") &&
+                  s.startsWith(p) &&
+                  isAKind(kinds, s) &&
+                  (recurse || s.indexOf('/', packagePrefixLength) < 0))
           .map(s -> {
               final JavaFileObject.Kind kind = kind(kinds, s);
               try {
                 return
                   new JavaFileRecord(kind,
-                                     kind == JavaFileObject.Kind.CLASS || kind == JavaFileObject.Kind.SOURCE ? s.substring(0, s.length() - kind.extension.length()).replace('/', '.') : null,
+                                     kind == JavaFileObject.Kind.CLASS || kind == JavaFileObject.Kind.SOURCE ?
+                                     s.substring(0, s.length() - kind.extension.length()).replace('/', '.') :
+                                     null,
                                      mr.find(s).orElseThrow());
               } catch (final IOException ioException) {
                 throw new UncheckedIOException(ioException.getMessage(), ioException);
@@ -2953,42 +3096,6 @@ public final class Lang {
         }
       }
       return false;
-    }
-
-    private static final record ModuleLocation(ModuleReference moduleReference) implements Location {
-
-
-      /*
-       * Constructors.
-       */
-
-
-      private ModuleLocation(final Module module) {
-        this(module.getLayer().configuration().findModule(module.getName()).orElseThrow().reference());
-      }
-
-
-      /*
-       * Instance methods.
-       */
-
-
-      @Override
-      public final String getName() {
-        // Won't be null.
-        return this.moduleReference().descriptor().name();
-      }
-
-      @Override
-      public final boolean isModuleOrientedLocation() {
-        return false;
-      }
-
-      @Override
-      public final boolean isOutputLocation() {
-        return false;
-      }
-
     }
 
     private static final record JavaFileRecord(JavaFileObject.Kind kind, String binaryName, URI uri) implements JavaFileObject {

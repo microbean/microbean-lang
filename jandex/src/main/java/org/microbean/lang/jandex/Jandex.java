@@ -99,6 +99,7 @@ public final class Jandex extends Modeler {
     case AnnotationMirror a -> this.annotationValue(a);
     case javax.lang.model.element.AnnotationValue a -> this.annotationValue(a);
     case org.jboss.jandex.AnnotationValue a -> this.annotationValue(a);
+    case org.jboss.jandex.ClassType c -> this.annotationValue(c);
     case Boolean b -> this.annotationValue(b);
     case Byte b -> this.annotationValue(b);
     case CharSequence s -> this.annotationValue(s);
@@ -121,7 +122,7 @@ public final class Jandex extends Modeler {
     case int[] o -> this.annotationValue(o);
     case long[] o -> this.annotationValue(o);
     case short[] o -> this.annotationValue(o);
-    default -> throw new IllegalArgumentException("v: " + v);
+    default -> throw new IllegalArgumentException("v: " + v + (v == null ? "" : "; v.getClass(): " + v.getClass().getName()));
     };
   }
 
@@ -167,6 +168,18 @@ public final class Jandex extends Modeler {
 
   public final javax.lang.model.element.AnnotationValue annotationValue(final Double d) {
     return d == null ? null : new org.microbean.lang.element.AnnotationValue(d);
+  }
+
+  public final javax.lang.model.element.AnnotationValue annotationValue(final ClassInfo c) {
+    return c == null ? null : this.annotationValue(c.name());
+  }
+  
+  public final javax.lang.model.element.AnnotationValue annotationValue(final ClassType c) {
+    return c == null ? null : this.annotationValue(c.name());
+  }
+
+  public final javax.lang.model.element.AnnotationValue annotationValue(final DotName n) {
+    return n == null ? null : new org.microbean.lang.element.AnnotationValue(n);
   }
 
   public final javax.lang.model.element.AnnotationValue annotationValue(final FieldInfo enumConstant) {
@@ -615,6 +628,7 @@ public final class Jandex extends Modeler {
 
 
   private final void build(final ModuleInfo mi, final org.microbean.lang.element.ModuleElement e) {
+
     // Simple name.
     e.setSimpleName(mi.name().toString());
 
@@ -622,16 +636,22 @@ public final class Jandex extends Modeler {
     e.setType(org.microbean.lang.type.NoType.MODULE);
 
     for (final RequiredModuleInfo rmi : mi.requires()) {
-      e.addDirective(new org.microbean.lang.element.ModuleElement.RequiresDirective(this.element(this.i.getModuleByName(rmi.name())),
-                                                                                    rmi.isStatic(),
-                                                                                    rmi.isTransitive()));
+      final ModuleInfo rmiMi = this.i.getModuleByName(rmi.name());
+      if (rmiMi != null) {
+        e.addDirective(new org.microbean.lang.element.ModuleElement.RequiresDirective(this.element(rmiMi),
+                                                                                      rmi.isStatic(),
+                                                                                      rmi.isTransitive()));
+      }
     }
 
     for (final ExportedPackageInfo epi : mi.exports()) {
       final List<? extends DotName> epiTargets = epi.targets();
       final List<ModuleElement> targets = new ArrayList<>(epiTargets.size());
       for (final DotName epiTarget : epiTargets) {
-        targets.add(this.element(this.i.getModuleByName(epiTarget)));
+        final ModuleInfo epiMi = this.i.getModuleByName(epiTarget);
+        if (epiMi != null) {
+          targets.add(this.element(epiMi));
+        }
       }
       e.addDirective(new org.microbean.lang.element.ModuleElement.ExportsDirective(this.packageElement(epi.source()), targets));
     }
@@ -640,7 +660,10 @@ public final class Jandex extends Modeler {
       final List<? extends DotName> opiTargets = opi.targets();
       final List<ModuleElement> targets = new ArrayList<>(opiTargets.size());
       for (final DotName opiTarget : opiTargets) {
-        targets.add(this.element(this.i.getModuleByName(opiTarget)));
+        final ModuleInfo epiMi = this.i.getModuleByName(opiTarget);
+        if (epiMi != null) {
+          targets.add(this.element(epiMi));
+        }
       }
       e.addDirective(new org.microbean.lang.element.ModuleElement.OpensDirective(this.packageElement(opi.source()), targets));
     }

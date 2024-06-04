@@ -16,6 +16,7 @@ package org.microbean.lang;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /**
@@ -108,6 +109,29 @@ public final class CompletionLock {
     acquire();
     try {
       return s.get();
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Calls {@link #acquire()}, then {@link Supplier#get() get()} on the supplied {@link BooleanSupplier}, then {@link
+   * #release()} in a {@code finally} block, and returns the result of the {@link BooleanSupplier#getAsBoolean()
+   * getAsBoolean()} invocation.
+   *
+   * @param <T> the type of the object this method will return
+   *
+   * @param s a {@link BooleanSupplier}; must not be {@code null}
+   *
+   * @return the result of an invocation of the supplied {@link BooleanSupplier}'s {@link BooleanSupplier#getAsBoolean()
+   * getAsBoolean()} method
+   *
+   * @exception NullPointerException if {@code s} is {@code null}
+   */
+  public static final boolean guard(final BooleanSupplier s) {
+    acquire();
+    try {
+      return s.getAsBoolean();
     } finally {
       release();
     }
