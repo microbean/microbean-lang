@@ -119,8 +119,6 @@ public final class CompletionLock {
    * #release()} in a {@code finally} block, and returns the result of the {@link BooleanSupplier#getAsBoolean()
    * getAsBoolean()} invocation.
    *
-   * @param <T> the type of the object this method will return
-   *
    * @param s a {@link BooleanSupplier}; must not be {@code null}
    *
    * @return the result of an invocation of the supplied {@link BooleanSupplier}'s {@link BooleanSupplier#getAsBoolean()
