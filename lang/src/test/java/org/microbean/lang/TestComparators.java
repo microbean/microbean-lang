@@ -53,10 +53,11 @@ final class TestComparators {
     final TypeMirror list = declaredType(null, typeElement("java.util.List"));
     l.add(list);
 
+    final TypeAndElementSource tes = Lang.typeAndElementSource();
     final Comparator<TypeMirror> c =
       new TestingTypeMirrorComparator(t -> t.getKind() == TypeKind.DECLARED && !((DeclaredType)t).asElement().getKind().isInterface())
       .thenComparing(new TestingTypeMirrorComparator(t -> t.getKind() == TypeKind.DECLARED && ((DeclaredType)t).asElement().getKind().isInterface()))
-      .thenComparing(new SpecializationDepthTypeMirrorComparator())
+      .thenComparing(new SpecializationDepthTypeMirrorComparator(tes, new SameTypeEquality(tes), Lang::directSupertypes))
       .thenComparing(NameTypeMirrorComparator.INSTANCE);
 
     Collections.sort(l, c);

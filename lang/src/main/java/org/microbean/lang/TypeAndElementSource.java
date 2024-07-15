@@ -17,6 +17,7 @@ import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
+import java.util.List;
 import java.util.Objects;
 
 import javax.lang.model.element.TypeElement;
@@ -81,6 +82,8 @@ public interface TypeAndElementSource {
   }
 
   public DeclaredType declaredType(final TypeElement typeElement, final TypeMirror... typeArguments);
+
+  public List<? extends TypeMirror> directSupertypes(final TypeMirror t);
 
   public <T extends TypeMirror> T erasure(final T t);
 

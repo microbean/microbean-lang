@@ -48,6 +48,8 @@ public final class ConstantDescs {
 
   public static final ClassDesc CD_PrimitiveType = ClassDesc.of("javax.lang.model.type.PrimitiveType");
 
+  public static final ClassDesc CD_SameTypeEquality = ClassDesc.of("org.microbean.lang.SameTypeEquality");
+
   public static final ClassDesc CD_TypeAndElementSource = ClassDesc.of("org.microbean.lang.TypeAndElementSource");
 
   public static final ClassDesc CD_TypeElement = ClassDesc.of("javax.lang.model.element.TypeElement");

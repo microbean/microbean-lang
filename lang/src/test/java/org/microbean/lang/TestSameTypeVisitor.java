@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2022–2023 microBean™.
+ * Copyright © 2022–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 package org.microbean.lang;
 
 import java.lang.reflect.Field;
+
+import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
 
@@ -86,6 +88,10 @@ final class TestSameTypeVisitor {
         @Override
         public final DeclaredType declaredType(final DeclaredType enclosingType, final TypeElement typeElement, final TypeMirror... arguments) {
           return javacModelTypes.getDeclaredType(enclosingType, typeElement, arguments);
+        }
+        @Override
+        public final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
+          return javacModelTypes.directSupertypes(t);
         }
         @Override
         @SuppressWarnings("unchecked")
