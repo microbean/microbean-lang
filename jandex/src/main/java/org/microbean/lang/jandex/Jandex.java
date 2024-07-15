@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -173,7 +173,7 @@ public final class Jandex extends Modeler {
   public final javax.lang.model.element.AnnotationValue annotationValue(final ClassInfo c) {
     return c == null ? null : this.annotationValue(c.name());
   }
-  
+
   public final javax.lang.model.element.AnnotationValue annotationValue(final ClassType c) {
     return c == null ? null : this.annotationValue(c.name());
   }
@@ -377,12 +377,12 @@ public final class Jandex extends Modeler {
     return ci == null ? null : this.element(ci);
   }
 
-  @Override // ElementSource
+  @Override // TypeAndElementSource
   public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
     return this.typeElement(n);
   }
 
-  @Override // ElementSource
+  @Override // TypeAndElementSource
   public final TypeElement typeElement(final CharSequence n) {
     final ClassInfo ci = this.classInfoFor(n.toString());
     return
@@ -582,6 +582,11 @@ public final class Jandex extends Modeler {
 
   @Override // TypeAndElementSource
   public final DeclaredType declaredType(final TypeElement typeElement, final TypeMirror... arguments) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  @Override // TypeAndElementSource
+  public final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
     throw new UnsupportedOperationException("TODO");
   }
 
