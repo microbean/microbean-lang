@@ -28,6 +28,9 @@ import java.lang.constant.DynamicConstantDesc;
 import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.lang.module.ModuleFinder;
 import java.lang.module.ResolvedModule;
 import java.lang.module.ModuleReader;
@@ -242,9 +245,21 @@ public final class Lang {
       modulesField = com.sun.tools.javac.model.JavacElements.class.getDeclaredField("modules");
       modulesField.trySetAccessible();
     } catch (final ReflectiveOperationException x) {
-      throw (Error)new ExceptionInInitializerError(x.getMessage()).initCause(x);
+      throw new ExceptionInInitializerError(x);
     }
   }
+
+  private static final int INITIALIZATION_ERROR = -1;
+
+  private static final int UNINITIALIZED = 0;
+
+  private static final int INITIALIZING = 1;
+
+  private static final int INITIALIZED = 2;
+
+  private static final VarHandle STATE;
+
+  private static volatile int state;
 
   private static volatile ProcessingEnvironment pe;
 
@@ -269,7 +284,11 @@ public final class Lang {
     m.put(Modifier.VOLATILE, Long.valueOf(ACC_VOLATILE));
     assert m.size() == Modifier.values().length;
     modifierMasks = Collections.unmodifiableMap(m);
-    initialize();
+    try {
+      STATE = MethodHandles.lookup().findStaticVarHandle(Lang.class, "state", int.class);
+    } catch (final IllegalAccessException | NoSuchFieldException e) {
+      throw new ExceptionInInitializerError(e);
+    }
   }
 
 
@@ -2175,13 +2194,17 @@ public final class Lang {
     return variableElement(f).asType();
   }
 
+  /*
+  @Deprecated(forRemoval = true)
   public static final Equality sameTypeEquality() {
     return SameTypeEquality.INSTANCE;
   }
+  */
 
   static final ProcessingEnvironment pe() {
     ProcessingEnvironment pe = Lang.pe; // volatile read
     if (pe == null) {
+      initialize();
       try {
         initLatch.await();
       } catch (final InterruptedException e) {
@@ -2189,8 +2212,10 @@ public final class Lang {
       }
       pe = Lang.pe; // volatile read
       if (pe == null || initLatch.getCount() > 0L) {
+        state = INITIALIZATION_ERROR; // volatile write
         throw new IllegalStateException();
       }
+      assert state == INITIALIZED; // volatile read
     }
     return pe;
   }
@@ -2206,17 +2231,24 @@ public final class Lang {
     return rv;
   }
 
-  // Called once, ever, by the static initializer. Idempotent.
-  private static final void initialize() {
-    if (Lang.pe != null) { // volatile read
+  /**
+   * Asynchronously and idempotently initializes the {@link Lang} class for use.
+   *
+   * <p>This method is automatically called when appropriate, but is {@code public} to support eager initialization use
+   * cases.</p>
+   */
+  // Idempotent.
+  public static final void initialize() {
+    if (!STATE.compareAndSet(UNINITIALIZED, INITIALIZING)) {
       return;
     }
     if (LOGGER.isLoggable(DEBUG)) {
       LOGGER.log(DEBUG, "Initializing");
     }
-    // Virtual thread because it will spend the vast majority of its life blocked on a CountDownLatch
+    // Virtual thread, not platform thread, because it will spend the vast majority of its life blocked on a
+    // CountDownLatch
     Thread.ofVirtual()
-      .name("Lang")
+      .name(Lang.class.getName())
       .uncaughtExceptionHandler((t, e) -> {
           if (LOGGER.isLoggable(ERROR)) {
             LOGGER.log(ERROR, e.getMessage(), e);
@@ -2261,61 +2293,6 @@ public final class Lang {
    * Inner and nested classes.
    */
 
-
-  /**
-   * An {@link Equality} implemented in terms of the {@link Lang#sameType(TypeMirror, TypeMirror)} method.
-   *
-   * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
-   *
-   * @see Equality
-   *
-   * @see Lang#sameType(TypeMirror, TypeMirror)
-   */
-  public static final class SameTypeEquality extends Equality {
-
-
-    /*
-     * Static fields.
-     */
-
-
-    /**
-     * The sole instance of this class.
-     */
-    public static final SameTypeEquality INSTANCE = new SameTypeEquality();
-
-
-    /*
-     * Constructors.
-     */
-
-
-    private SameTypeEquality() {
-      super(false);
-    }
-
-
-    /*
-     * Instance methods.
-     */
-
-
-    @Override // Equality
-    public final boolean equals(final Object o1, final Object o2) {
-      if (o1 == o2) {
-        return true;
-      } else if (o1 == null || o2 == null) {
-        return false;
-      } else if (o1 instanceof TypeMirror t1) {
-        return o2 instanceof TypeMirror t2 && Lang.sameType(t1, t2);
-      } else if (o2 instanceof TypeMirror) {
-        return false;
-      } else {
-        return super.equals(o1, o2);
-      }
-    }
-
-  }
 
   /**
    * A {@link TypeAndElementSource} implementation that is also {@link Constable}.
@@ -2379,6 +2356,11 @@ public final class Lang {
                                            final TypeElement typeElement,
                                            final TypeMirror... typeArguments) {
       return Lang.declaredType(containingType, typeElement, typeArguments);
+    }
+
+    @Override
+    public final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
+      return Lang.directSupertypes(t);
     }
 
     @Override
@@ -2482,12 +2464,14 @@ public final class Lang {
 
     @Override
     public final void run() {
+      assert state == INITIALIZING; // volatile read
       if (LOGGER.isLoggable(DEBUG)) {
         LOGGER.log(DEBUG, "CompilationTask invocation daemon thread running");
       }
       try {
         final JavaCompiler jc = ToolProvider.getSystemJavaCompiler();
         if (jc == null) {
+          state = INITIALIZATION_ERROR; // volatile write
           if (LOGGER.isLoggable(ERROR)) {
             LOGGER.log(ERROR, "No system Java compiler available");
           }
@@ -2605,14 +2589,18 @@ public final class Lang {
         }
 
         if (Boolean.FALSE.equals(task.call())) { // NOTE: runs the task; task blocks forever by design; this thread therefore blocks forever here
+          state = INITIALIZATION_ERROR; // volatile write
           if (LOGGER.isLoggable(ERROR)) {
             LOGGER.log(ERROR, "Calling CompilationTask failed");
           }
           runningLatch.countDown();
           initLatch.countDown();
+        } else {
+          state = INITIALIZED; // volatile write
         }
 
       } catch (final RuntimeException | Error e) {
+        state = INITIALIZATION_ERROR; // volatile write
         runningLatch.countDown();
         initLatch.countDown();
         throw e;
@@ -2665,6 +2653,7 @@ public final class Lang {
           LOGGER.log(DEBUG, "AbstractProcessor inititializing with " + pe);
         }
         Lang.pe = pe; // volatile write
+        state = INITIALIZED; // volatile write
         initLatch.countDown(); // all done initializing
         if (LOGGER.isLoggable(DEBUG)) {
           LOGGER.log(DEBUG, "The " + Lang.class.getName() + " class is ready for use");
@@ -2705,7 +2694,7 @@ public final class Lang {
     private static final class DiagnosticLogger implements DiagnosticListener<JavaFileObject> {
 
       private final Locale locale;
-      
+
       private DiagnosticLogger(final Locale locale) {
         super();
         this.locale = locale;

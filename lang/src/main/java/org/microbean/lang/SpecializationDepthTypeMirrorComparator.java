@@ -55,16 +55,18 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
    */
 
 
+  @Deprecated(forRemoval = true)
   public SpecializationDepthTypeMirrorComparator() {
     this(null, null, null);
   }
 
+  @Deprecated(forRemoval = true)
   public SpecializationDepthTypeMirrorComparator(final Equality equality) {
     this(null, equality, null);
   }
 
   public SpecializationDepthTypeMirrorComparator(final TypeAndElementSource tes, final Equality equality) {
-    this(tes, equality, null);
+    this(tes, equality, tes::directSupertypes);
   }
 
   /**
@@ -73,8 +75,8 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
    * @param tes a {@link TypeAndElementSource}; may be {@code null} in which case the return value of an invocation of
    * {@link Lang#typeAndElementSource()} will be used instead
    *
-   * @param equality an {@link Equality}; may be {@code null} in which case the return value of an invocation of {@link
-   * Lang#sameTypeEquality()} will be used instead
+   * @param equality an {@link Equality}; may be {@code null} in which case a new {@link SameTypeEquality} will be used
+   * instead
    *
    * @param directSupertypes a {@link Function} that accepts a {@link TypeMirror} and returns its <em>direct
    * supertypes</em>, normally as <a
@@ -87,7 +89,7 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
                                                  final Function<? super DelegatingTypeMirror, ? extends Iterable<? extends TypeMirror>> directSupertypes) {
     super();
     this.tes = tes == null ? Lang.typeAndElementSource() : tes;
-    this.equality = equality == null ? Lang.sameTypeEquality() : equality;
+    this.equality = equality == null ? new SameTypeEquality(this.tes) : equality;
     this.directSupertypes = directSupertypes == null ? Lang::directSupertypes : directSupertypes;
   }
 

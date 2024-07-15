@@ -110,6 +110,10 @@ final class TestSupertypeVisitor {
           return javacModelTypes.getDeclaredType(enclosingType, typeElement, arguments);
         }
         @Override
+        public final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
+          return javacModelTypes.directSupertypes(t);
+        }
+        @Override
         @SuppressWarnings("unchecked")
         public final <T extends TypeMirror> T erasure(final T t) {
           return (T)javacModelTypes.erasure(t);

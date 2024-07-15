@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2022–2023 microBean™.
+ * Copyright © 2022–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -101,7 +101,7 @@ public class Equality implements Constable {
   }
 
   @Override // Constable
-  public Optional<DynamicConstantDesc<Equality>> describeConstable() {
+  public Optional<DynamicConstantDesc<? extends Equality>> describeConstable() {
     return Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
                                               MethodHandleDesc.ofConstructor(CD_Equality, CD_boolean),
                                               this.ia ? TRUE : FALSE));
@@ -244,15 +244,15 @@ public class Equality implements Constable {
     }
     // This gets tricky. If we're truly trying to do value-based hashcodes, we have a catch-22: a method's hashcode must
     // include the hashcodes of its parameters, and parameters, taken in isolation, must include the hashcodes of their
-    // enclosing element (method).  That's an infinite loop.
+    // enclosing element (method). That's an infinite loop.
     //
     // Next, VariableElement, which is the class assigned to executable/method/constructor parameters, is also used for
-    // things like fields.  So we can't make assumptions about its hashcode calculations, save for one:
+    // things like fields. So we can't make assumptions about its hashcode calculations, save for one:
     //
     // Given that VariableElements are always enclosed
     // (https://docs.oracle.com/en/java/javase/19/docs/api/java.compiler/javax/lang/model/element/VariableElement.html#getEnclosingElement()),
     // it is reasonable to assume that any given VariableElement implementation will likely include the return value of
-    // getEnclosingElement() in its hashcode calculations.  But the only enclosing "thing" that would "normally" include
+    // getEnclosingElement() in its hashcode calculations. But the only enclosing "thing" that would "normally" include
     // the hashcode calculations of its *enclosed* elements is an ExecutableElement (because its parameters make up its
     // identity).
     //
@@ -734,7 +734,7 @@ public class Equality implements Constable {
       return false;
     }
     final ElementKind k1 = e1.getKind();
-    // This is kind of the runtime equality contract of, say, java.lang.reflect.Method.  Note in particular that
+    // This is kind of the runtime equality contract of, say, java.lang.reflect.Method. Note in particular that
     // TypeParameterElements are not evaluated.
     return
       k1 == e2.getKind() &&
@@ -947,8 +947,8 @@ public class Equality implements Constable {
     } else if (t1 == null || t2 == null) {
       return false;
     }
-    // The Java type system doesn't actually say that a wildcard type is a type.  It also says that "?" is "equivalent
-    // to" "? extends Object".  Let's start by simply comparing bounds exactly.
+    // The Java type system doesn't actually say that a wildcard type is a type. It also says that "?" is "equivalent
+    // to" "? extends Object". Let's start by simply comparing bounds exactly.
     return
       t1.getKind() == TypeKind.WILDCARD && t2.getKind() == TypeKind.WILDCARD &&
       equals(t1.getExtendsBound(), t2.getExtendsBound(), ia) &&
