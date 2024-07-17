@@ -55,9 +55,6 @@ import org.microbean.lang.Equality;
 
 import org.microbean.lang.element.DelegatingElement;
 
-import org.microbean.lang.type.NoType;
-import org.microbean.lang.type.Types;
-
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
 
@@ -318,10 +315,10 @@ public final class DelegatingTypeMirror
 
   @Override // Constable
   public final Optional<? extends ConstantDesc> describeConstable() {
-    return Lang.describeConstable(this.delegate())
-      .flatMap(delegateDesc -> (this.elementSource instanceof Constable c ? c.describeConstable() : Optional.<ConstantDesc>empty())
-               .flatMap(elementSourceDesc -> this.ehc.describeConstable()
-                        .map(equalityDesc -> DynamicConstantDesc.of(BSM_INVOKE,
+    return this.ehc.describeConstable()
+      .flatMap(equalityDesc -> (this.elementSource instanceof Constable c ? c.describeConstable() : Optional.<ConstantDesc>empty())
+               .flatMap(elementSourceDesc -> this.elementSource.describeConstable(this.delegate())
+                        .map(delegateDesc -> DynamicConstantDesc.of(BSM_INVOKE,
                                                                     MethodHandleDesc.ofMethod(STATIC,
                                                                                               CD_DelegatingTypeMirror,
                                                                                               "of",

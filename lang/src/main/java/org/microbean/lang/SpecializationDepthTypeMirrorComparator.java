@@ -14,8 +14,7 @@
 package org.microbean.lang;
 
 import java.util.Comparator;
-
-import java.util.function.Function;
+import java.util.Objects;
 
 import javax.lang.model.element.QualifiedNameable;
 
@@ -24,10 +23,10 @@ import javax.lang.model.type.TypeMirror;
 import org.microbean.lang.type.DelegatingTypeMirror;
 
 /**
- * A {@link Comparator} that orders certain {@linkplain TypeMirror#getKind() kinds} of {@link TypeMirror}s according to
- * the depths of their specialization hierarchies such that subtypes precede supertypes.
+ * A {@link Comparator} that partially orders certain {@linkplain TypeMirror#getKind() kinds} of {@link TypeMirror}s
+ * according to the depths of their specialization hierarchies such that subtypes precede supertypes.
  *
- * <p>This {@link Comparator} implementation is inconsistent with equals.</p>
+ * <p><strong>This {@link Comparator} implementation is inconsistent with equals.</strong></p>
  *
  * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
  *
@@ -47,50 +46,33 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
 
   private final Equality equality;
 
-  private final Function<? super DelegatingTypeMirror, ? extends Iterable<? extends TypeMirror>> directSupertypes;
-
 
   /*
    * Constructors.
    */
 
 
-  @Deprecated(forRemoval = true)
-  public SpecializationDepthTypeMirrorComparator() {
-    this(null, null, null);
-  }
-
-  @Deprecated(forRemoval = true)
-  public SpecializationDepthTypeMirrorComparator(final Equality equality) {
-    this(null, equality, null);
-  }
-
-  public SpecializationDepthTypeMirrorComparator(final TypeAndElementSource tes, final Equality equality) {
-    this(tes, equality, tes::directSupertypes);
+  public SpecializationDepthTypeMirrorComparator(final TypeAndElementSource tes) {
+    this(tes, null);
   }
 
   /**
    * Creates a new {@link SpecializationDepthTypeMirrorComparator}.
    *
-   * @param tes a {@link TypeAndElementSource}; may be {@code null} in which case the return value of an invocation of
-   * {@link Lang#typeAndElementSource()} will be used instead
+   * @param tes a {@link TypeAndElementSource}; must not be {@code null}
    *
    * @param equality an {@link Equality}; may be {@code null} in which case a new {@link SameTypeEquality} will be used
    * instead
    *
-   * @param directSupertypes a {@link Function} that accepts a {@link TypeMirror} and returns its <em>direct
-   * supertypes</em>, normally as <a
-   * href="https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html#jls-4.10.2">defined by the Java Language
-   * Specification</a>; may be {@code null} in which case a reference to the {@link Lang#directSupertypes(TypeMirror)}
-   * method will be used instead
+   * @exception NullPointerException if {@code tes} is {@code null}
+   *
+   * @see Lang#typeAndElementSource()
    */
   public SpecializationDepthTypeMirrorComparator(final TypeAndElementSource tes,
-                                                 final Equality equality,
-                                                 final Function<? super DelegatingTypeMirror, ? extends Iterable<? extends TypeMirror>> directSupertypes) {
+                                                 final Equality equality) {
     super();
-    this.tes = tes == null ? Lang.typeAndElementSource() : tes;
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.equality = equality == null ? new SameTypeEquality(this.tes) : equality;
-    this.directSupertypes = directSupertypes == null ? Lang::directSupertypes : directSupertypes;
   }
 
 
@@ -120,7 +102,8 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
    *
    * <p>The specialization depth of an immediate subclass of {@link Object} is {@code 1}.</p>
    *
-   * <p>The specialization depth of a subclass of an immediate subclass of {@link Object} is {@code 2}. And so on.</p>
+   * <p>The specialization depth of an immediate subclass of an immediate subclass of {@link Object} is {@code 2}. And
+   * so on.</p>
    *
    * @param t a {@link TypeMirror}; must not be {@code null}; must be an {@linkplain
    * javax.lang.model.type.TypeKind#ARRAY array type}, a {@linkplain javax.lang.model.type.TypeKind#DECLARED declared
@@ -128,6 +111,8 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
    * javax.lang.model.type.TypeKind#TYPEVAR type variable}
    *
    * @return {@code 0} or a positive {@code int} representing the specialization depth of the {@link TypeMirror} in question
+   *
+   * @exception NullPointerException if {@code t} is {@code null}
    *
    * @exception IllegalArgumentException if {@code t} is unsuitable for any reason
    */
@@ -151,7 +136,7 @@ public final class SpecializationDepthTypeMirrorComparator implements Comparator
       // My initial specialization depth is 0, although we know I will have at least one supertype (java.lang.Object)
       // because we already handled java.lang.Object, which has no supertypes, above.
       int sd = 0;
-      for (final TypeMirror s : this.directSupertypes.apply(t)) {
+      for (final TypeMirror s : this.tes.directSupertypes(t)) {
         sd = Math.max(sd, this.specializationDepth(DelegatingTypeMirror.of(s, this.tes, this.equality)));
       }
       // My specialization depth is equal to the greatest one of my direct supertypes, plus one (representing me, a

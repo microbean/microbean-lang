@@ -22,6 +22,7 @@ import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
 
+import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.TypeElement;
 
 import javax.lang.model.type.ArrayType;
@@ -99,6 +100,10 @@ final class TestSameTypeVisitor {
           return (T)javacModelTypes.erasure(t);
         }
         @Override
+        public final ModuleElement moduleElement(final CharSequence moduleName) {
+          return elements.getModuleElement(moduleName);
+        }
+        @Override
         public final NoType noType(final TypeKind k) {
           return javacModelTypes.getNoType(k);
         }
@@ -110,9 +115,19 @@ final class TestSameTypeVisitor {
         public boolean sameType(final TypeMirror t, final TypeMirror s) {
           return javacModelTypes.isSameType(t, s);
         }
+        /*
         @Override
         public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
           return elements.getTypeElement(elements.getModuleElement(m), n);
+        }
+        */
+        @Override
+        public final TypeElement typeElement(final CharSequence n) {
+          return elements.getTypeElement(n);
+        }
+        @Override
+        public final TypeElement typeElement(final ModuleElement m, final CharSequence n) {
+          return elements.getTypeElement(m, n);
         }
         @Override
         public final TypeVariable typeVariable(final java.lang.reflect.TypeVariable<?> t) {

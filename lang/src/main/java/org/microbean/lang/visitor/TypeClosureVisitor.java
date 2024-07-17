@@ -13,7 +13,6 @@
  */
 package org.microbean.lang.visitor;
 
-import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
 

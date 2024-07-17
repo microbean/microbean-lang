@@ -46,7 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class TestModuleRelatedIssues {
-
+  
   private TestModuleRelatedIssues() {
     super();
   }
@@ -78,6 +78,11 @@ final class TestModuleRelatedIssues {
       .forEach(System.out::println);
   }
 
+  @Test
+  final void testGetTypeElementRequiresNonNullModule() {
+    assertThrows(NullPointerException.class, () -> Lang.pe().getElementUtils().getTypeElement(null, "bogus"));
+  }
+  
   @Test
   final void testGraal() {
     ModuleElement me = Lang.moduleElement("com.oracle.graal.graal_enterprise");

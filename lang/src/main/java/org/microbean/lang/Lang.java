@@ -80,6 +80,7 @@ import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 
+import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.SourceVersion;
 
 import javax.lang.model.element.Element;
@@ -158,8 +159,7 @@ import static org.microbean.lang.ConstantDescs.CD_TypeMirror;
 import static org.microbean.lang.ConstantDescs.CD_WildcardType;
 
 /**
- * A utility class for working with the {@link javax.lang.model.AnnotatedConstruct javax.lang.model.*} packages at
- * runtime.
+ * A utility class for working with the {@link AnnotatedConstruct javax.lang.model.*} packages at runtime.
  *
  * @author <a href="https://about.me/lairdnelson/" target="_top">Laird Nelson</a>
  */
@@ -308,62 +308,49 @@ public final class Lang {
 
 
   public static final Optional<? extends ConstantDesc> describeConstable(final Name n) {
-    if (n == null) {
-      return Optional.of(NULL);
-    } else if (n instanceof Constable c) {
-      return c.describeConstable();
-    } else if (n instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    final String s;
-    if (lockNames) {
-      CompletionLock.acquire();
-      try {
-        s = n.toString();
-      } finally {
-        CompletionLock.release();
-      }
-    } else {
-      s = n.toString();
-    }
-    return Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
-                                              MethodHandleDesc.ofMethod(STATIC,
-                                                                        CD_Lang,
-                                                                        "name",
-                                                                        MethodTypeDesc.of(CD_Name,
-                                                                                          CD_CharSequence)),
-                                              s));
+    return switch (n) {
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default              -> Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
+                                                               MethodHandleDesc.ofMethod(STATIC,
+                                                                                         CD_Lang,
+                                                                                         "name",
+                                                                                         MethodTypeDesc.of(CD_Name,
+                                                                                                           CD_CharSequence)),
+                                                               lockNames ? CompletionLock.guard(n::toString) : n.toString()));
+    };
+  }
+
+  public static final Optional<? extends ConstantDesc> describeConstable(final AnnotatedConstruct a) {
+    return switch (a) {
+    case null         -> Optional.of(NULL);
+    case Element e    -> describeConstable(e);
+    case TypeMirror t -> describeConstable(t);
+    default           -> throw new IllegalArgumentException("a: " + a);
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final Element e) {
-    if (e == null) {
-      return Optional.of(NULL);
-    }
-    final ElementKind k = e.getKind();
-    return switch (k) {
-    case CONSTRUCTOR, METHOD -> describeConstable((ExecutableElement)e);
-    case MODULE -> describeConstable((ModuleElement)e);
-    case PACKAGE -> describeConstable((PackageElement)e);
-    case PARAMETER -> describeConstable((VariableElement)e);
+    return e == null ? Optional.of(NULL) : switch (CompletionLock.guard(e::getKind)) {
+    case CONSTRUCTOR, METHOD                     -> describeConstable((ExecutableElement)e);
+    case MODULE                                  -> describeConstable((ModuleElement)e);
+    case PACKAGE                                 -> describeConstable((PackageElement)e);
+    case PARAMETER                               -> describeConstable((VariableElement)e);
     // TODO: others probably need to be handled but not as urgently
     case ElementKind ek when ek.isDeclaredType() -> describeConstable((TypeElement)e);
-    default -> Optional.empty();
+    default                                      -> Optional.empty();
     };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final ExecutableElement e) {
-    if (e == null) {
-      return Optional.of(NULL);
-    } else if (e instanceof Constable c) {
-      return c.describeConstable();
-    } else if (e instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    switch (e.getKind()) {
-    case CONSTRUCTOR:
-      return Constables.describeConstable(e.getParameters(), Lang::describeConstable)
+    return switch (e) {
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default              -> CompletionLock.guard(() -> switch (e.getKind()) {
+      case CONSTRUCTOR ->
+        Constables.describeConstable(e.getParameters(), Lang::describeConstable)
         .flatMap(parametersDesc -> describeConstable(e.getEnclosingElement())
                  .map(declaringElementDesc -> DynamicConstantDesc.of(BSM_INVOKE,
                                                                      MethodHandleDesc.ofMethod(STATIC,
@@ -373,8 +360,8 @@ public final class Lang {
                                                                                                                  CD_List)),
                                                                      declaringElementDesc,
                                                                      parametersDesc)));
-    case METHOD:
-      return Constables.describeConstable(e.getParameters())
+      case METHOD ->
+        Constables.describeConstable(e.getParameters())
         .flatMap(parametersDesc -> describeConstable(e.getEnclosingElement())
                  .flatMap(declaringElementDesc -> describeConstable(e.getSimpleName())
                           .map(nameDesc -> DynamicConstantDesc.of(BSM_INVOKE,
@@ -387,21 +374,17 @@ public final class Lang {
                                                                   declaringElementDesc,
                                                                   nameDesc,
                                                                   parametersDesc))));
-    default:
-      return Optional.empty();
-    }
+      default -> Optional.empty();
+      });
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final ModuleElement e) {
-    if (e == null) {
-      return Optional.of(NULL);
-    } else if (e instanceof Constable c) {
-      return c.describeConstable();
-    } else if (e instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    return describeConstable(e.getQualifiedName())
+    return switch (e) {
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default -> describeConstable(e.getQualifiedName()) // getQualifiedName() does not cause symbol completion
       .map(nameDesc -> DynamicConstantDesc.of(BSM_INVOKE,
                                               MethodHandleDesc.ofMethod(STATIC,
                                                                         CD_Lang,
@@ -409,19 +392,16 @@ public final class Lang {
                                                                         MethodTypeDesc.of(CD_ModuleElement,
                                                                                           CD_CharSequence)),
                                               nameDesc));
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final PackageElement e) {
-    if (e == null) {
-      return Optional.of(NULL);
-    } else if (e instanceof Constable c) {
-      return c.describeConstable();
-    } else if (e instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    return describeConstable(moduleOf(e))
-      .flatMap(moduleDesc -> describeConstable(e.getQualifiedName())
+    return switch (e) {
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default              -> describeConstable(moduleOf(e))
+      .flatMap(moduleDesc -> describeConstable(e.getQualifiedName()) // getQualifiedName() does not cause symbol completion
                .map(nameDesc -> DynamicConstantDesc.of(BSM_INVOKE,
                                                        MethodHandleDesc.ofMethod(STATIC,
                                                                                  CD_Lang,
@@ -431,42 +411,32 @@ public final class Lang {
                                                                                                    CD_CharSequence)),
                                                        moduleDesc,
                                                        nameDesc)));
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final TypeElement e) {
-    if (e == null) {
-      return Optional.of(NULL);
-    } else if (e instanceof Constable c) {
-      return c.describeConstable();
-    } else if (e instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    return describeConstable(moduleOf(e))
-      .flatMap(moduleDesc -> describeConstable(e.getQualifiedName()) // moduleDesc is sometimes NULL for java.base classes for some reason
-               .map(nameDesc -> DynamicConstantDesc.of(BSM_INVOKE,
-                                                       MethodHandleDesc.ofMethod(STATIC,
-                                                                                 CD_Lang,
-                                                                                 "typeElement",
-                                                                                 MethodTypeDesc.of(CD_TypeElement,
-                                                                                                   CD_ModuleElement,
-                                                                                                   CD_CharSequence)),
-                                                       moduleDesc,
-                                                       nameDesc)));
+    return switch (e) {
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default              -> describeConstable(e.getQualifiedName()) // getQualifiedName() does not cause symbol completion
+      .map(nameDesc -> DynamicConstantDesc.of(BSM_INVOKE,
+                                              MethodHandleDesc.ofMethod(STATIC,
+                                                                        CD_Lang,
+                                                                        "typeElement",
+                                                                        MethodTypeDesc.of(CD_TypeElement,
+                                                                                          CD_CharSequence)),
+                                              nameDesc));
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final VariableElement e) {
-    if (e == null) {
-      return Optional.of(NULL);
-    } else if (e instanceof Constable c) {
-      return c.describeConstable();
-    } else if (e instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    switch (e.getKind()) {
-    case FIELD:
-      return describeConstable(e.getSimpleName())
+    return switch (e) {
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default              -> CompletionLock.guard(() -> switch (e.getKind()) {
+      case FIELD -> describeConstable(e.getSimpleName())
         .flatMap(nameDesc -> describeConstable(e.getEnclosingElement())
                  .map(declaringClassDesc -> DynamicConstantDesc.of(BSM_INVOKE,
                                                                    MethodHandleDesc.ofMethod(STATIC,
@@ -476,8 +446,7 @@ public final class Lang {
                                                                                                                CD_CharSequence)),
                                                                    declaringClassDesc,
                                                                    nameDesc)));
-    case PARAMETER:
-      return describeConstable(e.getSimpleName())
+      case PARAMETER -> describeConstable(e.getSimpleName())
         .flatMap(nameDesc -> describeConstable(e.getEnclosingElement())
                  .map(declaringExecutableDesc -> DynamicConstantDesc.of(BSM_INVOKE,
                                                                         MethodHandleDesc.ofMethod(STATIC,
@@ -487,37 +456,29 @@ public final class Lang {
                                                                                                                     CD_CharSequence)),
                                                                         declaringExecutableDesc,
                                                                         nameDesc)));
-    default:
-      break;
-    }
-    return Optional.empty();
+      default -> Optional.empty();
+      });
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final TypeMirror t) {
-    if (t == null) {
-      return Optional.of(NULL);
-    }
-    return switch (t.getKind()) {
-    case ARRAY -> describeConstable((ArrayType)t);
-    case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> describeConstable((PrimitiveType)t);
-    case DECLARED, ERROR -> describeConstable((DeclaredType)t);
-    case EXECUTABLE, INTERSECTION, OTHER, TYPEVAR, UNION -> Optional.empty();
-    case MODULE, NONE, PACKAGE, VOID -> describeConstable((NoType)t);
-    case NULL -> describeConstable((NullType)t);
-    case WILDCARD -> describeConstable((WildcardType)t);
+    return t == null ? Optional.of(NULL) : switch (CompletionLock.guard(t::getKind)) {
+      case ARRAY                                                -> describeConstable((ArrayType)t);
+      case BOOLEAN, BYTE, CHAR, DOUBLE, FLOAT, INT, LONG, SHORT -> describeConstable((PrimitiveType)t);
+      case DECLARED, ERROR                                      -> describeConstable((DeclaredType)t);
+      case EXECUTABLE, INTERSECTION, OTHER, TYPEVAR, UNION      -> Optional.empty();
+      case MODULE, NONE, PACKAGE, VOID                          -> describeConstable((NoType)t);
+      case NULL                                                 -> describeConstable((NullType)t);
+      case WILDCARD                                             -> describeConstable((WildcardType)t);
     };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final ArrayType t) {
-    if (t == null) {
-      return Optional.of(NULL);
-    } else if (t instanceof Constable c) {
-      return c.describeConstable();
-    } else if (t instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    return describeConstable(t.getComponentType())
+    return switch (t) {
+    case null            -> Optional.of(null);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default              -> describeConstable(CompletionLock.guard(t::getComponentType))
       .map(componentTypeDesc -> DynamicConstantDesc.of(BSM_INVOKE,
                                                        MethodHandleDesc.ofMethod(STATIC,
                                                                                  CD_Lang,
@@ -525,132 +486,106 @@ public final class Lang {
                                                                                  MethodTypeDesc.of(CD_ArrayType,
                                                                                                    CD_TypeMirror)),
                                                        componentTypeDesc));
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final DeclaredType t) {
-    if (t == null) {
-      return Optional.of(NULL);
-    } else if (t instanceof Constable c) {
-      return c.describeConstable();
-    } else if (t instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    } else if (t.getKind() == TypeKind.ERROR) {
-      return Optional.empty();
-    }
-    // Ugh; this is tricky thanks to varargs. We'll do it imperatively for clarity.
-    final TypeMirror enclosingType = t.getEnclosingType();
-    final ConstantDesc enclosingTypeDesc =
-      enclosingType.getKind() == TypeKind.NONE ? NULL : describeConstable(enclosingType).orElse(null);
-    if (enclosingTypeDesc == null) {
-      return Optional.empty();
-    }
-    final ConstantDesc typeElementDesc = describeConstable((TypeElement)t.asElement()).orElse(null);
-    if (typeElementDesc == null) {
-      return Optional.empty();
-    }
-    final List<? extends TypeMirror> typeArguments = t.getTypeArguments();
-    final ConstantDesc[] cds = new ConstantDesc[typeArguments.size() + 3];
-    cds[0] = MethodHandleDesc.ofMethod(STATIC,
-                                       CD_Lang,
-                                       "declaredType",
-                                       MethodTypeDesc.of(CD_DeclaredType,
-                                                         CD_DeclaredType,
-                                                         CD_TypeElement,
-                                                         CD_TypeMirror.arrayType()));
-    cds[1] = enclosingTypeDesc;
-    cds[2] = typeElementDesc;
-    for (int i = 3; i < cds.length; i++) {
-      final ConstantDesc cd = describeConstable(typeArguments.get(i)).orElse(null);
-      if (cd == null) {
-        return Optional.empty();
+    return switch (t) {
+    case null                                                                   -> Optional.of(NULL);
+    case Constable c                                                            -> c.describeConstable();
+    case ConstantDesc cd                                                        -> Optional.of(cd); // future proofing?
+    case DeclaredType e when CompletionLock.guard(e::getKind) == TypeKind.ERROR -> Optional.empty();
+    default                                                -> {
+      // Ugh; this is tricky thanks to varargs and NONE/null silliness. We'll do it imperatively for clarity.
+      final ConstantDesc[] cds;
+      CompletionLock.acquire();
+      try {
+        final TypeMirror enclosingType = t.getEnclosingType();
+        final ConstantDesc enclosingTypeDesc =
+          enclosingType.getKind() == TypeKind.NONE ? NULL : describeConstable(enclosingType).orElseThrow();
+        final ConstantDesc typeElementDesc = describeConstable((TypeElement)t.asElement()).orElseThrow();
+        final List<? extends TypeMirror> typeArguments = t.getTypeArguments();
+        cds = new ConstantDesc[typeArguments.size() + 3];
+        cds[0] = MethodHandleDesc.ofMethod(STATIC,
+                                           CD_Lang,
+                                           "declaredType",
+                                           MethodTypeDesc.of(CD_DeclaredType,
+                                                             CD_DeclaredType,
+                                                             CD_TypeElement,
+                                                             CD_TypeMirror.arrayType()));
+        cds[1] = enclosingTypeDesc;
+        cds[2] = typeElementDesc;
+        for (int i = 3; i < cds.length; i++) {
+          cds[i] = describeConstable(typeArguments.get(i)).orElseThrow();
+        }
+      } finally {
+        CompletionLock.release();
       }
-      cds[i] = cd;
+      yield Optional.of(DynamicConstantDesc.of(BSM_INVOKE, cds));
     }
-    return Optional.of(DynamicConstantDesc.of(BSM_INVOKE, cds));
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final NoType t) {
-    if (t == null) {
-      return Optional.of(NULL);
-    } else if (t instanceof Constable c) {
-      return c.describeConstable();
-    } else if (t instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    return Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
-                                              MethodHandleDesc.ofMethod(STATIC,
-                                                                        CD_Lang,
-                                                                        "noType",
-                                                                        MethodTypeDesc.of(CD_NoType,
-                                                                                          CD_TypeKind)),
-                                              t.getKind().describeConstable().orElseThrow()));
+    return switch (t) {
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default              -> Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
+                                                               MethodHandleDesc.ofMethod(STATIC,
+                                                                                         CD_Lang,
+                                                                                         "noType",
+                                                                                         MethodTypeDesc.of(CD_NoType,
+                                                                                                           CD_TypeKind)),
+                                                               CompletionLock.guard(t::getKind).describeConstable().orElseThrow()));
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final NullType t) {
-    if (t == null) {
-      return Optional.of(NULL);
-    } else if (t instanceof Constable c) {
-      return c.describeConstable();
-    } else if (t instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    return Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
-                                              MethodHandleDesc.ofMethod(STATIC,
-                                                                        CD_Lang,
-                                                                        "nullType",
-                                                                        MethodTypeDesc.of(CD_NullType))));
+    return switch (t) {
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default              -> Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
+                                                               MethodHandleDesc.ofMethod(STATIC,
+                                                                                         CD_Lang,
+                                                                                         "nullType",
+                                                                                         MethodTypeDesc.of(CD_NullType))));
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final PrimitiveType t) {
-    if (t == null) {
-      return Optional.of(NULL);
-    } else if (t instanceof Constable c) {
-      return c.describeConstable();
-    } else if (t instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    return Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
-                                              MethodHandleDesc.ofMethod(STATIC,
-                                                                        CD_Lang,
-                                                                        "primitiveType",
-                                                                        MethodTypeDesc.of(CD_PrimitiveType,
-                                                                                          CD_TypeKind)),
-                                              t.getKind().describeConstable().orElseThrow()));
-
+    return switch (t) {
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default              -> Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
+                                                               MethodHandleDesc.ofMethod(STATIC,
+                                                                                         CD_Lang,
+                                                                                         "primitiveType",
+                                                                                         MethodTypeDesc.of(CD_PrimitiveType,
+                                                                                                           CD_TypeKind)),
+                                                               CompletionLock.guard(t::getKind).describeConstable().orElseThrow()));
+    };
   }
 
   public static final Optional<? extends ConstantDesc> describeConstable(final WildcardType t) {
-    if (t == null) {
-      return Optional.of(NULL);
-    } else if (t instanceof Constable c) {
-      return c.describeConstable();
-    } else if (t instanceof ConstantDesc cd) {
-      // Future proofing?
-      return Optional.of(cd);
-    }
-    final TypeMirror extendsBound = t.getExtendsBound();
-    final ConstantDesc extendsBoundDesc = extendsBound == null ? NULL : describeConstable(extendsBound).orElse(null);
-    if (extendsBoundDesc == null) {
-      return Optional.empty();
-    }
-    final TypeMirror superBound = t.getSuperBound();
-    final ConstantDesc superBoundDesc = superBound == null ? NULL : describeConstable(superBound).orElse(null);
-    if (superBoundDesc == null) {
-      return Optional.empty();
-    }
-    return Optional.of(DynamicConstantDesc.of(BSM_INVOKE,
-                                              MethodHandleDesc.ofMethod(STATIC,
-                                                                        CD_Lang,
-                                                                        "wildcardType",
-                                                                        MethodTypeDesc.of(CD_WildcardType,
-                                                                                          CD_TypeMirror,
-                                                                                          CD_TypeMirror)),
-                                              extendsBoundDesc,
-                                              superBoundDesc));
+    return switch (t) {
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
+    case ConstantDesc cd -> Optional.of(cd); // future proofing?
+    default              -> describeConstable(CompletionLock.guard(t::getExtendsBound))
+      .flatMap(extendsBoundDesc -> describeConstable(CompletionLock.guard(t::getSuperBound))
+               .map(superBoundDesc -> DynamicConstantDesc.of(BSM_INVOKE,
+                                                             MethodHandleDesc.ofMethod(STATIC,
+                                                                                       CD_Lang,
+                                                                                       "wildcardType",
+                                                                                       MethodTypeDesc.of(CD_WildcardType,
+                                                                                                         CD_TypeMirror,
+                                                                                                         CD_TypeMirror)),
+                                                             extendsBoundDesc,
+                                                             superBoundDesc)));
+    };
   }
 
 
@@ -698,7 +633,7 @@ public final class Lang {
     try {
       return switch (e.getKind()) {
       case CLASS, CONSTRUCTOR, ENUM, INTERFACE, METHOD, RECORD -> !((Parameterizable)e).getTypeParameters().isEmpty();
-      default -> false;
+      default                                                  -> false;
       };
     } finally {
       CompletionLock.release();
@@ -775,43 +710,32 @@ public final class Lang {
     return wrap(pe().getTypeUtils().boxedClass(unwrap(t)));
   }
 
-  public static final boolean bridge(Element e) {
-    Objects.requireNonNull(e, "e");
+  public static final boolean bridge(final Element e) {
     final Elements elements = pe().getElementUtils();
     CompletionLock.acquire();
     try {
-      if (e.getKind() == ElementKind.METHOD) {
-        return elements.isBridge(unwrap((ExecutableElement)e));
-      }
-      return false;
+      return e.getKind() == ElementKind.METHOD && elements.isBridge(unwrap((ExecutableElement)e));
     } finally {
       CompletionLock.release();
     }
   }
 
-  public static final boolean compactConstructor(Element e) {
-    Objects.requireNonNull(e, "e");
+  public static final boolean compactConstructor(final Element e) {
     final Elements elements = pe().getElementUtils();
     CompletionLock.acquire();
     try {
-      if (e.getKind() == ElementKind.CONSTRUCTOR) {
-        return elements.isCompactConstructor(unwrap((ExecutableElement)e));
-      }
-      return false;
+      return e.getKind() == ElementKind.CONSTRUCTOR && elements.isCompactConstructor(unwrap((ExecutableElement)e));
     } finally {
       CompletionLock.release();
     }
   }
 
-  public static final boolean canonicalConstructor(Element e) {
+  public static final boolean canonicalConstructor(final Element e) {
     Objects.requireNonNull(e, "e");
     final Elements elements = pe().getElementUtils();
     CompletionLock.acquire();
     try {
-      if (e.getKind() == ElementKind.CONSTRUCTOR) {
-        return elements.isCanonicalConstructor(unwrap((ExecutableElement)e));
-      }
-      return false;
+      return e.getKind() == ElementKind.CONSTRUCTOR && elements.isCanonicalConstructor(unwrap((ExecutableElement)e));
     } finally {
       CompletionLock.release();
     }
@@ -836,17 +760,12 @@ public final class Lang {
 
 
   public static final String elementSignature(final Element e) {
-    CompletionLock.acquire();
-    try {
-      return switch (e.getKind()) {
-      case CLASS, ENUM, INTERFACE, RECORD -> classSignature((TypeElement)e);
-      case CONSTRUCTOR, METHOD, INSTANCE_INIT, STATIC_INIT -> methodSignature((ExecutableElement)e);
-      case ENUM_CONSTANT, FIELD, LOCAL_VARIABLE, PARAMETER, RECORD_COMPONENT -> fieldSignature(e);
-      default -> throw new IllegalArgumentException("e: " + e);
-      };
-    } finally {
-      CompletionLock.release();
-    }
+    return switch (CompletionLock.guard(e::getKind)) {
+    case CLASS, ENUM, INTERFACE, RECORD                                    -> classSignature((TypeElement)e);
+    case CONSTRUCTOR, METHOD, INSTANCE_INIT, STATIC_INIT                   -> methodSignature((ExecutableElement)e);
+    case ENUM_CONSTANT, FIELD, LOCAL_VARIABLE, PARAMETER, RECORD_COMPONENT -> fieldSignature(e);
+    default                                                                -> throw new IllegalArgumentException("e: " + e);
+    };
   }
 
   private static final String classSignature(final TypeElement e) {
@@ -950,11 +869,11 @@ public final class Lang {
     CompletionLock.acquire();
     try {
       if (e.getKind().isExecutable()) {
-        final TypeMirror returnType = e.getReturnType();
         typeParameters(e.getTypeParameters(), sb);
         sb.append('(');
         parameterSignatures(e.getParameters(), sb);
         sb.append(')');
+        final TypeMirror returnType = e.getReturnType();
         if (returnType.getKind() == TypeKind.VOID) {
           sb.append('V');
         } else {
@@ -999,7 +918,7 @@ public final class Lang {
     try {
       switch (e.getKind()) {
       case ENUM_CONSTANT, FIELD, LOCAL_VARIABLE, PARAMETER, RECORD_COMPONENT -> typeSignature(e.asType(), sb);
-      default -> throw new IllegalArgumentException("e: " + e);
+      default                                                                -> throw new IllegalArgumentException("e: " + e);
       }
     } finally {
       CompletionLock.release();
@@ -1032,7 +951,7 @@ public final class Lang {
       for (final TypeMirror t : ts) {
         sb.append(switch (t.getKind()) {
           case DECLARED, TYPEVAR -> "^";
-          default -> throw new IllegalArgumentException("ts: " + ts);
+          default                -> throw new IllegalArgumentException("ts: " + ts);
           });
         typeSignature(t, sb);
       }
@@ -1051,7 +970,7 @@ public final class Lang {
       for (final TypeParameterElement tp : tps) {
         switch (tp.getKind()) {
         case TYPE_PARAMETER -> typeParameter(tp, sb);
-        default -> throw new IllegalArgumentException("tps: " + tps);
+        default             -> throw new IllegalArgumentException("tps: " + tps);
         }
       }
     } finally {
@@ -1173,21 +1092,18 @@ public final class Lang {
     CompletionLock.acquire();
     try {
       switch (t.getKind()) {
-      case ARRAY -> {
-        sb.append("[");
-        typeSignature(((ArrayType)t).getComponentType(), sb); // recursive
-      }
-      case BOOLEAN -> sb.append("Z");
-      case BYTE -> sb.append("B");
-      case CHAR -> sb.append("C");
+      case ARRAY    -> typeSignature(((ArrayType)t).getComponentType(), sb.append("[")); // recursive
+      case BOOLEAN  -> sb.append("Z");
+      case BYTE     -> sb.append("B");
+      case CHAR     -> sb.append("C");
       case DECLARED -> classTypeSignature((DeclaredType)t, sb);
-      case DOUBLE -> sb.append("D");
-      case FLOAT -> sb.append("F");
-      case INT -> sb.append("I");
-      case LONG -> sb.append("J");
-      case SHORT -> sb.append("S");
-      case TYPEVAR -> sb.append("T").append(((TypeVariable)t).asElement().getSimpleName()).append(';');
-      default -> throw new IllegalArgumentException("t: " + t);
+      case DOUBLE   -> sb.append("D");
+      case FLOAT    -> sb.append("F");
+      case INT      -> sb.append("I");
+      case LONG     -> sb.append("J");
+      case SHORT    -> sb.append("S");
+      case TYPEVAR  -> sb.append("T").append(((TypeVariable)t).asElement().getSimpleName()).append(';');
+      default       -> throw new IllegalArgumentException("t: " + t);
       }
     } finally {
       CompletionLock.release();
@@ -1288,23 +1204,20 @@ public final class Lang {
     CompletionLock.acquire();
     try {
       switch (t.getKind()) {
-      case ARRAY -> {
-        sb.append("[");
-        descriptor(((ArrayType)t).getComponentType(), sb);
-      }
-      case BOOLEAN -> sb.append("Z"); // yes, really
-      case BYTE -> sb.append("B");
-      case CHAR -> sb.append("C");
-      case DECLARED -> sb.append("L").append(jvmBinaryName((TypeElement)((DeclaredType)t).asElement())).append(";"); // basically an erasure
-      case DOUBLE -> sb.append("D");
+      case ARRAY      -> descriptor(((ArrayType)t).getComponentType(), sb.append("["));
+      case BOOLEAN    -> sb.append("Z"); // yes, really
+      case BYTE       -> sb.append("B");
+      case CHAR       -> sb.append("C");
+      case DECLARED   -> sb.append("L").append(jvmBinaryName((TypeElement)((DeclaredType)t).asElement())).append(";"); // basically an erasure
+      case DOUBLE     -> sb.append("D");
       case EXECUTABLE -> descriptor((ExecutableType)t, sb);
-      case FLOAT -> sb.append("F");
-      case INT -> sb.append("I");
-      case LONG -> sb.append("J"); // yes, really
+      case FLOAT      -> sb.append("F");
+      case INT        -> sb.append("I");
+      case LONG       -> sb.append("J"); // yes, really
+      case SHORT      -> sb.append("S");
+      case TYPEVAR    -> descriptor(erasure(t), sb);
+      case VOID       -> sb.append("V");
       case ERROR, INTERSECTION, MODULE, NONE, NULL, OTHER, PACKAGE, UNION, WILDCARD -> throw new IllegalArgumentException("t: " + t);
-      case SHORT -> sb.append("S");
-      case TYPEVAR -> descriptor(erasure(t), sb);
-      case VOID -> sb.append("V");
       }
     } finally {
       CompletionLock.release();
@@ -1378,13 +1291,20 @@ public final class Lang {
     CompletionLock.acquire();
     try {
       t = types.erasure(t);
-      assert t != null;
     } finally {
       CompletionLock.release();
     }
+    assert t != null;
     return wrap(t);
   }
 
+  /**
+   * Returns a {@link TypeAndElementSource} backed by relevant {@code static} methods in this class.
+   *
+   * @return a {@link TypeAndElementSource}; never {@code null}
+   *
+   * @see TypeAndElementSource
+   */
   public static final TypeAndElementSource typeAndElementSource() {
     return ConstableTypeAndElementSource.INSTANCE;
   }
@@ -1648,40 +1568,32 @@ public final class Lang {
     return wrap(rv);
   }
 
-  public static final DeclaredType declaredType(final Type t) {
-    return switch (t) {
-    case Class<?> c -> declaredType(c);
-    case ParameterizedType p -> declaredType(p);
-    default -> throw new IllegalArgumentException("t: " + t);
-    };
-  }
-
   public static final DeclaredType declaredType(final Class<?> c) {
-    if (c.isPrimitive() || c.isArray() || c.isLocalClass() || c.isAnonymousClass()) {
+    if (c.isArray() || c.isPrimitive() || c.isLocalClass() || c.isAnonymousClass()) {
       throw new IllegalArgumentException("c: " + c);
     }
     final Class<?> ec = c.getEnclosingClass();
     return declaredType(ec == null ? null : declaredType(ec), typeElement(c));
   }
 
-  public static final DeclaredType declaredType(final ParameterizedType pt) {
+  public static final DeclaredType declaredType(final ParameterizedType p) {
     return
-      declaredType(pt.getOwnerType() == null ? null : declaredType(pt.getOwnerType()),
-                   typeElement(pt.getRawType()),
-                   typeArray(pt.getActualTypeArguments()));
+      declaredType(switch (p.getOwnerType()) {
+                   case null                 -> null;
+                   case Class<?> c           -> declaredType(c);
+                   case ParameterizedType pt -> declaredType(pt);
+                   default                   -> throw new IllegalArgumentException("p: " + p);
+                   },
+                   typeElement((Class<?>)p.getRawType()),
+                   typeArray(p.getActualTypeArguments()));
   }
 
   public static final DeclaredType declaredType(final CharSequence canonicalName) {
     return declaredType(typeElement(canonicalName));
   }
 
-  public static final DeclaredType declaredType(final Type ownerType,
-                                                final Type rawType,
-                                                final Type... typeArguments) {
-    return declaredType(ownerType == null ? null : declaredType(ownerType), typeElement(rawType), typeArray(typeArguments));
-  }
-
-  public static final DeclaredType declaredType(TypeElement typeElement, TypeMirror... typeArguments) {
+  public static final DeclaredType declaredType(TypeElement typeElement,
+                                                TypeMirror... typeArguments) {
     typeElement = unwrap(typeElement);
     typeArguments = unwrap(typeArguments);
     final Types types = pe().getTypeUtils();
@@ -1738,10 +1650,10 @@ public final class Lang {
 
   public static final ExecutableElement executableElement(final Executable e) {
     return switch (e) {
-    case null -> throw new NullPointerException("e");
+    case null             -> throw new NullPointerException("e");
     case Constructor<?> c -> executableElement(c);
-    case Method m -> executableElement(m);
-    default -> throw new IllegalArgumentException("e: " + e);
+    case Method m         -> executableElement(m);
+    default               -> throw new IllegalArgumentException("e: " + e);
     };
   }
 
@@ -1925,18 +1837,13 @@ public final class Lang {
     }
   }
 
-  public static final TypeElement typeElement(final Type t) {
-    return switch (t) {
-    case null -> throw new NullPointerException("t");
-    case Class<?> c -> typeElement(c);
-    case ParameterizedType pt -> typeElement(pt.getRawType());
-    default -> throw new IllegalArgumentException("t: " + t);
-    };
-  }
-
   public static final TypeElement typeElement(final Class<?> c) {
-    final ModuleElement me = moduleElement(c.getModule());
-    return me == null ? typeElement(c.getCanonicalName()) : typeElement(me, c.getCanonicalName());
+    if (c.isArray() || c.isPrimitive() || c.isLocalClass() || c.isAnonymousClass()) {
+      throw new IllegalArgumentException("c: " + c);
+    }
+    return typeElement(c.getCanonicalName());
+    // final ModuleElement me = moduleElement(c.getModule());
+    // return me == null ? typeElement(c.getCanonicalName()) : typeElement(me, c.getCanonicalName());
   }
 
   public static final TypeElement typeElement(final CharSequence canonicalName) {
@@ -1958,10 +1865,6 @@ public final class Lang {
       CompletionLock.release();
     }
     return wrap(rv);
-  }
-
-  public static final TypeElement typeElement(final Module module, final CharSequence canonicalName) {
-    return module == null ? typeElement(canonicalName) : typeElement(moduleElement(module), canonicalName);
   }
 
   public static final TypeElement typeElement(ModuleElement moduleElement, final CharSequence canonicalName) {
@@ -1993,6 +1896,8 @@ public final class Lang {
       } finally {
         CompletionLock.release();
       }
+      // See also:
+      // https://github.com/openjdk/jdk/blob/jdk-24%2B6/src/jdk.compiler/share/classes/com/sun/tools/javac/model/JavacElements.java#L171
       throw new NullPointerException(message);
     }
     Objects.requireNonNull(canonicalName, "canonicalName");
@@ -2016,10 +1921,10 @@ public final class Lang {
 
   public static final Parameterizable parameterizable(final GenericDeclaration gd) {
     return switch (gd) {
-    case null -> throw new NullPointerException("gd");
+    case null         -> throw new NullPointerException("gd");
     case Executable e -> executableElement(e);
-    case Class<?> c -> typeElement(c);
-    default -> throw new IllegalArgumentException("gd: " + gd);
+    case Class<?> c   -> typeElement(c);
+    default           -> throw new IllegalArgumentException("gd: " + gd);
     };
   }
 
@@ -2073,7 +1978,7 @@ public final class Lang {
   }
 
   // (Parameter.)
-  public static final VariableElement variableElement(ExecutableElement declaringExecutable, final CharSequence parameterName) {
+  public static final VariableElement variableElement(final ExecutableElement declaringExecutable, final CharSequence parameterName) {
     Objects.requireNonNull(parameterName, "parameterName");
     CompletionLock.acquire();
     try {
@@ -2113,9 +2018,7 @@ public final class Lang {
 
   public static final WildcardType wildcardType(final java.lang.reflect.WildcardType t) {
     final Type[] lowerBounds = t.getLowerBounds();
-    final Type lowerBound = lowerBounds.length <= 0 ? null : lowerBounds[0];
-    final Type upperBound = t.getUpperBounds()[0];
-    return wildcardType(upperBound == null ? null : type(upperBound), lowerBound == null ? null : type(lowerBound));
+    return wildcardType(type(t.getUpperBounds()[0]), type(lowerBounds.length <= 0 ? null : lowerBounds[0]));
   }
 
   public static final WildcardType wildcardType(TypeMirror extendsBound, TypeMirror superBound) {
@@ -2173,33 +2076,23 @@ public final class Lang {
   }
 
   public static final TypeMirror type(final Type t) {
-    Objects.requireNonNull(t, "t");
     return switch (t) {
-    case Class<?> c when c == void.class -> noType(TypeKind.VOID);
-    case Class<?> c when c.isArray() -> arrayType(c);
-    case Class<?> c when c.isPrimitive() -> primitiveType(c);
-    case Class<?> c -> {
-      final Class<?> ec = c.getEnclosingClass();
-      yield declaredType(ec == null ? null : declaredType(typeElement(ec)), typeElement(c));
-    }
-    case ParameterizedType pt -> declaredType((DeclaredType)type(pt.getOwnerType()), typeElement((Class<?>)pt.getRawType()), typeArray(pt.getActualTypeArguments()));
-    case GenericArrayType g -> arrayType(g);
+    case null                                 -> throw new NullPointerException();
+    case Class<?> c when c == void.class      -> noType(TypeKind.VOID);
+    case Class<?> c when c.isArray()          -> arrayType(c);
+    case Class<?> c when c.isPrimitive()      -> primitiveType(c);
+    case Class<?> c                           -> declaredType(c);
+    case ParameterizedType p                  -> declaredType(p);
+    case GenericArrayType g                   -> arrayType(g);
     case java.lang.reflect.TypeVariable<?> tv -> typeVariable(tv);
-    case java.lang.reflect.WildcardType w -> wildcardType(w);
-    default -> throw new IllegalArgumentException("t: " + t);
+    case java.lang.reflect.WildcardType w     -> wildcardType(w);
+    default                                   -> throw new IllegalArgumentException("t: " + t);
     };
   }
 
   public static final TypeMirror type(final Field f) {
     return variableElement(f).asType();
   }
-
-  /*
-  @Deprecated(forRemoval = true)
-  public static final Equality sameTypeEquality() {
-    return SameTypeEquality.INSTANCE;
-  }
-  */
 
   static final ProcessingEnvironment pe() {
     ProcessingEnvironment pe = Lang.pe; // volatile read
@@ -2359,6 +2252,11 @@ public final class Lang {
     }
 
     @Override
+    public final Optional<? extends ConstantDesc> describeConstable(final AnnotatedConstruct a) {
+      return Lang.describeConstable(a);
+    }
+
+    @Override
     public final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
       return Lang.directSupertypes(t);
     }
@@ -2367,6 +2265,11 @@ public final class Lang {
     @SuppressWarnings("unchecked")
     public final <T extends TypeMirror> T erasure(final T t) {
       return (T)Lang.erasure(t);
+    }
+
+    @Override
+    public final ModuleElement moduleElement(final CharSequence canonicalName) {
+      return Lang.moduleElement(canonicalName);
     }
 
     @Override
@@ -2385,19 +2288,12 @@ public final class Lang {
     }
 
     @Override
-    public final TypeElement typeElement(final CharSequence moduleName, final CharSequence canonicalName) {
-      if (moduleName == null) {
-        return Lang.typeElement(canonicalName);
-      }
-      final ModuleElement m = Lang.moduleElement(moduleName);
-      if (m == null && LOGGER.isLoggable(DEBUG)) {
-        final Runnable r = () -> LOGGER.log(DEBUG, () -> "null ModuleElement for module name " + moduleName);
-        if (lockNames) {
-          CompletionLock.guard(r);
-        } else {
-          r.run();
-        }
-      }
+    public final TypeElement typeElement(final CharSequence canonicalName) {
+      return Lang.typeElement(canonicalName);
+    }
+
+    @Override
+    public final TypeElement typeElement(final ModuleElement m, final CharSequence canonicalName) {
       return Lang.typeElement(m, canonicalName);
     }
 
@@ -2703,9 +2599,9 @@ public final class Lang {
       @Override // DiagnosticListener<JavaFileObject>
       public final void report(final Diagnostic<? extends JavaFileObject> d) {
         final Level level = switch (d.getKind()) {
-        case ERROR -> Level.ERROR;
+        case ERROR                      -> Level.ERROR;
         case MANDATORY_WARNING, WARNING -> Level.WARNING;
-        case NOTE, OTHER -> Level.INFO;
+        case NOTE, OTHER                -> Level.INFO;
         };
         if (LOGGER.isLoggable(level)) {
           LOGGER.log(level, d.getMessage(this.locale));

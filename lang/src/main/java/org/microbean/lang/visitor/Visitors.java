@@ -13,9 +13,6 @@
  */
 package org.microbean.lang.visitor;
 
-import java.util.function.Predicate;
-
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVisitor;
 
 import org.microbean.lang.TypeAndElementSource;
@@ -40,7 +37,7 @@ public final class Visitors {
    * Instance fields.
    */
 
-  
+
   private final TypeAndElementSource tes;
 
   private final EraseVisitor eraseVisitor;
@@ -76,7 +73,7 @@ public final class Visitors {
    * Constructors.
    */
 
-  
+
   public Visitors(final TypeAndElementSource tes) {
     this(tes, false, true);
   }
@@ -131,7 +128,7 @@ public final class Visitors {
   /*
    * Instance methods.
    */
-  
+
 
   public final TypeAndElementSource typeAndElementSource() {
     return this.tes;

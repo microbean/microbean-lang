@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2022–2023 microBean™.
+ * Copyright © 2022–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
 
+import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.TypeElement;
 
 import javax.lang.model.type.ArrayType;
@@ -111,6 +112,10 @@ final class TestTypeClosure {
           return (T)javacModelTypes.erasure(t);
         }
         @Override
+        public final ModuleElement moduleElement(final CharSequence moduleName) {
+          return elements.getModuleElement(moduleName);
+        }
+        @Override
         public final NoType noType(final TypeKind k) {
           return javacModelTypes.getNoType(k);
         }
@@ -122,9 +127,19 @@ final class TestTypeClosure {
         public boolean sameType(final TypeMirror t, final TypeMirror s) {
           return javacModelTypes.isSameType(t, s);
         }
+        /*
         @Override
         public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
           return elements.getTypeElement(elements.getModuleElement(m), n);
+        }
+        */
+        @Override
+        public final TypeElement typeElement(final CharSequence n) {
+          return elements.getTypeElement(n);
+        }
+        @Override
+        public final TypeElement typeElement(final ModuleElement m, final CharSequence n) {
+          return elements.getTypeElement(m, n);
         }
         @Override
         public final TypeVariable typeVariable(final java.lang.reflect.TypeVariable<?> t) {
@@ -209,6 +224,10 @@ final class TestTypeClosure {
           return (T)javacModelTypes.erasure(t);
         }
         @Override
+        public final ModuleElement moduleElement(final CharSequence moduleName) {
+          return elements.getModuleElement(moduleName);
+        }
+        @Override
         public final NoType noType(final TypeKind k) {
           return javacModelTypes.getNoType(k);
         }
@@ -220,9 +239,19 @@ final class TestTypeClosure {
         public boolean sameType(final TypeMirror t, final TypeMirror s) {
           return javacModelTypes.isSameType(t, s);
         }
+        /*
         @Override
         public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
           return elements.getTypeElement(elements.getModuleElement(m), n);
+        }
+        */
+        @Override
+        public final TypeElement typeElement(final CharSequence n) {
+          return elements.getTypeElement(n);
+        }
+        @Override
+        public final TypeElement typeElement(final ModuleElement m, final CharSequence n) {
+          return elements.getTypeElement(m, n);
         }
         @Override
         public final TypeVariable typeVariable(final java.lang.reflect.TypeVariable<?> t) {

@@ -378,7 +378,7 @@ public final class Jandex extends Modeler {
   }
 
   @Override // TypeAndElementSource
-  public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
+  public final TypeElement typeElement(final ModuleElement m, final CharSequence n) {
     return this.typeElement(n);
   }
 
@@ -587,6 +587,11 @@ public final class Jandex extends Modeler {
 
   @Override // TypeAndElementSource
   public final List<? extends TypeMirror> directSupertypes(final TypeMirror t) {
+    throw new UnsupportedOperationException("TODO");
+  }
+
+  @Override // TypeAndElementSOurce
+  public final ModuleElement moduleElement(final CharSequence n) {
     throw new UnsupportedOperationException("TODO");
   }
 
