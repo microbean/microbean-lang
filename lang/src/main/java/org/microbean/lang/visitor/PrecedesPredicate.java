@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -19,7 +19,6 @@ import java.util.function.BiPredicate;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.TypeParameterElement;
 
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;

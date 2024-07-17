@@ -16,8 +16,6 @@ package org.microbean.lang.visitor;
 import java.util.List;
 import java.util.Objects;
 
-import java.util.function.Predicate;
-
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 

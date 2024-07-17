@@ -35,7 +35,7 @@ public final class SameTypeEquality extends Equality {
    * Instance fields.
    */
 
-  
+
   private final TypeAndElementSource tes;
 
 
@@ -43,7 +43,7 @@ public final class SameTypeEquality extends Equality {
    * Constructors.
    */
 
-  
+
   public SameTypeEquality(final TypeAndElementSource tes) {
     super(false);
     this.tes = Objects.requireNonNull(tes, "tes");
@@ -54,7 +54,7 @@ public final class SameTypeEquality extends Equality {
    * Instance methods.
    */
 
-  
+
   @Override // Equality (Constable)
   public final Optional<DynamicConstantDesc<? extends Equality>> describeConstable() {
     return Constables.describeConstable(this.tes)
