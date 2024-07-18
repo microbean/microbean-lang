@@ -28,6 +28,10 @@ public final class ConstantDescs {
 
   public static final ClassDesc CD_DeclaredType = ClassDesc.of("javax.lang.model.type.DeclaredType");
 
+  public static final ClassDesc CD_DelegatingElement = ClassDesc.of("org.microbean.lang.element.DelegatingElement");
+
+  public static final ClassDesc CD_DelegatingTypeMirror = ClassDesc.of("org.microbean.lang.type.DelegatingTypeMirror");
+
   public static final ClassDesc CD_Element = ClassDesc.of("javax.lang.model.element.Element");
 
   public static final ClassDesc CD_Equality = ClassDesc.of("org.microbean.lang.Equality");
