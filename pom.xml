@@ -4,7 +4,7 @@
 
   <groupId>org.microbean</groupId>
   <artifactId>microbean-lang-parent</artifactId>
-  <version>0.0.17</version>
+  <version>0.0.18-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>microBean™ Lang: Parent</name>
@@ -44,7 +44,7 @@
     <connection>${scm.url}</connection>
     <developerConnection>${scm.url}</developerConnection>
     <url>https://github.com/microbean/microbean-lang/</url>
-    <tag>v0.0.17</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <issueManagement>
