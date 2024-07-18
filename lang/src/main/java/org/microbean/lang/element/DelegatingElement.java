@@ -15,11 +15,18 @@ package org.microbean.lang.element;
 
 import java.lang.annotation.Annotation;
 
+import java.lang.constant.Constable;
+import java.lang.constant.ConstantDesc;
+import java.lang.constant.DynamicConstantDesc;
+import java.lang.constant.MethodHandleDesc;
+import java.lang.constant.MethodTypeDesc;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import java.util.function.Supplier;
@@ -52,6 +59,14 @@ import org.microbean.lang.Equality;
 import org.microbean.lang.type.DelegatingTypeMirror;
 import org.microbean.lang.type.NoType;
 
+import static java.lang.constant.ConstantDescs.BSM_INVOKE;
+import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
+
+import static org.microbean.lang.ConstantDescs.CD_DelegatingElement;
+import static org.microbean.lang.ConstantDescs.CD_Equality;
+import static org.microbean.lang.ConstantDescs.CD_TypeAndElementSource;
+import static org.microbean.lang.ConstantDescs.CD_Element;
+
 /**
  * An {@link Element} that implements all known {@link Element} subinterfaces and delegates to an underlying {@link
  * Element} for all operations.
@@ -60,9 +75,9 @@ import org.microbean.lang.type.NoType;
  *
  * @author <a href="https://about.me/lairdnelson" target="_top">Laird Nelson</a>
  */
-@SuppressWarnings("preview")
 public final class DelegatingElement
-  implements ExecutableElement,
+  implements Constable,
+             ExecutableElement,
              ModuleElement,
              PackageElement,
              Parameterizable,
@@ -119,14 +134,29 @@ public final class DelegatingElement
   @Override // Element
   public final <R, P> R accept(final ElementVisitor<R, P> v, final P p) {
     return switch (this.getKind()) {
-    case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> v.visitType(this, p);
-    case TYPE_PARAMETER -> v.visitTypeParameter(this, p);
-    case BINDING_VARIABLE, ENUM_CONSTANT, EXCEPTION_PARAMETER, FIELD, LOCAL_VARIABLE, PARAMETER, RESOURCE_VARIABLE -> v.visitVariable(this, p);
-    case RECORD_COMPONENT -> v.visitRecordComponent(this, p);
-    case CONSTRUCTOR, INSTANCE_INIT, METHOD, STATIC_INIT -> v.visitExecutable(this, p);
-    case PACKAGE -> v.visitPackage(this, p);
-    case MODULE -> v.visitModule(this, p);
-    case OTHER -> v.visitUnknown(this, p);
+    case
+      ANNOTATION_TYPE,
+      CLASS,
+      ENUM,
+      INTERFACE,
+      RECORD                 -> v.visitType(this, p);
+    case TYPE_PARAMETER      -> v.visitTypeParameter(this, p);
+    case
+      BINDING_VARIABLE,
+      ENUM_CONSTANT,
+      EXCEPTION_PARAMETER,
+      FIELD, LOCAL_VARIABLE,
+      PARAMETER,
+      RESOURCE_VARIABLE      -> v.visitVariable(this, p);
+    case RECORD_COMPONENT    -> v.visitRecordComponent(this, p);
+    case
+      CONSTRUCTOR,
+      INSTANCE_INIT,
+      METHOD,
+      STATIC_INIT            -> v.visitExecutable(this, p);
+    case PACKAGE             -> v.visitPackage(this, p);
+    case MODULE              -> v.visitModule(this, p);
+    case OTHER               -> v.visitUnknown(this, p);
     };
   }
 
@@ -139,11 +169,29 @@ public final class DelegatingElement
     return this.delegateSupplier.get();
   }
 
+  @Override // Constable
+  public final Optional<? extends ConstantDesc> describeConstable() {
+    return this.ehc.describeConstable()
+      .flatMap(ehcDesc -> (this.tes instanceof Constable c ? c.describeConstable() : Optional.<ConstantDesc>empty())
+               .flatMap(tesDesc -> this.tes.describeConstable(this.delegate())
+                        .map(delegateDesc -> DynamicConstantDesc.of(BSM_INVOKE,
+                                                                    MethodHandleDesc.ofMethod(STATIC,
+                                                                                              CD_DelegatingElement,
+                                                                                              "of",
+                                                                                              MethodTypeDesc.of(CD_DelegatingElement,
+                                                                                                                CD_Element,
+                                                                                                                CD_TypeAndElementSource,
+                                                                                                                CD_Equality)),
+                                                                    delegateDesc,
+                                                                    tesDesc,
+                                                                    ehcDesc))));
+  }
+
   @Override // RecordComponentElement
   public final ExecutableElement getAccessor() {
     return switch (this.getKind()) {
     case RECORD_COMPONENT -> this.wrap(((RecordComponentElement)this.delegate()).getAccessor());
-    default -> null;
+    default               -> null;
     };
   }
 
@@ -193,8 +241,8 @@ public final class DelegatingElement
   @Override // ModuleElement
   public final List<? extends Directive> getDirectives() {
     return switch (this.getKind()) {
-    case MODULE -> ((ModuleElement)this.delegate()).getDirectives();
-    default -> List.of();
+    case MODULE -> ((ModuleElement)this.delegate()).getDirectives(); // TODO: wrap? Probably not necessary
+    default     -> List.of();
     };
   }
 
@@ -212,7 +260,7 @@ public final class DelegatingElement
   public final Element getGenericElement() {
     return switch (this.getKind()) {
     case TYPE_PARAMETER -> this.wrap(((TypeParameterElement)this.delegate()).getGenericElement());
-    default -> null; // illegal state
+    default             -> null; // illegal state
     };
   }
 
@@ -239,7 +287,7 @@ public final class DelegatingElement
   public final NestingKind getNestingKind() {
     return switch (this.getKind()) {
     case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> ((TypeElement)this.delegate()).getNestingKind();
-    default -> null;
+    default                                              -> null;
     };
   }
 
@@ -247,14 +295,13 @@ public final class DelegatingElement
   public final List<? extends VariableElement> getParameters() {
     return switch (this.getKind()) {
     case CONSTRUCTOR, METHOD -> this.wrap(((ExecutableElement)this.delegate()).getParameters());
-    default -> List.of();
+    default                  -> List.of();
     };
   }
 
   @Override // ModuleElement, PackageElement, TypeElement
   public final Name getQualifiedName() {
     return switch (this.getKind()) {
-    // case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, MODULE, PACKAGE, RECORD -> ((QualifiedNameable)this.delegate()).getQualifiedName();
     case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, MODULE, PACKAGE, RECORD ->
       org.microbean.lang.element.Name.of(((QualifiedNameable)this.delegate()).getQualifiedName());
     default -> org.microbean.lang.element.Name.of();
@@ -272,8 +319,8 @@ public final class DelegatingElement
   @Override // TypeElement
   public final List<? extends RecordComponentElement> getRecordComponents() {
     return switch (this.getKind()) {
-    case RECORD -> ((TypeElement)this.delegate()).getRecordComponents();
-    default -> List.of();
+    case RECORD -> this.wrap(((TypeElement)this.delegate()).getRecordComponents());
+    default     -> List.of();
     };
   }
 
@@ -284,7 +331,6 @@ public final class DelegatingElement
 
   @Override // Element
   public final Name getSimpleName() {
-    // return this.delegate().getSimpleName();
     return org.microbean.lang.element.Name.of(this.delegate().getSimpleName());
   }
 
@@ -309,7 +355,7 @@ public final class DelegatingElement
   public final List<? extends TypeParameterElement> getTypeParameters() {
     return switch (this.getKind()) {
     case CLASS, CONSTRUCTOR, ENUM, INTERFACE, RECORD, METHOD -> this.wrap(((Parameterizable)this.delegate()).getTypeParameters());
-    default -> List.of();
+    default                                                  -> List.of();
     };
   }
 
@@ -317,7 +363,7 @@ public final class DelegatingElement
   public final boolean isDefault() {
     return switch (this.getKind()) {
     case METHOD -> ((ExecutableElement)this.delegate()).isDefault();
-    default -> false;
+    default     -> false;
     };
   }
 
@@ -325,16 +371,16 @@ public final class DelegatingElement
   public final boolean isOpen() {
     return switch (this.getKind()) {
     case MODULE -> ((ModuleElement)this.delegate()).isOpen();
-    default -> false;
+    default     -> false;
     };
   }
 
   @Override // ModuleElement, PackageElement
   public final boolean isUnnamed() {
     return switch (this.getKind()) {
-    case MODULE -> ((ModuleElement)this.delegate()).isUnnamed();
+    case MODULE  -> ((ModuleElement)this.delegate()).isUnnamed();
     case PACKAGE -> ((PackageElement)this.delegate()).isUnnamed();
-    default -> false;
+    default      -> this.getSimpleName().isEmpty();
     };
   }
 
@@ -342,7 +388,7 @@ public final class DelegatingElement
   public final boolean isVarArgs() {
     return switch (this.getKind()) {
     case CONSTRUCTOR, METHOD -> ((ExecutableElement)this.delegate()).isVarArgs();
-    default -> false;
+    default                  -> false;
     };
   }
 
