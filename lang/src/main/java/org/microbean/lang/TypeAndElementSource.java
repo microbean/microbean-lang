@@ -3,12 +3,12 @@
  * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * the License. You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang;
@@ -27,11 +27,14 @@ import javax.lang.model.AnnotatedConstruct;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ModuleElement;
+import javax.lang.model.element.Parameterizable;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.NoType;
+import javax.lang.model.type.NullType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -40,6 +43,7 @@ import javax.lang.model.type.WildcardType;
 
 import static java.lang.constant.ConstantDescs.NULL;
 
+// In general: behavior could be undefined for anything accepting a type or element that isn't "from" this source.
 public interface TypeAndElementSource {
 
   public ArrayType arrayTypeOf(final TypeMirror componentType);
@@ -63,6 +67,8 @@ public interface TypeAndElementSource {
   public ModuleElement moduleElement(final CharSequence canonicalName);
 
   public NoType noType(final TypeKind k);
+
+  public NullType nullType();
 
   public PrimitiveType primitiveType(final TypeKind k);
 

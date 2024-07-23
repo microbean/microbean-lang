@@ -30,7 +30,6 @@ import javax.lang.model.util.SimpleTypeVisitor14;
 import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
-import org.microbean.lang.type.NoType;
 import org.microbean.lang.type.Types;
 
 // Returns the superclass (or parameterized superclass) of a type, if applicable. See #interfacesVisitor() for returning
@@ -73,13 +72,13 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
                           final Equality equality,
                           final Types types,
                           final EraseVisitor eraseVisitor) {
-    super(NoType.NONE); // default return value from the visit*() methods
+    super(tes.noType(TypeKind.NONE)); // default return value from the visit*() methods
     this.equality = equality == null ? new Equality(true) : equality;
-    this.tes = Objects.requireNonNull(tes, "tes");
+    this.tes = tes;
     this.types = Objects.requireNonNull(types, "types");
     this.eraseVisitor = Objects.requireNonNull(eraseVisitor, "eraseVisitor");
     this.interfacesVisitor = new InterfacesVisitor(tes, this.equality, types, eraseVisitor, this);
-    this.boundingClassVisitor = new BoundingClassVisitor(this);
+    this.boundingClassVisitor = new BoundingClassVisitor(tes, this);
   }
 
 

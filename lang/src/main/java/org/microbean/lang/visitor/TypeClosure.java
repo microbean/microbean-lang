@@ -2,17 +2,14 @@
  *
  * Copyright © 2023–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -58,7 +55,7 @@ public final class TypeClosure {
    */
 
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   // DelegatingTypeMirror so things like list.contains(t) will work with arbitrary TypeMirror implementations
   private final Deque<DelegatingTypeMirror> deque;
@@ -73,19 +70,19 @@ public final class TypeClosure {
    */
 
 
-  TypeClosure(final TypeAndElementSource elementSource, final SupertypeVisitor supertypeVisitor, final SubtypeVisitor subtypeVisitor) {
-    this(elementSource, new PrecedesPredicate(supertypeVisitor, subtypeVisitor), null);
+  TypeClosure(final TypeAndElementSource tes, final SupertypeVisitor supertypeVisitor, final SubtypeVisitor subtypeVisitor) {
+    this(tes, new PrecedesPredicate(supertypeVisitor, subtypeVisitor), null);
   }
 
-  TypeClosure(final TypeAndElementSource elementSource, final BiPredicate<? super Element, ? super Element> precedesPredicate) {
-    this(elementSource, precedesPredicate, null);
+  TypeClosure(final TypeAndElementSource tes, final BiPredicate<? super Element, ? super Element> precedesPredicate) {
+    this(tes, precedesPredicate, null);
   }
 
-  TypeClosure(final TypeAndElementSource elementSource,
+  TypeClosure(final TypeAndElementSource tes,
               final BiPredicate<? super Element, ? super Element> precedesPredicate,
               final BiPredicate<? super Element, ? super Element> equalsPredicate) {
     super();
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.deque = new ArrayDeque<>(10);
     this.precedesPredicate = Objects.requireNonNull(precedesPredicate, "precedesPredicate");
     this.equalsPredicate = equalsPredicate == null ? Equality::equalsIncludingAnnotations : equalsPredicate;
@@ -114,7 +111,7 @@ public final class TypeClosure {
 
     final DelegatingTypeMirror head = this.deque.peekFirst();
     if (head == null) {
-      this.deque.addFirst(DelegatingTypeMirror.of(t, this.elementSource));
+      this.deque.addFirst(DelegatingTypeMirror.of(t, this.tes));
       return;
     }
 
@@ -132,10 +129,10 @@ public final class TypeClosure {
 
     if (!this.equalsPredicate.test(e, headE)) {
       if (this.precedesPredicate.test(e, headE)) {
-        this.deque.addFirst(DelegatingTypeMirror.of(t, this.elementSource));
+        this.deque.addFirst(DelegatingTypeMirror.of(t, this.tes));
       } else if (this.deque.size() == 1) {
         // No need to recurse and get fancy; just add last
-        this.deque.addLast(DelegatingTypeMirror.of(t, this.elementSource));
+        this.deque.addLast(DelegatingTypeMirror.of(t, this.tes));
       } else {
         this.deque.removeFirst(); // returns head
         this.union(t); // RECURSIVE
@@ -169,7 +166,7 @@ public final class TypeClosure {
         switch (t.getKind()) {
         case DECLARED:
         case TYPEVAR:
-          this.deque.addLast(DelegatingTypeMirror.of(t, this.elementSource));
+          this.deque.addLast(DelegatingTypeMirror.of(t, this.tes));
           break;
         default:
           throw new IllegalArgumentException("t: " + t);
@@ -211,7 +208,7 @@ public final class TypeClosure {
       this.deque.addFirst(head0); // put head0 back
     } else if (this.precedesPredicate.test(head1E, head0E)) {
       this.union(list.subList(1, size)); // RECURSIVE
-      this.deque.addFirst(DelegatingTypeMirror.of(head1, this.elementSource));
+      this.deque.addFirst(DelegatingTypeMirror.of(head1, this.tes));
     } else {
       this.deque.removeFirst(); // removes head0
       this.union(list); // RECURSIVE
@@ -225,7 +222,7 @@ public final class TypeClosure {
     if (t.getKind() != TypeKind.TYPEVAR) {
       throw new IllegalArgumentException("t: " + t);
     }
-    this.deque.addFirst(DelegatingTypeMirror.of(t, this.elementSource));
+    this.deque.addFirst(DelegatingTypeMirror.of(t, this.tes));
   }
 
   // Port of javac's Types#closureMin(List<Type>)
@@ -240,7 +237,7 @@ public final class TypeClosure {
 
     for (int i = 0, next = 1; i < size; i++, next++) {
       final TypeMirror current = array[i];
-      boolean keep = !toSkip.contains(DelegatingTypeMirror.of(current, this.elementSource));
+      boolean keep = !toSkip.contains(DelegatingTypeMirror.of(current, this.tes));
       if (keep && current.getKind() == TypeKind.TYPEVAR && next < size) {
         for (int j = next; j < size; j++) {
           if (subtypeVisitor.withCapture(false).visit(array[j], current)) {
@@ -263,7 +260,7 @@ public final class TypeClosure {
             if (subtypeVisitor.withCapture(false).visit(current, t)) {
               // As we're processing this.list, we can skip supertypes of current (t, here) because we know current is
               // already more specialized than they are.
-              toSkip.add(DelegatingTypeMirror.of(t, this.elementSource));
+              toSkip.add(DelegatingTypeMirror.of(t, this.tes));
             }
           }
         }

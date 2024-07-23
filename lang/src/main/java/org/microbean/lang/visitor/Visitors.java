@@ -89,7 +89,7 @@ public final class Visitors {
     final Types types = new Types(tes);
     this.eraseVisitor = new EraseVisitor(tes, types);
     this.supertypeVisitor = new SupertypeVisitor(tes, types, this.eraseVisitor);
-    this.boundingClassVisitor = new BoundingClassVisitor(this.supertypeVisitor);
+    this.boundingClassVisitor = new BoundingClassVisitor(tes, this.supertypeVisitor);
     this.asSuperVisitor = new AsSuperVisitor(tes, null, types, this.supertypeVisitor);
     this.memberTypeVisitor =
       new MemberTypeVisitor(tes, null, types, this.asSuperVisitor, this.eraseVisitor, this.supertypeVisitor);

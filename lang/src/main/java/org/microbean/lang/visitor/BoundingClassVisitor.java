@@ -24,15 +24,21 @@ import javax.lang.model.type.TypeVariable;
 
 import javax.lang.model.util.SimpleTypeVisitor14;
 
+import org.microbean.lang.TypeAndElementSource;
+
 // A mostly slavish port of
 // https://github.com/openjdk/jdk/blob/jdk-21%2B22/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2746-L2780.
-// To be quite honest I'm not sure how this ever has any effect at all.
+// I *believe* this will take something like T extends List<T> and will yield List<T> (which is not the same as erasure
+// of a type variable).
 public final class BoundingClassVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
+
+  private final TypeAndElementSource tes;
 
   private final SupertypeVisitor supertypeVisitor;
 
-  public BoundingClassVisitor(final SupertypeVisitor supertypeVisitor) {
+  public BoundingClassVisitor(final TypeAndElementSource tes, final SupertypeVisitor supertypeVisitor) {
     super();
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
   }
 
@@ -49,18 +55,25 @@ public final class BoundingClassVisitor extends SimpleTypeVisitor14<TypeMirror, 
     if (enclosingType == visitedEnclosingType) {
       return t;
     }
+    assert visitedEnclosingType.getKind() == TypeKind.DECLARED;
+    return tes.declaredType((DeclaredType)visitedEnclosingType, (TypeElement)t.asElement(), t.getTypeArguments().toArray(new TypeMirror[0]));
+    /*
     final org.microbean.lang.type.DeclaredType dt = new org.microbean.lang.type.DeclaredType();
     dt.addTypeArguments(t.getTypeArguments());
     dt.addAnnotationMirrors(t.getAnnotationMirrors());
     dt.setDefiningElement((TypeElement)t.asElement());
     dt.setEnclosingType(visitedEnclosingType); // note
     return dt;
+    */
   }
 
   @Override
   public final TypeMirror visitTypeVariable(final TypeVariable t, final Void x) {
     assert t.getKind() == TypeKind.TYPEVAR;
-    return this.visit(this.supertypeVisitor.visit(t)); // this effectively erases T extends S to just S
+    // Recall that the supertype of a type variable is its "leftmost bound". So:
+    // Given T extends S, yield S.
+    // Given T extends List<String>, yield List<String> (so this is not erasure).
+    return this.visit(this.supertypeVisitor.visit(t));
   }
 
 }

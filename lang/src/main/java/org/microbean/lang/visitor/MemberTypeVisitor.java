@@ -1,18 +1,15 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -34,7 +31,6 @@ import javax.lang.model.util.SimpleTypeVisitor14;
 import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
-import org.microbean.lang.type.NoType;
 import org.microbean.lang.type.Types;
 
 import static org.microbean.lang.type.Types.allTypeArguments;
@@ -44,7 +40,7 @@ import static org.microbean.lang.type.Types.isStatic;
 // https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L2294-L2340
 public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Element> {
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   private final Equality equality;
 
@@ -56,14 +52,14 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
 
   private final SupertypeVisitor supertypeVisitor;
 
-  public MemberTypeVisitor(final TypeAndElementSource elementSource,
+  public MemberTypeVisitor(final TypeAndElementSource tes,
                            final Equality equality,
                            final Types types,
                            final AsSuperVisitor asSuperVisitor,
                            final EraseVisitor eraseVisitor,
                            final SupertypeVisitor supertypeVisitor) { // used only by substitute visitor implementations
     super();
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.asSuperVisitor = Objects.requireNonNull(asSuperVisitor, "asSuperVisitor");
@@ -75,7 +71,7 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
     if (asSuperVisitor == this.asSuperVisitor) {
       return this;
     }
-    return new MemberTypeVisitor(this.elementSource, this.equality, this.types, asSuperVisitor, this.eraseVisitor, this.supertypeVisitor);
+    return new MemberTypeVisitor(this.tes, this.equality, this.types, asSuperVisitor, this.eraseVisitor, this.supertypeVisitor);
   }
 
   // Only affects substitution
@@ -83,7 +79,7 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
     if (supertypeVisitor == this.supertypeVisitor) {
       return this;
     }
-    return new MemberTypeVisitor(this.elementSource, this.equality, this.types, this.asSuperVisitor, this.eraseVisitor, supertypeVisitor);
+    return new MemberTypeVisitor(this.tes, this.equality, this.types, this.asSuperVisitor, this.eraseVisitor, supertypeVisitor);
   }
 
   @Override
@@ -113,7 +109,7 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
             // baseType is raw
             return this.eraseVisitor.visit(e.asType());
           } else {
-            return new SubstituteVisitor(this.elementSource,
+            return new SubstituteVisitor(this.tes,
                                          this.equality,
                                          this.supertypeVisitor,
                                          enclosingTypeTypeArguments,
@@ -164,7 +160,7 @@ public final class MemberTypeVisitor extends SimpleTypeVisitor14<TypeMirror, Ele
         if (s != null) {
           return s;
         }
-        t = t.getKind() == TypeKind.DECLARED ? ((DeclaredType)t).getEnclosingType() : NoType.NONE;
+        t = t.getKind() == TypeKind.DECLARED ? ((DeclaredType)t).getEnclosingType() : this.tes.noType(TypeKind.NONE);
       } while (t.getKind() == TypeKind.DECLARED || t.getKind() == TypeKind.INTERSECTION);
       return null;
     case ERROR:

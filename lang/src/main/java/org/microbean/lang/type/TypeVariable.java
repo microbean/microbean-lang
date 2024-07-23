@@ -26,24 +26,24 @@ import org.microbean.lang.TypeAndElementSource;
 
 public non-sealed class TypeVariable extends DefineableType<TypeParameterElement> implements javax.lang.model.type.TypeVariable {
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   private TypeMirror upperBound;
 
   private TypeMirror lowerBound;
 
-  public TypeVariable(final TypeAndElementSource elementSource) {
+  public TypeVariable(final TypeAndElementSource tes) {
     super(TypeKind.TYPEVAR);
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
   }
 
-  public TypeVariable(final TypeAndElementSource elementSource, final TypeMirror upperBound) {
-    this(elementSource);
+  public TypeVariable(final TypeAndElementSource tes, final TypeMirror upperBound) {
+    this(tes);
     this.setUpperBound(upperBound);
   }
 
-  public TypeVariable(final TypeAndElementSource elementSource, final TypeMirror upperBound, final TypeMirror lowerBound) {
-    this(elementSource);
+  public TypeVariable(final TypeAndElementSource tes, final TypeMirror upperBound, final TypeMirror lowerBound) {
+    this(tes);
     this.setUpperBound(upperBound);
     this.setLowerBound(lowerBound);
   }
@@ -68,7 +68,7 @@ public non-sealed class TypeVariable extends DefineableType<TypeParameterElement
   @Override // TypeVariable
   public final TypeMirror getUpperBound() {
     final TypeMirror t = this.upperBound;
-    return t == null ? this.elementSource.typeElement("java.lang.Object").asType() : t; // this is correct; can't just return null
+    return t == null ? this.tes.typeElement("java.lang.Object").asType() : t; // this is correct; can't just return null
   }
 
   public final void setUpperBound(final TypeMirror upperBound) {
@@ -105,28 +105,20 @@ public non-sealed class TypeVariable extends DefineableType<TypeParameterElement
   }
 
   private final TypeMirror validateUpperBound(final TypeMirror upperBound) {
-    switch (upperBound.getKind()) {
-    case DECLARED:
-    case INTERSECTION:
-      return upperBound;
-    case TYPEVAR:
+    return switch (upperBound.getKind()) {
+    case DECLARED, INTERSECTION -> upperBound;
+    case TYPEVAR -> {
       if (upperBound == this) {
         throw new IllegalArgumentException("upperBound: " + upperBound);
       }
-      return upperBound;
-    default:
-      throw new IllegalArgumentException("upperBound: " + upperBound);
+      yield upperBound;
     }
+    default -> throw new IllegalArgumentException("upperBound: " + upperBound);
+    };
   }
 
-
-  /*
-   * Static methods.
-   */
-
-
-  private static final TypeMirror validateLowerBound(final TypeMirror lowerBound) {
-    return lowerBound == null ? NullType.INSTANCE : lowerBound;
+  private final TypeMirror validateLowerBound(final TypeMirror lowerBound) {
+    return lowerBound == null ? this.tes.nullType() : lowerBound;
   }
 
 }

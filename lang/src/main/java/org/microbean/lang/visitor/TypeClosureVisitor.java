@@ -16,6 +16,9 @@ package org.microbean.lang.visitor;
 import java.util.Objects;
 import java.util.WeakHashMap;
 
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.IntersectionType;
 import javax.lang.model.type.TypeKind;
@@ -50,6 +53,8 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
 
   private final TypeAndElementSource tes;
 
+  private final ReadWriteLock lock;
+
   // @GuardedBy("itself")
   private final WeakHashMap<TypeMirror, TypeClosure> closureCache;
 
@@ -78,6 +83,7 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
                             final SupertypeVisitor supertypeVisitor,
                             final PrecedesPredicate precedesPredicate) {
     super();
+    this.lock = new ReentrantReadWriteLock();
     this.tes = Objects.requireNonNull(tes, "tes");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
     this.precedesPredicate = Objects.requireNonNull(precedesPredicate, "precedesPredicate");
@@ -115,13 +121,16 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
 
   private final TypeClosure visitDeclaredOrIntersectionOrTypeVariable(final TypeMirror t, final Void x) {
     TypeClosure closure;
-    synchronized (this.closureCache) {
+    this.lock.readLock().lock();
+    try {
       closure = this.closureCache.get(t);
+    } finally {
+      this.lock.readLock().unlock();
     }
     if (closure == null) {
       switch (t.getKind()) {
       case INTERSECTION:
-        // The closure does not include the intersection type itself.  Note that this little nugget effectively removes
+        // The closure does not include the intersection type itself. Note that this little nugget effectively removes
         // intersection types from the possible types that will ever be passed to TypeClosure#union(TypeMirror).
         closure = this.visit(this.supertypeVisitor.visit(t));
         break;
@@ -182,8 +191,11 @@ public final class TypeClosureVisitor extends SimpleTypeVisitor14<TypeClosure, V
       for (final TypeMirror iface : this.supertypeVisitor.interfacesVisitor().visit(t)) {
         closure.union(this.visit(iface));
       }
-      synchronized (this.closureCache) {
+      this.lock.writeLock().lock();
+      try {
         closureCache.put(t, closure);
+      } finally {
+        this.lock.writeLock().unlock();
       }
     }
     return closure;

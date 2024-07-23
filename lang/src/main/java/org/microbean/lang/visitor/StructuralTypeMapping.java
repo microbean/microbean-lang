@@ -1,18 +1,15 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -35,11 +32,11 @@ import org.microbean.lang.TypeAndElementSource;
 // See https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L244
 class StructuralTypeMapping<S> extends SimpleTypeVisitor14<TypeMirror, S> {
 
-  protected final TypeAndElementSource elementSource;
+  protected final TypeAndElementSource tes;
 
-  StructuralTypeMapping(final TypeAndElementSource elementSource) {
+  StructuralTypeMapping(final TypeAndElementSource tes) {
     super();
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
   }
 
   @Override // SimpleTypeVisitor6
@@ -74,7 +71,7 @@ class StructuralTypeMapping<S> extends SimpleTypeVisitor14<TypeMirror, S> {
     if (componentType == visitedComponentType) {
       return t;
     }
-    return new org.microbean.lang.type.ArrayType(visitedComponentType);
+    return this.tes.arrayTypeOf(visitedComponentType);
   }
 
   @Override // SimpleTypeVisitor6
@@ -87,11 +84,7 @@ class StructuralTypeMapping<S> extends SimpleTypeVisitor14<TypeMirror, S> {
     if (enclosingType == visitedEnclosingType && typeArguments == visitedTypeArguments) {
       return t;
     }
-    final org.microbean.lang.type.DeclaredType r = new org.microbean.lang.type.DeclaredType();
-    r.setEnclosingType(visitedEnclosingType);
-    r.addTypeArguments(visitedTypeArguments);
-    r.setDefiningElement((javax.lang.model.element.TypeElement)t.asElement());
-    return r;
+    return tes.declaredType((DeclaredType)visitedEnclosingType, (javax.lang.model.element.TypeElement)t.asElement(), visitedTypeArguments.toArray(new TypeMirror[0]));
   }
 
   // See https://github.com/openjdk/jdk/blob/jdk-20+11/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L290-L313
@@ -128,7 +121,7 @@ class StructuralTypeMapping<S> extends SimpleTypeVisitor14<TypeMirror, S> {
     final TypeMirror visitedSuperBound;
     if (extendsBound == null) {
       if (superBound == null) {
-        extendsBound = this.elementSource.typeElement("java.lang.Object").asType();
+        extendsBound = this.tes.typeElement("java.lang.Object").asType();
         visitedExtendsBound = this.visit(extendsBound, s);
         visitedSuperBound = null;
       } else {

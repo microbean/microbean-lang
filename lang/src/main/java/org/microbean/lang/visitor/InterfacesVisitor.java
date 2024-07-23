@@ -38,7 +38,7 @@ import static org.microbean.lang.type.Types.isInterface;
 // Basically done
 public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends TypeMirror>, Void> {
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   private final Equality equality;
 
@@ -48,14 +48,14 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
 
   private final SupertypeVisitor supertypeVisitor;
 
-  public InterfacesVisitor(final TypeAndElementSource elementSource,
+  public InterfacesVisitor(final TypeAndElementSource tes,
                            final Equality equality,
                            final Types types,
                            final EraseVisitor eraseVisitor,
                            final SupertypeVisitor supertypeVisitor) { // used only for substitute visitor implementations
     super(List.of());
     this.equality = equality == null ? new Equality(true) : equality;
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.types = Objects.requireNonNull(types, "types");
     this.eraseVisitor = Objects.requireNonNull(eraseVisitor, "eraseVisitor");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
@@ -83,7 +83,7 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
         }
         assert this.supertypeVisitor.interfacesVisitor() == this;
         yield
-          new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, formals, allTypeArguments(t))
+          new SubstituteVisitor(this.tes, this.equality, this.supertypeVisitor, formals, allTypeArguments(t))
         .visit(interfaces, x);
       default:
         yield List.of();
@@ -94,15 +94,15 @@ public final class InterfacesVisitor extends SimpleTypeVisitor14<List<? extends 
   public final List<? extends TypeMirror> visitIntersection(final IntersectionType t, final Void x) {
     assert t.getKind() == TypeKind.INTERSECTION;
     // Here the porting is a little trickier.  It turns out that an intersection type caches its supertype and its
-    // interfaces at construction time, and there's only one place where intersection types are created.  In the lang
+    // interfaces at construction time, and there's only one place where intersection types are created. In the lang
     // model, that means that an IntersectionType's bounds are its single non-interface supertype, if any, followed by
     // its interfaces.  So we will hand-tool this.
     final List<? extends TypeMirror> bounds = t.getBounds();
     final int size = bounds.size();
     return switch (size) {
-      case 0 -> List.of();
-      case 1 -> isInterface(bounds.get(0)) ? bounds : List.of();
-      default -> isInterface(bounds.get(0)) ? bounds : bounds.subList(1, size);
+    case 0 -> List.of(); // technically illegal
+    case 1 -> isInterface(bounds.get(0)) ? bounds : List.of();
+    default -> isInterface(bounds.get(0)) ? bounds : bounds.subList(1, size); // skip the first element; the rest will be interfaces
     };
   }
 

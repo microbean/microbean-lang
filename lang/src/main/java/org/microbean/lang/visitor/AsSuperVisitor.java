@@ -1,6 +1,6 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
@@ -46,6 +46,9 @@ import static org.microbean.lang.type.Types.asElement;
  * <p>For example, given a type denoted by {@code List<String>}, and a {@link javax.lang.model.element.TypeElement}
  * denoted by {@code Collection}, the result of visitation will be the type denoted by {@code Collection<String>}.</p>
  *
+ * <p>So "as super" is probably derived from the fact that after this visitor runs you get a view, of sorts, of your
+ * parameterized type "as" a parameterized "super" type of a particular kind.</p>
+ *
  * <p>{@code javac} does odd things with this and arrays and it is not clear that its documentation matches its
  * code. Consequently I don't have a lot of faith in the {@link #visitArray(ArrayType, Element)} method as of this
  * writing.</p>
@@ -70,7 +73,7 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
 
   private final Set<DelegatingElement> seenTypes; // in the compiler, the field is called seenTypes but stores Symbols (Elements).
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   private final Equality equality;
 
@@ -80,13 +83,13 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
 
   private SubtypeVisitor subtypeVisitor;
 
-  public AsSuperVisitor(final TypeAndElementSource elementSource,
+  public AsSuperVisitor(final TypeAndElementSource tes,
                         final Equality equality,
                         final Types types,
                         final SupertypeVisitor supertypeVisitor) {
     super();
     this.seenTypes = new HashSet<>();
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
@@ -96,14 +99,14 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
     if (supertypeVisitor == this.supertypeVisitor) {
       return this;
     }
-    return new AsSuperVisitor(this.elementSource, this.equality, this.types, supertypeVisitor);
+    return new AsSuperVisitor(this.tes, this.equality, this.types, supertypeVisitor);
   }
 
   public final AsSuperVisitor withSubtypeVisitor(final SubtypeVisitor subtypeVisitor) {
     if (subtypeVisitor == this.subtypeVisitor) {
       return this;
     }
-    final AsSuperVisitor v = new AsSuperVisitor(this.elementSource, this.equality, this.types, this.supertypeVisitor);
+    final AsSuperVisitor v = new AsSuperVisitor(this.tes, this.equality, this.types, this.supertypeVisitor);
     v.setSubtypeVisitor(subtypeVisitor);
     return v;
   }
@@ -156,7 +159,7 @@ public final class AsSuperVisitor extends SimpleTypeVisitor14<TypeMirror, Elemen
       return t;
     }
     // TODO: may be able to get away with identity instead of DelegatingElement
-    final DelegatingElement c = DelegatingElement.of(te, this.elementSource);
+    final DelegatingElement c = DelegatingElement.of(te, this.tes);
     if (!this.seenTypes.add(c)) { // javac calls it seenTypes but it stores Symbols/Elements
       return null;
     }

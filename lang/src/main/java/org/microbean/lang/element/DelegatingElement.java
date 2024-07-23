@@ -3,12 +3,12 @@
  * Copyright © 2022–2024 microBean™.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * the License. You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
- * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.element;
@@ -50,6 +50,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import org.microbean.lang.CompletionLock;
@@ -57,7 +58,6 @@ import org.microbean.lang.TypeAndElementSource;
 import org.microbean.lang.Equality;
 
 import org.microbean.lang.type.DelegatingTypeMirror;
-import org.microbean.lang.type.NoType;
 
 import static java.lang.constant.ConstantDescs.BSM_INVOKE;
 import static java.lang.constant.DirectMethodHandleDesc.Kind.STATIC;
@@ -188,7 +188,7 @@ public final class DelegatingElement
   }
 
   @Override // RecordComponentElement
-  public final ExecutableElement getAccessor() {
+  public final DelegatingElement getAccessor() {
     return switch (this.getKind()) {
     case RECORD_COMPONENT -> this.wrap(((RecordComponentElement)this.delegate()).getAccessor());
     default               -> null;
@@ -211,7 +211,7 @@ public final class DelegatingElement
   }
 
   @Override // TypeParameterElement
-  public final List<? extends TypeMirror> getBounds() {
+  public final List<? extends DelegatingTypeMirror> getBounds() {
     return switch (this.getKind()) {
     case TYPE_PARAMETER ->
       DelegatingTypeMirror.of(((TypeParameterElement)this.delegate()).getBounds(), this.tes, this.ehc);
@@ -247,25 +247,25 @@ public final class DelegatingElement
   }
 
   @Override // Element
-  public final List<? extends Element> getEnclosedElements() {
+  public final List<? extends DelegatingElement> getEnclosedElements() {
     return this.wrap(this.delegate().getEnclosedElements());
   }
 
   @Override // Element
-  public final Element getEnclosingElement() {
+  public final DelegatingElement getEnclosingElement() {
     return this.wrap(this.delegate().getEnclosingElement());
   }
 
   @Override // TypeParameterElement
-  public final Element getGenericElement() {
+  public final DelegatingElement getGenericElement() {
     return switch (this.getKind()) {
     case TYPE_PARAMETER -> this.wrap(((TypeParameterElement)this.delegate()).getGenericElement());
-    default             -> null; // illegal state
+    default             -> this.getEnclosingElement(); // illegal state
     };
   }
 
   @Override // TypeElement
-  public final List<? extends TypeMirror> getInterfaces() {
+  public final List<? extends DelegatingTypeMirror> getInterfaces() {
     return switch (this.getKind()) {
     case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD ->
       DelegatingTypeMirror.of(((TypeElement)this.delegate()).getInterfaces(), this.tes, this.ehc);
@@ -287,12 +287,12 @@ public final class DelegatingElement
   public final NestingKind getNestingKind() {
     return switch (this.getKind()) {
     case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD -> ((TypeElement)this.delegate()).getNestingKind();
-    default                                              -> null;
+    default                                              -> NestingKind.TOP_LEVEL; // illegal state
     };
   }
 
   @Override // ExecutableElement
-  public final List<? extends VariableElement> getParameters() {
+  public final List<? extends DelegatingElement> getParameters() {
     return switch (this.getKind()) {
     case CONSTRUCTOR, METHOD -> this.wrap(((ExecutableElement)this.delegate()).getParameters());
     default                  -> List.of();
@@ -309,15 +309,15 @@ public final class DelegatingElement
   }
 
   @Override // ExecutableElement
-  public final TypeMirror getReceiverType() {
+  public final DelegatingTypeMirror getReceiverType() {
     return
       this.getKind().isExecutable() ?
       DelegatingTypeMirror.of(this.asType(), this.tes, this.ehc).getReceiverType() :
-      null;
+      DelegatingTypeMirror.of(this.tes.noType(TypeKind.NONE), this.tes, this.ehc);
   }
 
   @Override // TypeElement
-  public final List<? extends RecordComponentElement> getRecordComponents() {
+  public final List<? extends DelegatingElement> getRecordComponents() {
     return switch (this.getKind()) {
     case RECORD -> this.wrap(((TypeElement)this.delegate()).getRecordComponents());
     default     -> List.of();
@@ -325,7 +325,7 @@ public final class DelegatingElement
   }
 
   @Override // ExecutableElement
-  public final TypeMirror getReturnType() {
+  public final DelegatingTypeMirror getReturnType() {
     return DelegatingTypeMirror.of(this.asType(), this.tes, this.ehc).getReturnType();
   }
 
@@ -335,16 +335,16 @@ public final class DelegatingElement
   }
 
   @Override // TypeElement
-  public final TypeMirror getSuperclass() {
+  public final DelegatingTypeMirror getSuperclass() {
     return switch (this.getKind()) {
     case ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, RECORD ->
       DelegatingTypeMirror.of(((TypeElement)this.delegate()).getSuperclass(), this.tes, this.ehc);
-    default -> NoType.NONE;
+    default -> DelegatingTypeMirror.of(this.tes.noType(TypeKind.NONE), this.tes, this.ehc);
     };
   }
 
   @Override // ExecutableElement
-  public final List<? extends TypeMirror> getThrownTypes() {
+  public final List<? extends DelegatingTypeMirror> getThrownTypes() {
     return
       this.getKind().isExecutable() ?
       DelegatingTypeMirror.of(((ExecutableElement)this.delegate()).getThrownTypes(), this.tes, this.ehc) :
@@ -352,7 +352,7 @@ public final class DelegatingElement
   }
 
   @Override // ExecutableElement
-  public final List<? extends TypeParameterElement> getTypeParameters() {
+  public final List<? extends DelegatingElement> getTypeParameters() {
     return switch (this.getKind()) {
     case CLASS, CONSTRUCTOR, ENUM, INTERFACE, RECORD, METHOD -> this.wrap(((Parameterizable)this.delegate()).getTypeParameters());
     default                                                  -> List.of();

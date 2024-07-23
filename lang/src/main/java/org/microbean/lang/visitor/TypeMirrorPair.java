@@ -1,18 +1,15 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -36,20 +33,16 @@ import static org.microbean.lang.type.Types.asElement;
 
 final class TypeMirrorPair {
 
-  private final Types types;
-
   private final SameTypeVisitor sameTypeVisitor;
 
   private final TypeMirror t;
 
   private final TypeMirror s;
 
-  TypeMirrorPair(final Types types,
-                 final SameTypeVisitor sameTypeVisitor,
+  TypeMirrorPair(final SameTypeVisitor sameTypeVisitor,
                  final TypeMirror t,
                  final TypeMirror s) {
     super();
-    this.types = Objects.requireNonNull(types, "types");
     this.sameTypeVisitor = Objects.requireNonNull(sameTypeVisitor, "sameTypeVisitor");
     this.t = Objects.requireNonNull(t, "t");
     this.s = Objects.requireNonNull(s, "s");
@@ -85,7 +78,7 @@ final class TypeMirrorPair {
     case DECLARED:
     case INTERSECTION:
       // return this.hashCode0(t);
-      int result = 127 * hashCode(enclosingType(t));
+      int result = 127 * hashCode(tk == TypeKind.DECLARED ? ((DeclaredType)t).getEnclosingType() : null);
       final Element e = asElement(t, true);
       if (e != null) {
         result += flatName(e).hashCode();
@@ -162,15 +155,6 @@ final class TypeMirrorPair {
       throw new IllegalArgumentException("t: " + t);
     }
     return result;
-  }
-
-  private static final TypeMirror enclosingType(final TypeMirror t) {
-    switch (t.getKind()) {
-    case DECLARED:
-      return ((DeclaredType)t).getEnclosingType();
-    default:
-      return org.microbean.lang.type.NoType.NONE;
-    }
   }
 
   private static final Name flatName(final Element e) {

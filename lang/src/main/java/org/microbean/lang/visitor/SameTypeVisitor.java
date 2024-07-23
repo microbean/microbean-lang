@@ -1,18 +1,15 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -47,7 +44,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
 
   final ContainsTypeVisitor containsTypeVisitor;
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   private final Equality equality;
 
@@ -55,20 +52,20 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
 
   private final boolean wildcardsComparable;
 
-  public SameTypeVisitor(final TypeAndElementSource elementSource,
+  public SameTypeVisitor(final TypeAndElementSource tes,
                          final ContainsTypeVisitor containsTypeVisitor,
                          final SupertypeVisitor supertypeVisitor,
                          final boolean wildcardsCompatible) {
-    this(elementSource, new Equality(false), containsTypeVisitor, supertypeVisitor, wildcardsCompatible);
+    this(tes, new Equality(false), containsTypeVisitor, supertypeVisitor, wildcardsCompatible);
   }
 
-  public SameTypeVisitor(final TypeAndElementSource elementSource,
+  public SameTypeVisitor(final TypeAndElementSource tes,
                          final Equality equality,
                          final ContainsTypeVisitor containsTypeVisitor,
                          final SupertypeVisitor supertypeVisitor, // used in visitExecutable, visitIntersection, hasSameBounds (only called from visitExecutable)
                          final boolean wildcardsComparable) {
     super(Boolean.FALSE);
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.equality = equality == null ? new Equality(false) : equality;
     this.wildcardsComparable = wildcardsComparable;
     this.containsTypeVisitor = Objects.requireNonNull(containsTypeVisitor, "containsTypeVisitor");
@@ -81,7 +78,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
       return this;
     }
     return
-      new SameTypeVisitor(this.elementSource, this.equality, this.containsTypeVisitor(), supertypeVisitor, this.wildcardsComparable);
+      new SameTypeVisitor(this.tes, this.equality, this.containsTypeVisitor(), supertypeVisitor, this.wildcardsComparable);
 
   }
 
@@ -151,7 +148,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
     return
       superBound != null &&
       s.getExtendsBound() == null &&
-      this.visitDeclared(t, this.elementSource.typeElement("java.lang.Object").asType()) &&
+      this.visitDeclared(t, this.tes.typeElement("java.lang.Object").asType()) &&
       this.visit(t, superBound);
   }
 
@@ -189,7 +186,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
       return false;
     }
     final ExecutableType substitutedS =
-      new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, stvs, ttvs).visitExecutable(s, null);
+      new SubstituteVisitor(this.tes, this.equality, this.supertypeVisitor, stvs, ttvs).visitExecutable(s, null);
     if (s != substitutedS) {
       return this.visitExecutable(t, substitutedS); // RECURSIVE
     }
@@ -239,7 +236,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
     final Map<DelegatingElement, TypeMirror> tMap = new HashMap<>();
     for (final TypeMirror ti : this.supertypeVisitor.interfacesVisitor().visitIntersection(t, null)) {
       assert ti.getKind() == TypeKind.DECLARED;
-      tMap.put(DelegatingElement.of(((DeclaredType)t).asElement(), this.elementSource), ti);
+      tMap.put(DelegatingElement.of(((DeclaredType)t).asElement(), this.tes), ti);
     }
     for (final TypeMirror si : this.supertypeVisitor.interfacesVisitor().visitIntersection(s, null)) {
       assert si.getKind() == TypeKind.DECLARED;
@@ -300,7 +297,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
     return
       s.getExtendsBound() == null &&
       s.getSuperBound() != null &&
-      this.visit(t, this.elementSource.typeElement("java.lang.Object").asType());
+      this.visit(t, this.tes.typeElement("java.lang.Object").asType());
   }
 
   @Override
@@ -375,7 +372,7 @@ public final class SameTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirr
     if (size != ss.size()) {
       return false;
     } else if (size > 0) {
-      final SubstituteVisitor sv = new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, ss, ts);
+      final SubstituteVisitor sv = new SubstituteVisitor(this.tes, this.equality, this.supertypeVisitor, ss, ts);
       for (int i = 0; i < size; i++) {
         final TypeVariable t = ts.get(i);
         final TypeVariable s = ss.get(i);
