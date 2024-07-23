@@ -1,1 +1,0 @@
-moduleSearchIndex = [{"l":"org.microbean.lang.jandex"}];updateSearchResults();
