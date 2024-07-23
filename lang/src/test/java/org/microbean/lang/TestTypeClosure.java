@@ -28,6 +28,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.NoType;
+import javax.lang.model.type.NullType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -120,6 +121,10 @@ final class TestTypeClosure {
           return javacModelTypes.getNoType(k);
         }
         @Override
+        public final NullType nullType() {
+          return javacModelTypes.getNullType();
+        }
+        @Override
         public final PrimitiveType primitiveType(final TypeKind k) {
           return javacModelTypes.getPrimitiveType(k);
         }
@@ -202,7 +207,7 @@ final class TestTypeClosure {
         public boolean assignable(final TypeMirror payload, final TypeMirror receiver) {
           return javacModelTypes.isAssignable(payload, receiver);
         }
-        @Override
+        // @Override
         public final TypeElement boxedClass(final PrimitiveType t) {
           return javacModelTypes.boxedClass(t);
         }
@@ -230,6 +235,10 @@ final class TestTypeClosure {
         @Override
         public final NoType noType(final TypeKind k) {
           return javacModelTypes.getNoType(k);
+        }
+        @Override
+        public final NullType nullType() {
+          return javacModelTypes.getNullType();
         }
         @Override
         public final PrimitiveType primitiveType(final TypeKind k) {

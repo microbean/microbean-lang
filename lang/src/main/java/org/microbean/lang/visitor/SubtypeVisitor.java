@@ -1,18 +1,15 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -54,7 +51,7 @@ import static org.microbean.lang.type.Types.upperBoundedWildcardType;
 // See https://github.com/openjdk/jdk/blob/jdk-20+13/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1109-L1238
 public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   private final Equality equality;
 
@@ -78,7 +75,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
 
   private SubtypeVisitor withoutCaptureVariant;
 
-  public SubtypeVisitor(final TypeAndElementSource elementSource,
+  public SubtypeVisitor(final TypeAndElementSource tes,
                         final Equality equality,
                         final Types types,
                         final AsSuperVisitor asSuperVisitor,
@@ -89,7 +86,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
                         final boolean capture) {
     super(Boolean.FALSE);
     this.cache = new HashSet<>();
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.asSuperVisitor = Objects.requireNonNull(asSuperVisitor, "asSuperVisitor");
@@ -115,7 +112,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
       return this;
     }
     return
-      new SubtypeVisitor(this.elementSource,
+      new SubtypeVisitor(this.tes,
                          this.equality,
                          this.types,
                          asSuperVisitor,
@@ -130,7 +127,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     if (capture) {
       if (this.withCaptureVariant == null) {
         this.withCaptureVariant =
-          new SubtypeVisitor(this.elementSource,
+          new SubtypeVisitor(this.tes,
                          this.equality,
                          this.types,
                          this.asSuperVisitor,
@@ -143,7 +140,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
       return this.withCaptureVariant;
     } else if (this.withoutCaptureVariant == null) {
       this.withoutCaptureVariant =
-        new SubtypeVisitor(this.elementSource,
+        new SubtypeVisitor(this.tes,
                            this.equality,
                            this.types,
                            this.asSuperVisitor,
@@ -461,7 +458,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
       if (tTypeArguments.isEmpty() || sTypeArguments.isEmpty()) {
         return false;
       }
-      final TypeMirrorPair pair = new TypeMirrorPair(this.types, this.sameTypeVisitor, t, s);
+      final TypeMirrorPair pair = new TypeMirrorPair(this.sameTypeVisitor, t, s);
       if (this.cache.add(pair)) {
         try {
           return this.containsTypeVisitor.visit(tTypeArguments, sTypeArguments);
@@ -486,7 +483,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
     if (!allTypeArguments(t).isEmpty()) {
       final List<TypeVariable> from = new ArrayList<>();
       final List<TypeMirror> to = new ArrayList<>();
-      new AdaptingVisitor(this.elementSource, this.types, this.sameTypeVisitor, this, from, to).adaptSelf((DeclaredType)t);
+      new AdaptingVisitor(this.tes, this.types, this.sameTypeVisitor, this, from, to).adaptSelf((DeclaredType)t);
       if (!from.isEmpty()) {
         final List<TypeMirror> rewrite = new ArrayList<>();
         boolean changed = false;
@@ -516,7 +513,7 @@ public final class SubtypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirro
         }
         if (changed) {
           // (If t is a DeclaredType or a TypeVariable, call asElement().asType() and visit that.)
-          return new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, from, rewrite)
+          return new SubstituteVisitor(this.tes, this.equality, this.supertypeVisitor, from, rewrite)
             .visit(switch (t.getKind()) {
               case DECLARED -> ((DeclaredType)t).asElement().asType();
               case TYPEVAR -> ((TypeVariable)t).asElement().asType();

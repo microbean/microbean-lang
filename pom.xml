@@ -71,7 +71,6 @@
 
   <modules>
     <module>bytebuddy</module>
-    <module>jandex</module>
     <module>lang</module>
   </modules>
 
@@ -81,16 +80,9 @@
       <!-- Normal dependencies. -->
 
       <dependency>
-        <groupId>io.smallrye</groupId>
-        <artifactId>jandex</artifactId>
-        <version>3.1.6</version>
-        <type>jar</type>
-      </dependency>
-
-      <dependency>
         <groupId>net.bytebuddy</groupId>
         <artifactId>byte-buddy</artifactId>
-        <version>1.14.11</version>
+        <version>1.14.18</version>
         <type>jar</type>
       </dependency>
 
@@ -104,14 +96,14 @@
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-api</artifactId>
-        <version>5.10.1</version>
+        <version>5.10.3</version>
         <type>jar</type>
       </dependency>
 
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-engine</artifactId>
-        <version>5.10.1</version>
+        <version>5.10.3</version>
         <type>jar</type>
       </dependency>
 
@@ -134,13 +126,6 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>microbean-lang-bytebuddy</artifactId>
-        <version>${project.version}</version>
-        <type>jar</type>
-      </dependency>
-
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>microbean-lang-jandex</artifactId>
         <version>${project.version}</version>
         <type>jar</type>
       </dependency>

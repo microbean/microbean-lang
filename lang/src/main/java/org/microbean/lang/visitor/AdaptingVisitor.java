@@ -1,18 +1,15 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -47,6 +44,9 @@ import static org.microbean.lang.type.Types.asElement;
  * Does something adapting-like.
  *
  * <p>Usage: call {@link #adapt(DeclaredType, DeclaredType)}, not {@link #visit(TypeMirror)}.</p>
+ *
+ * <p>This is a "one shot" visitor: because it mutates its internal data structures (!) (following the analogous
+ * structures in the compiler), an instance of this class should not be reused.</p>
  */
 // Not thread safe.
 // Basically done.
@@ -54,10 +54,7 @@ import static org.microbean.lang.type.Types.asElement;
 final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
 
   /*
-   * Ported mostly slavishly from the compiler.  Some thoughts:
-   *
-   * The compiler code is really bad, but presumably battle-tested. I'm guessing that a list of "from" and a list of
-   * "to" rather than a Map<From, To> was done on purpose. I cannot begin to think of what the purpose is.
+   * Ported mostly slavishly from the compiler.
    */
 
   // The compiler's implementation mutates this list.
@@ -66,7 +63,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
   // The compiler's implementation mutates this list.
   private final List<TypeMirror> to;
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   private final Types types;
 
@@ -78,14 +75,14 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
 
   private final Set<TypeMirrorPair> cache;
 
-  AdaptingVisitor(final TypeAndElementSource elementSource,
+  AdaptingVisitor(final TypeAndElementSource tes,
                   final Types types,
                   final SameTypeVisitor sameTypeVisitor,
                   final SubtypeVisitor subtypeVisitor,
                   final List<TypeVariable> from, // mutated
                   final List<TypeMirror> to) { // mutated
     super();
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.types = Objects.requireNonNull(types, "types");
     this.sameTypeVisitor = Objects.requireNonNull(sameTypeVisitor, "sameTypeVisitor");
     this.subtypeVisitor = Objects.requireNonNull(subtypeVisitor, "subtypeVisitor");
@@ -99,7 +96,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
     this.visitDeclared(source, target);
     final int fromSize = this.from.size();
     for (int i = 0; i < fromSize; i++) {
-      final TypeMirror val = this.mapping.get(DelegatingElement.of(asElement(this.from.get(i), true), this.elementSource));
+      final TypeMirror val = this.mapping.get(DelegatingElement.of(asElement(this.from.get(i), true), this.tes));
       if (this.to.get(i) != val) {
         this.to.set(i, val);
       }
@@ -131,7 +128,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
   @Override
   public final Void visitTypeVariable(final TypeVariable source, final TypeMirror target) {
     assert source.getKind() == TypeKind.TYPEVAR;
-    final DelegatingElement sourceElement = DelegatingElement.of(source.asElement(), this.elementSource);
+    final DelegatingElement sourceElement = DelegatingElement.of(source.asElement(), this.tes);
     TypeMirror val = this.mapping.get(sourceElement);
     if (val == null) {
       val = target;
@@ -195,7 +192,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
   }
 
   private final void adaptRecursive(final TypeMirror source, final TypeMirror target) {
-    final TypeMirrorPair pair = new TypeMirrorPair(this.types, this.sameTypeVisitor, source, target);
+    final TypeMirrorPair pair = new TypeMirrorPair(this.sameTypeVisitor, source, target);
     if (this.cache.add(pair)) {
       try {
         this.visit(source, target);

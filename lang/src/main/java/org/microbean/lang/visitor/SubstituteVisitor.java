@@ -1,18 +1,15 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -58,12 +55,12 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
    */
 
 
-  SubstituteVisitor(final TypeAndElementSource elementSource,
+  SubstituteVisitor(final TypeAndElementSource tes,
                     final Equality equality,
                     final SupertypeVisitor supertypeVisitor, // used only for intersection types
                     List<? extends TypeMirror> from,
                     List<? extends TypeMirror> to) {
-    super(elementSource);
+    super(tes);
     this.equality = equality == null ? new Equality(false) : equality;
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
     // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3321-L3322
@@ -96,7 +93,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
     if (from == this.from && to == this.to) {
       return this;
     }
-    return new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, from, to);
+    return new SubstituteVisitor(this.tes, this.equality, this.supertypeVisitor, from, to);
   }
 
   // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L3382-L3411
@@ -139,8 +136,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
   @Override
   public final IntersectionType visitIntersection(final IntersectionType t, final Void x) {
     assert t.getKind() == TypeKind.INTERSECTION;
-    // final TypeMirror supertype = this.supertypeVisitor.visit(t, x); // (Returns t.getBounds().get(0).)
-    final TypeMirror supertype = t.getBounds().get(0);
+    final TypeMirror supertype = this.supertypeVisitor.visit(t, x); // (Returns t.getBounds().get(0).)
     final TypeMirror visitedSupertype = this.visit(supertype, x);
     final List<? extends TypeMirror> interfaces = this.supertypeVisitor.interfacesVisitor().visit(t, x);
     final List<? extends TypeMirror> visitedInterfaces = this.visit(interfaces, x);
@@ -228,13 +224,13 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
       // respectively.
       final TypeMirror visitedUpperBound = visitor.visit(upperBound); // RECURSIVE
 
-      // It *seems* that if upperBound and visitedUpperBound are identical we wouldn't have to do anything below.  But
+      // It *seems* that if upperBound and visitedUpperBound are identical we wouldn't have to do anything below. But
       // the compiler's version of this method always creates a new instance, and the method is named newInstances, so
       // we do too.
 
       // Create a new TypeVariable whose upper bound is the just-visited upper bound.
       final org.microbean.lang.type.TypeVariable newTv =
-        new org.microbean.lang.type.TypeVariable(this.elementSource, visitedUpperBound, tv.getLowerBound());
+        new org.microbean.lang.type.TypeVariable(this.tes, visitedUpperBound, tv.getLowerBound());
       newTv.setDefiningElement((TypeParameterElement)tv.asElement());
 
       // Replace the type variable at position i (the very one we're looking at) with the new, newly-bounded type
@@ -250,7 +246,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
       return tvs; // preserve identity whenever possible
     }
 
-    // Phase 1 (it appears): effectively call visit() on the upper bound of all the type variables.  If this didn't
+    // Phase 1 (it appears): effectively call visit() on the upper bound of all the type variables. If this didn't
     // result in any changes, we're done.
     final List<TypeMirror> visitedUpperBounds = new ArrayList<>(tvs.size()); // could be pointless if nothing changed
     boolean changed = false;
@@ -266,12 +262,12 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
       return tvs; // preserve identity whenever possible
     }
 
-    // Phase 2: Create a list of type variables temporarily without upper bounds.  We will give them upper bounds in
+    // Phase 2: Create a list of type variables temporarily without upper bounds. We will give them upper bounds in
     // phase 3.
     final List<org.microbean.lang.type.TypeVariable> newTvs = new ArrayList<>(tvs.size());
     for (final TypeVariable tv : tvs) {
       final org.microbean.lang.type.TypeVariable newTv =
-        new org.microbean.lang.type.TypeVariable(this.elementSource, null, tv.getLowerBound());
+        new org.microbean.lang.type.TypeVariable(this.tes, null, tv.getLowerBound());
       newTv.setDefiningElement((TypeParameterElement)tv.asElement());
       newTvs.add(newTv);
     }
@@ -279,8 +275,8 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
     // (All Lists at this point are the same size.)
 
     // Phase 3: Perform substitution over the visited (phase 1) upper bounds of the caller-supplied type variables with
-    // the un-upper-bounded type variable "prototypes" created in phase 2.  (This will result in type variables that
-    // have no upper bound yet, but we have them in a list, and so can doctor them in phase 4 below.)
+    // the un-upper-bounded type variable "prototypes" created in phase 2. (This will result in type variables that have
+    // no upper bound yet, but we have them in a list, and so can doctor them in phase 4 below.)
     final SubstituteVisitor visitor = this.with(tvs, newTvs);
     for (int i = 0; i < visitedUpperBounds.size(); i++) {
       visitedUpperBounds.set(i, visitor.visit(visitedUpperBounds.get(i)));
@@ -291,7 +287,7 @@ final class SubstituteVisitor extends StructuralTypeMapping<Void> {
     for (int i = 0; i < newTvs.size(); i++) {
       final org.microbean.lang.type.TypeVariable upperBoundlessTv = newTvs.get(i);
       final org.microbean.lang.type.TypeVariable newTv =
-        new org.microbean.lang.type.TypeVariable(this.elementSource, visitedUpperBounds.get(i), upperBoundlessTv.getLowerBound());
+        new org.microbean.lang.type.TypeVariable(this.tes, visitedUpperBounds.get(i), upperBoundlessTv.getLowerBound());
       newTv.setDefiningElement(upperBoundlessTv.asElement());
       newTvs.set(i, newTv);
     }

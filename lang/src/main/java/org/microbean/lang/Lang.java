@@ -2278,6 +2278,11 @@ public final class Lang {
     }
 
     @Override
+    public final NullType nullType() {
+      return Lang.nullType();
+    }
+
+    @Override
     public final PrimitiveType primitiveType(final TypeKind k) {
       return Lang.primitiveType(k);
     }

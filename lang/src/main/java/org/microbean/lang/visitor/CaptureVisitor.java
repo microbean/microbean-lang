@@ -1,18 +1,15 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -47,7 +44,7 @@ import static org.microbean.lang.type.Types.isInterface;
 // https://github.com/openjdk/jdk/blob/jdk-20+14/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L4388-L4456
 public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> {
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   private final Equality equality;
 
@@ -61,13 +58,13 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
 
   private TypeClosureVisitor typeClosureVisitor;
 
-  public CaptureVisitor(final TypeAndElementSource elementSource,
+  public CaptureVisitor(final TypeAndElementSource tes,
                         final Equality equality,
                         final Types types,
                         final SupertypeVisitor supertypeVisitor, // used by internal SubstituteVisitor
                         final MemberTypeVisitor memberTypeVisitor) {
     super();
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.equality = equality == null ? new Equality(true) : equality;
     this.types = Objects.requireNonNull(types, "types");
     this.supertypeVisitor = Objects.requireNonNull(supertypeVisitor, "supertypeVisitor");
@@ -106,7 +103,7 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
       if (capturedEnclosingType != enclosingType) {
         final Element element = t.asElement();
         final TypeMirror memberType = this.memberTypeVisitor.visit(capturedEnclosingType, element);
-        t = (DeclaredType)new SubstituteVisitor(this.elementSource,
+        t = (DeclaredType)new SubstituteVisitor(this.tes,
                                                 this.equality,
                                                 this.supertypeVisitor,
                                                 ((DeclaredType)element.asType()).getTypeArguments(),
@@ -149,18 +146,18 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
         captured = true;
         TypeMirror Ui = currentAHead.getUpperBound();
         if (Ui == null) {
-          Ui = this.elementSource.typeElement("java.lang.Object").asType();
+          Ui = this.tes.typeElement("java.lang.Object").asType();
         }
         final Capture Si = (Capture)currentSHead;
         final WildcardType Ti = (WildcardType)currentTHead;
         Si.setLowerBound(Ti.getSuperBound());
         final TypeMirror TiExtendsBound = Ti.getExtendsBound();
         if (TiExtendsBound == null) {
-          Si.setUpperBound(new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, A, S).visit(Ui));
+          Si.setUpperBound(new SubstituteVisitor(this.tes, this.equality, this.supertypeVisitor, A, S).visit(Ui));
         } else {
           // TiExtendsBound can be DECLARED, INTERSECTION or TYPEVAR
           Si.setUpperBound(glb(TiExtendsBound,
-                               new SubstituteVisitor(this.elementSource, this.equality, this.supertypeVisitor, A, S).visit(Ui)));
+                               new SubstituteVisitor(this.tes, this.equality, this.supertypeVisitor, A, S).visit(Ui)));
         }
       }
     }
@@ -197,7 +194,7 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
     final int size = minimumTypes.size();
     switch (size) {
     case 0:
-      return this.elementSource.typeElement("java.lang.Object").asType();
+      return this.tes.typeElement("java.lang.Object").asType();
     case 1:
       return minimumTypes.get(0);
     }
@@ -242,11 +239,11 @@ public final class CaptureVisitor extends SimpleTypeVisitor14<TypeMirror, Void> 
     return t1;
   }
 
-  private static final TypeMirror capturedTypeVariableLowerBound(final TypeMirror capture) {
+  private final TypeMirror capturedTypeVariableLowerBound(final TypeMirror capture) {
     if (capture.getKind() == TypeKind.TYPEVAR && capture instanceof Capture c) {
       final TypeMirror lowerBound = c.getLowerBound();
       if (lowerBound == null) {
-        return org.microbean.lang.type.NullType.INSTANCE;
+        return this.tes.nullType();
       } else {
         return lowerBound.getKind() == TypeKind.NULL ? lowerBound : capturedTypeVariableLowerBound(lowerBound); // RECURSIVE
       }

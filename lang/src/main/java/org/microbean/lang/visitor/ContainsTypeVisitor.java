@@ -1,18 +1,15 @@
 /* -*- mode: Java; c-basic-offset: 2; indent-tabs-mode: nil; coding: utf-8-unix -*-
  *
- * Copyright © 2023 microBean™.
+ * Copyright © 2023–2024 microBean™.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
- * implied.  See the License for the specific language governing
- * permissions and limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package org.microbean.lang.visitor;
 
@@ -62,7 +59,7 @@ import org.microbean.lang.type.Types;
 // https://github.com/openjdk/jdk/blob/jdk-20+12/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Types.java#L1562-L1611
 public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, TypeMirror> {
 
-  private final TypeAndElementSource elementSource;
+  private final TypeAndElementSource tes;
 
   private final Types types;
 
@@ -70,9 +67,9 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
 
   private SubtypeVisitor subtypeVisitor;
 
-  public ContainsTypeVisitor(final TypeAndElementSource elementSource, final Types types) {
+  public ContainsTypeVisitor(final TypeAndElementSource tes, final Types types) {
     super(Boolean.FALSE /* default value */);
-    this.elementSource = Objects.requireNonNull(elementSource, "elementSource");
+    this.tes = Objects.requireNonNull(tes, "tes");
     this.types = Objects.requireNonNull(types, "types");
   }
 
@@ -96,7 +93,7 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
     if (sameTypeVisitor == this.sameTypeVisitor) {
       return this;
     }
-    final ContainsTypeVisitor v = new ContainsTypeVisitor(this.elementSource, this.types);
+    final ContainsTypeVisitor v = new ContainsTypeVisitor(this.tes, this.types);
     v.setSameTypeVisitor(sameTypeVisitor);
     return v;
   }
@@ -105,7 +102,7 @@ public final class ContainsTypeVisitor extends SimpleTypeVisitor14<Boolean, Type
     if (subtypeVisitor == this.subtypeVisitor) {
       return this;
     }
-    final ContainsTypeVisitor v = new ContainsTypeVisitor(this.elementSource, this.types);
+    final ContainsTypeVisitor v = new ContainsTypeVisitor(this.tes, this.types);
     v.setSubtypeVisitor(this.subtypeVisitor);
     return v;
   }
