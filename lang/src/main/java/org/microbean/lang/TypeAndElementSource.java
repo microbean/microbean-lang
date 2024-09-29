@@ -74,6 +74,8 @@ public interface TypeAndElementSource {
 
   public boolean sameType(final TypeMirror t, final TypeMirror s);
 
+  public boolean subtype(final TypeMirror t, final TypeMirror s);
+
   public TypeElement typeElement(final CharSequence canonicalName);
 
   // Note that Elements#getTypeElement(ModuleElement, CharSequence), to which this basically ultimately delegates, says
@@ -91,49 +93,48 @@ public interface TypeAndElementSource {
    */
 
 
-  public default ArrayType arrayType(final Class<?> c) {
-    if (!c.isArray()) {
-      throw new IllegalArgumentException("c: " + c);
-    }
-    return this.arrayTypeOf(this.type(c.getComponentType()));
-  }
-
-  public default ArrayType arrayType(final GenericArrayType g) {
-    return this.arrayTypeOf(this.type(g.getGenericComponentType()));
+  public default ArrayType arrayType(final Type t) {
+    return switch (t) {
+    case null                        -> throw new NullPointerException("t");
+    case Class<?> c when c.isArray() -> this.arrayTypeOf(this.type(c.getComponentType()));
+    case GenericArrayType g          -> this.arrayTypeOf(this.type(g.getGenericComponentType()));
+    default                          -> throw new IllegalArgumentException("t: " + t);
+    };
   }
 
   public default DeclaredType declaredType(final CharSequence canonicalName) {
     return this.declaredType(this.typeElement(canonicalName));
   }
 
-  public default DeclaredType declaredType(final Class<?> c) {
-    if (c.isArray() || c.isPrimitive() || c.isLocalClass() || c.isAnonymousClass()) {
-      throw new IllegalArgumentException("c: " + c);
+  public default DeclaredType declaredType(final Type t) {
+    return switch (t) {
+    case null                -> throw new NullPointerException("t");
+    case Class<?> c when c.isArray() || c.isPrimitive() || c.isLocalClass() || c.isAnonymousClass()
+                             -> throw new IllegalArgumentException("t: " + t);
+    case Class<?> c          -> {
+      final Class<?> ec = c.getEnclosingClass();
+      yield ec == null ? this.declaredType(this.typeElement(c)) : this.declaredType(this.declaredType(ec), this.typeElement(c));
     }
-    final Class<?> ec = c.getEnclosingClass();
-    return this.declaredType(ec == null ? null : this.declaredType(ec), this.typeElement(c));
-  }
-
-  public default DeclaredType declaredType(final ParameterizedType p) {
-    return
-      this.declaredType(switch (p.getOwnerType()) {
-        case null                 -> null;
-        case Class<?> c           -> this.declaredType(c);
-        case ParameterizedType pt -> this.declaredType(pt);
-        default                   -> throw new IllegalArgumentException("p: " + p);
-        },
-        this.typeElement((Class<?>)p.getRawType()),
-        this.typeArray(p.getActualTypeArguments()));
+    case ParameterizedType p -> this.declaredType(switch (p.getOwnerType()) {
+      case null                 -> null;
+      case Class<?> c           -> this.declaredType(c);
+      case ParameterizedType pt -> this.declaredType(pt);
+      default                   -> throw new IllegalArgumentException("t: " + t);
+      },
+      this.typeElement(p.getRawType()),
+      this.typeArray(p.getActualTypeArguments()));
+    default                  -> throw new IllegalArgumentException("t: " + t);
+    };
   }
 
   public default Optional<? extends ConstantDesc> describeConstable(final AnnotatedConstruct a) {
     return switch (a) {
-    case null -> Optional.of(NULL);
-    case Constable c -> c.describeConstable();
+    case null            -> Optional.of(NULL);
+    case Constable c     -> c.describeConstable();
     case ConstantDesc cd -> Optional.of(cd); // future proofing
-    case TypeMirror t -> Optional.empty();
-    case Element e -> Optional.empty();
-    default -> throw new IllegalArgumentException("a: " + a);
+    case TypeMirror t    -> Optional.empty();
+    case Element e       -> Optional.empty();
+    default              -> throw new IllegalArgumentException("a: " + a);
     };
   }
 
@@ -146,16 +147,17 @@ public interface TypeAndElementSource {
 
   public default TypeMirror type(final Type t) {
     return switch (t) {
-    case null                                 -> throw new NullPointerException();
-    case Class<?> c when c == void.class      -> this.noType(TypeKind.VOID);
-    case Class<?> c when c.isArray()          -> this.arrayType(c);
-    case Class<?> c when c.isPrimitive()      -> this.primitiveType(c);
-    case Class<?> c                           -> this.declaredType(c);
-    case ParameterizedType p                  -> this.declaredType(p);
-    case GenericArrayType g                   -> this.arrayType(g);
-    case java.lang.reflect.TypeVariable<?> tv -> this.typeVariable(tv);
-    case java.lang.reflect.WildcardType w     -> this.wildcardType(w);
-    default                                   -> throw new IllegalArgumentException("t: " + t);
+    case null                                                     -> throw new NullPointerException();
+    case Class<?> c when c == void.class                          -> this.noType(TypeKind.VOID);
+    case Class<?> c when c.isArray()                              -> this.arrayType(c);
+    case Class<?> c when c.isPrimitive()                          -> this.primitiveType(c);
+    case Class<?> c when c.isLocalClass() || c.isAnonymousClass() -> throw new IllegalArgumentException("t: " + t);
+    case Class<?> c                                               -> this.declaredType(c);
+    case ParameterizedType p                                      -> this.declaredType(p);
+    case GenericArrayType g                                       -> this.arrayType(g);
+    case java.lang.reflect.TypeVariable<?> tv                     -> this.typeVariable(tv);
+    case java.lang.reflect.WildcardType w                         -> this.wildcardType(w);
+    default                                                       -> throw new IllegalArgumentException("t: " + t);
     };
   }
 
@@ -167,11 +169,15 @@ public interface TypeAndElementSource {
     return rv;
   }
 
-  public default TypeElement typeElement(final Class<?> c) {
-    if (c.isArray() || c.isPrimitive() || c.isLocalClass() || c.isAnonymousClass()) {
-      throw new IllegalArgumentException("c: " + c);
-    }
-    return this.typeElement(c.getCanonicalName());
+  public default TypeElement typeElement(final Type t) {
+    return switch (t) {
+    case null                -> throw new NullPointerException("t");
+    case Class<?> c when c.isArray() || c.isPrimitive() || c.isLocalClass() || c.isAnonymousClass()
+                             -> throw new IllegalArgumentException("t: " + t);
+    case Class<?> c          -> this.typeElement(c.getCanonicalName());
+    case ParameterizedType p -> this.typeElement(p.getRawType());
+    default                  -> throw new IllegalArgumentException("t: " + t);
+    };
   }
 
   public default WildcardType wildcardType(final java.lang.reflect.WildcardType t) {

@@ -151,7 +151,15 @@ public final class SupertypeVisitor extends SimpleTypeVisitor14<TypeMirror, Void
   @Override // SimpleTypeVisitor14
   public final TypeMirror visitIntersection(final IntersectionType t, final Void x) {
     assert t.getKind() == TypeKind.INTERSECTION;
-    return t.getBounds().get(0); // TODO: presumes first bound will be the supertype; see https://github.com/openjdk/jdk/blob/jdk-19+25/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L1268
+    // Since an intersection type is always ordered from most specialized to least, it follows that the direct supertype
+    // of an intersection type is its first bound. See
+    // https://docs.oracle.com/javase/specs/jls/se22/html/jls-4.html#jls-4.10.2
+    //
+    // TODO: wait, no, this isn't correct at all. The JLS says: "The direct supertypes of an intersection type T1 &
+    // ... & Tn are Ti (1 ≤ i ≤ n)." But javac's Types class sets the supertype_field (singular) field to the first
+    // element of the list. See
+    // https://github.com/openjdk/jdk/blob/jdk-19+25/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Type.java#L1268.
+    return t.getBounds().get(0);
   }
 
   @Override // SimpleTypeVisitor14

@@ -41,7 +41,7 @@ import static org.microbean.lang.type.Types.allTypeArguments;
 import static org.microbean.lang.type.Types.asElement;
 
 /**
- * Does something adapting-like.
+ * Does something adapting-like. Looks to be related to type variable resolution.
  *
  * <p>Usage: call {@link #adapt(DeclaredType, DeclaredType)}, not {@link #visit(TypeMirror)}.</p>
  *
@@ -67,6 +67,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
 
   private final Types types;
 
+  // The compiler calls this "mapping"; the class is called "Adapting"; I think they are the same thing
   private final Map<DelegatingElement, TypeMirror> mapping;
 
   private final SameTypeVisitor sameTypeVisitor;
@@ -92,6 +93,10 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
     this.to = Objects.requireNonNull(to, "to");
   }
 
+  final void adaptSelf(final DeclaredType target) {
+    this.adapt((DeclaredType)target.asElement().asType(), target);
+  }
+
   final void adapt(final DeclaredType source, final DeclaredType target) {
     this.visitDeclared(source, target);
     final int fromSize = this.from.size();
@@ -103,10 +108,29 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
     }
   }
 
-  final void adaptSelf(final DeclaredType target) {
-    this.adapt((DeclaredType)target.asElement().asType(), target);
+  private final void adaptRecursive(final Collection<? extends TypeMirror> source, final Collection<? extends TypeMirror> target) {
+    if (source.size() == target.size()) {
+      final Iterator<? extends TypeMirror> sourceIterator = source.iterator();
+      final Iterator<? extends TypeMirror> targetIterator = target.iterator();
+      while (sourceIterator.hasNext()) {
+        assert targetIterator.hasNext();
+        this.adaptRecursive(sourceIterator.next(), targetIterator.next());
+      }
+    }
   }
 
+  private final void adaptRecursive(final TypeMirror source, final TypeMirror target) {
+    final TypeMirrorPair pair = new TypeMirrorPair(this.sameTypeVisitor, source, target);
+    if (this.cache.add(pair)) {
+      try {
+        this.visit(source, target);
+      } finally {
+        this.cache.remove(pair);
+      }
+    }
+  }
+
+  // Adapts the component type of source.
   @Override
   public final Void visitArray(final ArrayType source, final TypeMirror target) {
     assert source.getKind() == TypeKind.ARRAY;
@@ -116,6 +140,8 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
     return null;
   }
 
+  // Adapts type arguments of source. "Recursive" means something like "go into type parameters etc."
+  // Adapting a type argument takes effect on wildcard-extending type variables only, it looks like.
   @Override
   public final Void visitDeclared(final DeclaredType source, final TypeMirror target) {
     assert source.getKind() == TypeKind.DECLARED;
@@ -135,6 +161,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
       this.from.add(source);
       this.to.add(target);
     } else if (val.getKind() == TypeKind.WILDCARD && target.getKind() == TypeKind.WILDCARD) {
+      // This block is the only place in this entire class where the magic happens.
       final WildcardType valWc = (WildcardType)val;
       final TypeMirror valSuperBound = valWc.getSuperBound();
       final TypeMirror valExtendsBound = valWc.getExtendsBound();
@@ -172,6 +199,7 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
     return null;
   }
 
+  // Adapts the bounds of a wildcard.
   @Override
   public final Void visitWildcard(final WildcardType source, final TypeMirror target) {
     assert source.getKind() == TypeKind.WILDCARD;
@@ -191,26 +219,5 @@ final class AdaptingVisitor extends SimpleTypeVisitor14<Void, TypeMirror> {
     return null;
   }
 
-  private final void adaptRecursive(final TypeMirror source, final TypeMirror target) {
-    final TypeMirrorPair pair = new TypeMirrorPair(this.sameTypeVisitor, source, target);
-    if (this.cache.add(pair)) {
-      try {
-        this.visit(source, target);
-      } finally {
-        this.cache.remove(pair);
-      }
-    }
-  }
-
-  private final void adaptRecursive(final Collection<? extends TypeMirror> source, final Collection<? extends TypeMirror> target) {
-    if (source.size() == target.size()) {
-      final Iterator<? extends TypeMirror> sourceIterator = source.iterator();
-      final Iterator<? extends TypeMirror> targetIterator = target.iterator();
-      while (sourceIterator.hasNext()) {
-        assert targetIterator.hasNext();
-        this.adaptRecursive(sourceIterator.next(), targetIterator.next());
-      }
-    }
-  }
 
 }

@@ -117,12 +117,10 @@ final class TestSameTypeVisitor {
         public boolean sameType(final TypeMirror t, final TypeMirror s) {
           return javacModelTypes.isSameType(t, s);
         }
-        /*
         @Override
-        public final TypeElement typeElement(final CharSequence m, final CharSequence n) {
-          return elements.getTypeElement(elements.getModuleElement(m), n);
+        public boolean subtype(final TypeMirror t, final TypeMirror s) {
+          return javacModelTypes.isSubtype(t, s);
         }
-        */
         @Override
         public final TypeElement typeElement(final CharSequence n) {
           return elements.getTypeElement(n);

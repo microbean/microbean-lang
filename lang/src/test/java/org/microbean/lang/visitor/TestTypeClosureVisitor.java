@@ -95,7 +95,7 @@ final class TestTypeClosureVisitor {
     final TypeMirror t = Lang.arrayTypeOf(Lang.declaredType("java.lang.Integer"));
     assertSame(TypeKind.ARRAY, t.getKind());
     
-    final Type integerArrayType = (Type)unwrap(Lang.arrayTypeOf(Lang.declaredType("java.lang.Integer")));
+    final Type integerArrayType = (Type)unwrap(t);
     assertSame(TypeKind.ARRAY, integerArrayType.getKind());
     final List<? extends TypeMirror> closure = javacCodeTypes.closure(integerArrayType);
     // Perhaps surprisingly, the closure (as implemented by javac) of any type, including array types, that is not a
