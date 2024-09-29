@@ -61,7 +61,7 @@ public class PrecedesPredicate implements BiPredicate<Element, Element> {
     case DECLARED:
       switch (s.getKind()) {
       case DECLARED:
-        if (this.equality.equals(e, f)) { // in place of ==
+        if (this.equality.equals(e, f)) { // already checked e == f
           // Both are completely interchangeable DeclaredTypes; can't say which comes first.
           return false;
         }
@@ -77,7 +77,7 @@ public class PrecedesPredicate implements BiPredicate<Element, Element> {
     case TYPEVAR:
       switch (s.getKind()) {
       case TYPEVAR:
-        if (this.equality.equals(e, f)) { // in place of ==
+        if (this.equality.equals(e, f)) { // already checked e == f
           // Both are completely interchangeable TypeVariables; can't say which comes first.
           return false;
         }

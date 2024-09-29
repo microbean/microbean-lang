@@ -2127,8 +2127,8 @@ public final class Lang {
   /**
    * Asynchronously and idempotently initializes the {@link Lang} class for use.
    *
-   * <p>This method is automatically called when appropriate, but is {@code public} to support eager initialization use
-   * cases.</p>
+   * <p>This method is automatically called by the internals of this class when appropriate, but is {@code public} to
+   * support eager initialization use cases.</p>
    */
   // Idempotent.
   public static final void initialize() {
@@ -2290,6 +2290,11 @@ public final class Lang {
     @Override
     public final boolean sameType(final TypeMirror t, final TypeMirror s) {
       return t == s || Lang.sameType(t, s);
+    }
+
+    @Override
+    public final boolean subtype(final TypeMirror t, final TypeMirror s) {
+      return t == s || Lang.subtype(t, s);
     }
 
     @Override
@@ -2466,8 +2471,10 @@ public final class Lang {
           options.add("-verbose");
         }
 
-        final DiagnosticLogger diagnosticLogger = new DiagnosticLogger(Locale.getDefault());
-        final StandardJavaFileManager sjfm = jc.getStandardFileManager(diagnosticLogger, Locale.getDefault(), Charset.defaultCharset());
+        final Locale defaultLocale = Locale.getDefault();
+
+        final DiagnosticLogger diagnosticLogger = new DiagnosticLogger(defaultLocale);
+        final StandardJavaFileManager sjfm = jc.getStandardFileManager(diagnosticLogger, defaultLocale, Charset.defaultCharset());
 
         // (Any "loading" is actually performed by, e.g. com.sun.tools.javac.jvm.ClassReader.fillIn(), not reflective
         // machinery. Once a class has been so loaded, com.sun.tools.javac.code.Symtab#getClass(ModuleSymbol, Name) will
@@ -2480,7 +2487,7 @@ public final class Lang {
                      List.of("java.lang.annotation.RetentionPolicy"), // arbitrary, but loads the least amount of stuff up front
                      null); // compilation units; null means we aren't actually compiling anything
         task.setProcessors(List.of(new P()));
-        task.setLocale(Locale.getDefault());
+        task.setLocale(defaultLocale);
         task.addModules(additionalRootModuleNames);
 
         if (LOGGER.isLoggable(DEBUG)) {
