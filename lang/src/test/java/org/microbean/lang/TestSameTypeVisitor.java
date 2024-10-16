@@ -81,6 +81,10 @@ final class TestSameTypeVisitor {
           return javacModelTypes.boxedClass(t);
         }
         @Override
+        public final boolean contains(final TypeMirror t, final TypeMirror s) {
+          return javacModelTypes.contains(t, s);
+        }
+        @Override
         public final DeclaredType declaredType(final TypeElement typeElement, final TypeMirror... arguments) {
           return javacModelTypes.getDeclaredType(typeElement, arguments);
         }

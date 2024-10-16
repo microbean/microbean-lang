@@ -2240,6 +2240,11 @@ public final class Lang {
     }
 
     @Override
+    public final boolean contains(final TypeMirror t, final TypeMirror s) {
+      return Lang.contains(t, s);
+    }
+
+    @Override
     public final DeclaredType declaredType(final TypeElement typeElement, final TypeMirror... typeArguments) {
       return Lang.declaredType(typeElement, typeArguments);
     }
