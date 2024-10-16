@@ -51,7 +51,21 @@ public interface TypeAndElementSource {
   // Note the strange positioning of payload and receiver.
   public boolean assignable(final TypeMirror payload, final TypeMirror receiver);
 
-  public TypeElement boxedClass(final PrimitiveType t);
+  public default TypeElement boxedClass(final PrimitiveType t) {
+    return switch (t.getKind()) { // won't cause symbol completion
+    case BOOLEAN -> this.typeElement("java.lang.Boolean");
+    case BYTE -> this.typeElement("java.lang.Byte");
+    case CHAR -> this.typeElement("java.lang.Character");
+    case DOUBLE -> this.typeElement("java.lang.Double");
+    case FLOAT -> this.typeElement("java.lang.Float");
+    case INT -> this.typeElement("java.lang.Integer");
+    case LONG -> this.typeElement("java.lang.Long");
+    case SHORT -> this.typeElement("java.lang.Short");
+    default -> throw new IllegalArgumentException("t: " + t);
+    };
+  }
+
+  public boolean contains(final TypeMirror t, final TypeMirror s);
 
   public DeclaredType declaredType(final DeclaredType enclosingType,
                                    final TypeElement typeElement,
