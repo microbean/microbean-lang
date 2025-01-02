@@ -6,7 +6,8 @@ The microBean™ Lang project provides classes and interfaces that implement and
 
 # Status
 
-This project is currently experimental, in a pre-alpha state, and unsuitable for production use.
+**This project is archived** with no further updates planned. Please see [microBean™
+Construct](https://github.com/microbean/microbean-construct) instead.
 
 # Compatibility
 
